@@ -15,7 +15,6 @@
 package pastebin
 
 import (
-	"cgit.bbaa.fun/bbaa/go-pastebin/controllers"
 	database "cgit.bbaa.fun/bbaa/go-pastebin/database"
 	"cgit.bbaa.fun/bbaa/go-pastebin/logger"
 	"github.com/gin-gonic/gin"
@@ -33,22 +32,6 @@ func initDatabase() (err error) {
 		return err
 	}
 	return
-}
-
-func httpServe() {
-	service = gin.Default()
-
-	service.Use(controllers.UserMiddleware)
-	service.POST("/api/login", controllers.UserLogin)
-	service.GET("/api/user", controllers.User)
-	service.GET("/api/check_url/:id", controllers.CheckURL)
-	service.POST("/", controllers.NewPaste)
-	service.PUT("/", controllers.NewPaste)
-	RegisterStatic(service)
-	service.GET("/:id", controllers.GetPaste)
-	service.GET("/:id/*variant", controllers.GetPaste)
-
-	service.Run()
 }
 
 func Serve() (err error) {

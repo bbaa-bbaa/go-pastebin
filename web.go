@@ -19,6 +19,7 @@ import (
 	"html/template"
 	"net/http"
 
+	"cgit.bbaa.fun/bbaa/go-pastebin/controllers"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 )
@@ -26,15 +27,24 @@ import (
 //go:embed assets/*
 var staticfs embed.FS
 
-func RegisterStatic(engine *gin.Engine) {
+func httpServe() {
+	service = gin.Default()
 	index_template := template.Must(template.ParseFS(staticfs, "assets/index.html"))
-	engine.SetHTMLTemplate(index_template)
-	engine.LoadHTMLGlob("assets/*.html")
-	engine.GET("/", func(c *gin.Context) {
+	service.SetHTMLTemplate(index_template)
+	service.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{
 			"SiteName": Config.SiteName,
 		})
 	})
-	//engine.Use(static.Serve("/", static.LocalFile("assets", true)))
-	engine.Use(static.Serve("/", static.EmbedFolder(staticfs, "assets")))
+	service.Use(controllers.UserMiddleware)
+	service.POST("/api/login", controllers.UserLogin)
+	service.GET("/api/user", controllers.User)
+	service.GET("/api/check_url/:id", controllers.CheckURL)
+	service.POST("/", controllers.NewPaste)
+	service.PUT("/", controllers.NewPaste)
+	service.Use(static.Serve("/", static.EmbedFolder(staticfs, "assets")))
+	service.GET("/:id", controllers.GetPaste)
+	service.GET("/:id/*variant", controllers.GetPaste)
+
+	service.Run()
 }
