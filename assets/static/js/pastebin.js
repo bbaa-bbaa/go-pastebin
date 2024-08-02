@@ -219,8 +219,19 @@
         check_short_url_available(url);
       })
 
-      paste_submit.on("click", function () {
+      function check_allow_delete_if_expired() {
+        if (paste_expire.val() != "0" || parseInt(paste_max_access_count.val()) > 0) {
+          paste_delete_if_expired.removeAttr("disabled");
+        } else {
+          paste_delete_if_expired.attr("disabled", "disabled");
+          paste_delete_if_expired.prop("checked", false);
+        }
+      }
 
+      paste_expire.on("change", check_allow_delete_if_expired);
+      paste_max_access_count.on("input", check_allow_delete_if_expired);
+
+      paste_submit.on("click", function () {
         let text = text_input.val();
         let password = paste_password.val();
         let expire = paste_expire.val();
