@@ -49,13 +49,19 @@
         font-weight: bold;
       }
 
-      #new-paste-result-link {
+      p.new-paste-result-link {
+        display: inline;
         font-family: "Bender";
         font-size: 1.5em;
         text-decoration: none;
-        position: relative;
-        top: 3px;
-        color: #000;
+      }
+
+      .new-paste-result-link a {
+        text-decoration: none;
+      }
+
+      .new-paste-result-link a:hover {
+        text-decoration: underline;
       }
 
       #new-paste-result {
@@ -80,7 +86,7 @@
     </div>
     <div class="mdui-container mdui-m-t-4">
       <div id="new-paste">
-        <div id="new-paste-result" class="mdui-card mdui-m-y-2">
+        <div id="new-paste-result" class="mdui-card mdui-m-y-2" style="display: none;">
           <div class="mdui-card-primary">
             <div class="mdui-card-primary-title">创建结果</div>
             <div class="mdui-card-content">
@@ -90,7 +96,7 @@
                     <div id="new-paste-result-raw">
                     </div>
                     <div>
-                      <a id="new-paste-result-link"></a>
+                      <p class="new-paste-result-link">url: <a id="new-paste-result-link"></a></p>
                       <button class="mdui-btn mdui-btn-icon mdui-ripple" id="new-paste-result-copy">
                         <i class="mdui-icon material-icons">content_copy</i>
                       </button>

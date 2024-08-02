@@ -79,14 +79,15 @@ func NewPaste(c *gin.Context) {
 	var content string
 	file, err := c.FormFile("c")
 	if err != nil {
-		if err == http.ErrMissingFile {
-			content := c.PostForm("c")
-			if content == "" {
+		if errors.Is(err, http.ErrMissingFile) {
+			content = c.PostForm("c")
+			if content == "" && Config.SupportNoFilename {
 				if response_is_json {
 					c.JSON(400, gin.H{"code": -2, "error": "bad request: file"})
 				} else {
 					c.String(400, "bad request: file")
 				}
+				return
 			}
 		} else {
 			if response_is_json {
@@ -129,6 +130,7 @@ func NewPaste(c *gin.Context) {
 	}
 
 	paste.SetPassword(Password)
+
 	if file != nil {
 		paste.Content, err = file.Open()
 	} else {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pastebin
+package controllers
 
 import (
 	"os"
@@ -22,11 +22,13 @@ import (
 )
 
 type Pastebin_Config struct {
-	SiteName string `yaml:"site_name"`
+	SiteName          string `yaml:"site_name"`
+	SupportNoFilename bool   `yaml:"support_no_filename"`
 }
 
 var Config *Pastebin_Config = &Pastebin_Config{
-	SiteName: "Pastebin",
+	SiteName:          "Pastebin",
+	SupportNoFilename: true,
 }
 
 func SaveConfig() {

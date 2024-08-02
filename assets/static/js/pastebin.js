@@ -260,7 +260,7 @@
         if (paste_file) {
           data.append("c", paste_file);
         } else {
-          data.append("c", new File([text], text_file.filename, { type: text_file.mine_type == "" ? "text/plain" : text_file.mine_type }));
+          data.append("c", new File([text], text_file.filename || "-", { type: text_file.mine_type == "" ? "text/plain" : text_file.mine_type }));
         }
 
         paste_submit.attr("disabled", "disabled");
@@ -298,7 +298,8 @@
             raw_html += `<p><strong>${k}:</strong> ${v}</p>`;
           }
           new_paste_result_raw.html(raw_html);
-          new_paste_result_link.text("url: " + response.url);
+          new_paste_result_link.text(response.url);
+          new_paste_result_link.attr("href", response.url);
           QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, width: 168 }, function () { });
           new_paste_result.show();
         }).catch(err => {

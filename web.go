@@ -33,7 +33,7 @@ func httpServe() {
 	service.SetHTMLTemplate(index_template)
 	service.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"SiteName": Config.SiteName,
+			"SiteName": controllers.Config.SiteName,
 		})
 	})
 	service.Use(controllers.UserMiddleware)
