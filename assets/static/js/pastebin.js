@@ -18,6 +18,9 @@
     "application/x-markdown",
     "application/x-yaml"
   ];
+  function easeInSine(t) {
+    return 1 - Math.cos((t * Math.PI) / 2);
+  }
   $(function () {
     document.body.addEventListener("drop", function (e) {
       e.preventDefault();
@@ -74,14 +77,14 @@
         if (file.type.startsWith("image/")) {
           paste_preview_element = $(`<img style="max-height: inherit; max-width:100%">`).attr("src", URL.createObjectURL(file)).appendTo(file_paste_preview);
         } else if (file.type.startsWith("audio/")) {
-          paste_preview_element = $('<audio controls>').attr("src", URL.createObjectURL(file)).appendTo(file_paste_preview);
+          paste_preview_element = $('<audio controls style="max-height: inherit; max-width:100%">').attr("src", URL.createObjectURL(file)).appendTo(file_paste_preview);
         } else if (file.type.startsWith("video/")) {
           paste_preview_element = $('<video controls style="max-height: inherit; max-width:100%">').attr("src", URL.createObjectURL(file)).appendTo(file_paste_preview);
         } else {
           paste_preview_element = null;
           file_paste_preview.hide();
           file_paste_icon.show();
-          return
+          return;
         }
         file_paste_icon.hide();
         file_paste_preview.show();
@@ -200,7 +203,7 @@
           paste_delete.attr("disabled", "disabled");
           paste_update.attr("disabled", "disabled");
         }
-      })
+      });
 
       function check_short_url(url) {
         return url.length == 0 || /^[A-Za-z0-9\\._-]+$/im.test(url);
@@ -208,8 +211,8 @@
 
       const check_short_url_available = _.debounce(function (url) {
         $.ajax({
-          method: 'GET',
-          url: 'api/check_url/' + url,
+          method: "GET",
+          url: "api/check_url/" + url
         }).then(res => {
           response = JSON.parse(res);
           if (!response.available) {
@@ -228,7 +231,7 @@
           paste_short_url.closest(".mdui-textfield").removeClass("mdui-textfield-invalid");
         }
         check_short_url_available(url);
-      })
+      });
 
       function check_allow_delete_if_expired() {
         if (paste_expire.val() != "0" || parseInt(paste_max_access_count.val()) > 0) {
@@ -287,26 +290,54 @@
 
         function upload_progress(e) {
           if (e.lengthComputable) {
-            file_paste_progress_text.text((e.loaded / 1024 / 1024).toFixed(2) + " MiB / " + (e.total / 1024 / 1024).toFixed(2) + " MiB - " + (e.loaded / e.total * 100).toFixed(2) + "%");
-            file_paste_progress_bar.css("width", (e.loaded / e.total * 100).toFixed(2) + "%");
+            file_paste_progress_text.text(
+              (e.loaded / 1024 / 1024).toFixed(2) + " MiB / " + (e.total / 1024 / 1024).toFixed(2) + " MiB - " + ((e.loaded / e.total) * 100).toFixed(2) + "%"
+            );
+            file_paste_progress_bar.css("width", ((e.loaded / e.total) * 100).toFixed(2) + "%");
           }
+        }
+
+        function show_result() {
+          return new Promise(resolve => {
+            let begin = document.documentElement.scrollTop;
+            let target = Math.max(new_paste_result.offset().top - 16, 0);
+            if (begin > target) {
+              let start_time = new Date().getTime();
+              (function animate(duration) {
+                let progress = Math.max(Math.min((new Date().getTime() - start_time) / duration, 1), 0);
+                document.documentElement.scrollTop = begin - (begin - target) * easeInSine(progress);
+                if (progress < 1) {
+                  requestAnimationFrame(() => animate(duration));
+                } else {
+                  resolve();
+                }
+              })(300);
+            } else {
+              resolve();
+            }
+          }).then(() => {
+            new_paste_result.css("height", new_paste_result.children().height() + "px");
+          });
         }
 
         paste_submit.attr("disabled", "disabled");
         new_paste_result.css("height", "0px");
         const query_string = $.param(query_params);
         $.ajax({
-          method: 'POST',
-          url: '/' + query_string.length != 0 ? "?" + query_string : "",
+          method: "POST",
+          url: "/" + query_string.length != 0 ? "?" + query_string : "",
           data: data,
           headers: {
-            "Accept": "application/json"
+            Accept: "application/json"
           },
           contentType: false,
           processData: false,
           beforeSend: function (xhr) {
-            xhr.upload.addEventListener("progress", upload_progress);
-            file_paste_progress.css("height", "18px")
+            if (paste_file) {
+              upload_progress({ loaded: 0, total: paste_file.size, lengthComputable: true });
+              xhr.upload.addEventListener("progress", upload_progress);
+              file_paste_progress.css("height", "18px");
+            }
           }
         }).then(res => {
           response = JSON.parse(res);
@@ -321,7 +352,7 @@
               paste_submit.removeClass("mdui-color-green-accent").addClass("mdui-color-theme-accent");
             }, 1000);
           }
-          raw_html = ""
+          raw_html = "";
           for (let [k, v] of Object.entries(response)) {
             if (k == "code" || k == "url") {
               continue;
@@ -334,10 +365,12 @@
           new_paste_result_raw.html(raw_html);
           new_paste_result_link.text(response.url);
           new_paste_result_link.attr("href", response.url);
-          paste_uuid.val(response.uuid);
+          if (response.uuid) {
+            paste_uuid.val(response.uuid);
+          }
           paste_uuid.get(0).dispatchEvent(new Event("input"));
           QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, width: 168 }, function () { });
-          new_paste_result.css("height", new_paste_result.children().height() + "px");
+          return show_result();
         }).catch(err => {
           paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
           setTimeout(() => {
@@ -346,7 +379,7 @@
           mdui.snackbar("创建失败: " + err);
         }).finally(() => {
           paste_submit.removeAttr("disabled");
-          file_paste_progress.css("height", "0px")
+          file_paste_progress.css("height", "0px");
         });
       });
 
@@ -360,11 +393,14 @@
           mdui.snackbar("请按 Ctrl+C 复制");
         }
         if (navigator.clipboard) {
-          navigator.clipboard.writeText(new_paste_result_link.text()).then(() => {
-            mdui.snackbar("已复制到剪贴板");
-          }).catch(err => {
-            selectAndHint();
-          })
+          navigator.clipboard
+            .writeText(new_paste_result_link.text())
+            .then(() => {
+              mdui.snackbar("已复制到剪贴板");
+            })
+            .catch(err => {
+              selectAndHint();
+            });
         } else {
           selectAndHint();
         }
