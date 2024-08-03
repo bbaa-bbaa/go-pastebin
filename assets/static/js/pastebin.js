@@ -68,11 +68,11 @@
           paste_preview_element.remove();
         }
         if (file.type.startsWith("image/")) {
-          paste_preview_element = $(`<img style="max-height: inherit">`).attr("src", URL.createObjectURL(file)).appendTo(file_paste_preview);
+          paste_preview_element = $(`<img style="max-height: inherit; max-width:100%">`).attr("src", URL.createObjectURL(file)).appendTo(file_paste_preview);
         } else if (file.type.startsWith("audio/")) {
           paste_preview_element = $('<audio controls>').attr("src", URL.createObjectURL(file)).appendTo(file_paste_preview);
         } else if (file.type.startsWith("video/")) {
-          paste_preview_element = $('<video controls style="max-height: inherit">').attr("src", URL.createObjectURL(file)).appendTo(file_paste_preview);
+          paste_preview_element = $('<video controls style="max-height: inherit; max-width:100%">').attr("src", URL.createObjectURL(file)).appendTo(file_paste_preview);
         } else {
           paste_preview_element = null;
           file_paste_preview.hide();
@@ -125,10 +125,17 @@
 
       paste_load.on("click", function () {
         if (!paste_file) {
+          file_input.val("");
           file_input.get(0).click();
         } else {
           switch_to_text_paste();
         }
+      });
+
+      file_paste.on("click", function () {
+        paste_file = null;
+        file_input.val("");
+        file_input.get(0).click();
       });
 
       file_input.on("change", function (e) {
@@ -249,11 +256,11 @@
         }
 
         if (max_access_count.length != 0) {
-          if (isNaN(parseInt(max_access_count))) {
+          if (!/^[\d]+$/m.test(max_access_count) || isNaN(parseInt(max_access_count))) {
             mdui.snackbar("最大访问次数必须为数字");
             return;
           }
-          query_params.append("max_access_count", max_access_count);
+          query_params.append("max_access_count", parseInt(max_access_count, 10));
         }
 
         if (short_url.length != 0) {
@@ -311,6 +318,8 @@
           new_paste_result_raw.html(raw_html);
           new_paste_result_link.text(response.url);
           new_paste_result_link.attr("href", response.url);
+          paste_uuid.val(response.uuid);
+          paste_uuid.get(0).dispatchEvent(new Event("input"));
           QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, width: 168 }, function () { });
           new_paste_result.show();
         }).catch(err => {

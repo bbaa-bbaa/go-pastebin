@@ -24,55 +24,55 @@ import (
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/database"
 	"github.com/fatih/color"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"github.com/matthewhartstonge/argon2"
 )
 
 const access_token_expire = 24 * time.Hour
 
-func NewPaste(c *gin.Context) {
-	response_is_json := strings.Contains(c.GetHeader("Accept"), "application/json")
+func NewPaste(c echo.Context) error {
+	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
 	var Expire time.Time
 	var MaxAccessCount int64
 	var DeleteIfExpire bool
 	var err error
-	Password := c.Query("password")
-	Short_url := c.Query("short_url")
-	expire_after := c.Query("expire_after")
+	Password := c.QueryParam("password")
+	Short_url := c.QueryParam("short_url")
+	expire_after := c.QueryParam("expire_after")
 	if expire_after != "" {
 		expire, err := strconv.ParseInt(expire_after, 10, 64)
 		if err != nil {
 			if response_is_json {
-				c.JSON(400, gin.H{"code": -2, "error": "bad request: expire_after"})
+				c.JSON(400, map[string]any{"code": -2, "error": "bad request: expire_after"})
 			} else {
 				c.String(400, "bad request: expire_after")
 			}
-			return
+			return err
 		}
 		Expire = time.UnixMilli(expire)
 	}
-	max_access_count := c.Query("max_access_count")
+	max_access_count := c.QueryParam("max_access_count")
 	if max_access_count != "" {
 		MaxAccessCount, err = strconv.ParseInt(max_access_count, 10, 64)
 		if err != nil {
 			if response_is_json {
-				c.JSON(400, gin.H{"code": -2, "error": "bad request: max_access_count"})
+				c.JSON(400, map[string]any{"code": -2, "error": "bad request: max_access_count"})
 			} else {
 				c.String(400, "bad request: max_access_count")
 			}
-			return
+			return err
 		}
 	}
-	delete_if_expire := c.Query("delete_if_expire")
+	delete_if_expire := c.QueryParam("delete_if_expire")
 	if delete_if_expire != "" {
 		DeleteIfExpire, err = strconv.ParseBool(delete_if_expire)
 		if err != nil {
 			if response_is_json {
-				c.JSON(400, gin.H{"code": -2, "error": "bad request: delete_if_expire"})
+				c.JSON(400, map[string]any{"code": -2, "error": "bad request: delete_if_expire"})
 			} else {
 				c.String(400, "bad request: delete_if_expire")
 			}
-			return
+			return err
 		}
 	}
 
@@ -80,22 +80,22 @@ func NewPaste(c *gin.Context) {
 	file, err := c.FormFile("c")
 	if err != nil {
 		if errors.Is(err, http.ErrMissingFile) {
-			content = c.PostForm("c")
+			content = c.FormValue("c")
 			if content == "" && Config.SupportNoFilename {
 				if response_is_json {
-					c.JSON(400, gin.H{"code": -2, "error": "bad request: file"})
+					c.JSON(400, map[string]any{"code": -2, "error": "bad request: file"})
 				} else {
 					c.String(400, "bad request: file")
 				}
-				return
+				return err
 			}
 		} else {
 			if response_is_json {
-				c.JSON(400, gin.H{"code": -2, "error": "bad request: file"})
+				c.JSON(400, map[string]any{"code": -2, "error": "bad request: file"})
 			} else {
 				c.String(400, "bad request: file")
 			}
-			return
+			return err
 		}
 	}
 	var paste *database.Paste
@@ -125,8 +125,8 @@ func NewPaste(c *gin.Context) {
 		}
 	}
 
-	if user, ok := c.Get("user"); ok {
-		paste.UID = user.(*database.User).Uid
+	if user, ok := c.Get("user").(*database.User); ok {
+		paste.UID = user.Uid
 	}
 
 	paste.SetPassword(Password)
@@ -138,24 +138,17 @@ func NewPaste(c *gin.Context) {
 	}
 	if err != nil {
 		if response_is_json {
-			c.JSON(500, gin.H{"code": -3, "error": "internal error"})
+			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
 		} else {
 			c.String(500, "status: internal error")
 		}
-		return
+		return err
 	}
 	paste, err = paste.Save()
-	scheme := "http"
-	if c.Request.TLS != nil {
-		scheme = "https"
-	}
-	url := scheme + "://" + c.Request.Host + "/"
-	if paste != nil {
-		url += paste.Short_url
-	}
+	url := c.Scheme() + "://" + c.Request().Host + "/" + paste.Short_url
 	if err == nil {
 		if response_is_json {
-			c.JSON(200, gin.H{
+			c.JSON(200, map[string]any{
 				"code":   0,
 				"date":   paste.CreatedAt.Format(time.RFC3339Nano),
 				"digest": paste.HexHash(),
@@ -181,11 +174,10 @@ func NewPaste(c *gin.Context) {
 				}, ""),
 			)
 		}
-		return
 	} else {
 		if errors.Is(err, database.ErrAlreadyExist) {
 			if response_is_json {
-				c.JSON(200, gin.H{
+				c.JSON(200, map[string]any{
 					"code":   0,
 					"date":   paste.CreatedAt.Format(time.RFC3339Nano),
 					"digest": paste.HexHash(),
@@ -211,7 +203,7 @@ func NewPaste(c *gin.Context) {
 			}
 		} else if errors.Is(err, database.ErrShortURLAlreadyExist) {
 			if response_is_json {
-				c.JSON(200, gin.H{
+				c.JSON(200, map[string]any{
 					"code":   0,
 					"date":   paste.CreatedAt.Format(time.RFC3339Nano),
 					"digest": paste.HexHash(),
@@ -238,51 +230,52 @@ func NewPaste(c *gin.Context) {
 		} else {
 			log.Error(err)
 			if response_is_json {
-				c.JSON(500, gin.H{"code": -3, "error": "internal error"})
+				c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
 			} else {
 				c.String(500, "status: internal error")
 			}
 		}
-		return
 	}
+	return err
 }
 
-func GetPaste(c *gin.Context) {
-	raw_response := false
+func GetPaste(c echo.Context) error {
+	response := c.Response()
+
 	variant := c.Param("variant")
+
+	raw_response := variant == "raw"
 	download := variant == "download"
-	if variant == "raw" {
+
+	if accept_header := c.Request().Header.Get("Accept"); !(strings.Contains(accept_header, "text/html") || strings.Contains(accept_header, "application/json")) {
 		raw_response = true
 	}
-	if !(strings.Contains(c.GetHeader("Accept"), "text/html") || strings.Contains(c.GetHeader("Accept"), "application/json")) {
-		raw_response = true
-	}
-	password := c.Query("pwd")
+	password := c.QueryParam("pwd")
 	id := c.Param("id")
 	if id == "" {
 		if !raw_response {
-			c.JSON(400, gin.H{"code": -2, "error": "bad request"})
+			c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
 		} else {
 			c.String(400, "bad request")
 		}
-		return
+		return nil
 	}
 	paste, err := database.QueryPasteByShortURLOrHash(id)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
 			if !raw_response {
-				c.JSON(404, gin.H{"code": -1, "error": "paste not found or not available yet"})
+				c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
 			} else {
 				c.String(404, "paste not found or not available yet")
 			}
 		} else {
 			if !raw_response {
-				c.JSON(500, gin.H{"code": -3, "error": "internal error"})
+				c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
 			} else {
 				c.String(500, "status: internal error")
 			}
 		}
-		return
+		return err
 	}
 
 	// 权限控制
@@ -290,76 +283,82 @@ func GetPaste(c *gin.Context) {
 	// 访问次数限制
 	if (paste.AccessCount >= paste.MaxAccessCount && paste.MaxAccessCount != 0) || (!paste.ExpireAfter.IsZero() && paste.ExpireAfter.Before(time.Now())) {
 		if !raw_response {
-			c.JSON(404, gin.H{"code": -1, "error": "paste not found or not available yet"})
+			c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
 		} else {
 			c.String(404, "paste not found or not available yet")
 		}
-		return
+		return nil
 	}
 
 	if paste.Password != "" {
 		if password == "" {
 			if !raw_response {
-				c.JSON(401, gin.H{"code": -1, "error": "paste need password, you can provide it by ?pwd=paste_password query"})
+				c.JSON(401, map[string]any{"code": -1, "error": "paste need password, you can provide it by ?pwd=paste_password query"})
 			} else {
 				c.String(401, "paste need password, you can provide it by ?pwd=paste_password query")
 			}
-			return
+			return nil
 		}
 		if ok, _ := argon2.VerifyEncoded([]byte(password), []byte(paste.Password)); !ok {
 			if !raw_response {
-				c.JSON(401, gin.H{"code": -1, "error": "password is incorrect"})
+				c.JSON(401, map[string]any{"code": -1, "error": "password is incorrect"})
 			} else {
 				c.String(401, "password is incorrect")
 			}
-			return
+			return nil
 		}
 	}
 
 	if !raw_response && paste.MaxAccessCount != 0 || !raw_response && paste.Password != "" {
 		redirect_url := "/"
-		if c.Request.URL.RawQuery != "" {
-			redirect_url += "?" + c.Request.URL.RawQuery
+		if c.Request().URL.RawQuery != "" {
+			redirect_url += "?" + c.Request().URL.RawQuery
 		}
 		redirect_url += "#" + paste.Short_url
 		c.Redirect(302, redirect_url)
-		return
+		return nil
 	}
 
 	// 访问次数计数
-	access_token, err := c.Cookie("access_token_" + paste.HexHash())
-	if err != nil || access_token == "" {
-		access_token = c.DefaultQuery("access_token", "")
+	var access_token string
+	access_token_cookie, err := c.Cookie("access_token_" + paste.HexHash())
+	if err == nil {
+		access_token = access_token_cookie.Value
+	}
+	if access_token == "" {
+		access_token = c.QueryParam("access_token")
 	}
 	if access_token == "" || !paste.VerifyToken(access_token) {
 		log.Info(color.YellowString("Paste: "), color.CyanString(paste.UUID), color.BlueString("["+paste.Short_url+"]"), color.YellowString("计数"), color.MagentaString("%d", paste.AccessCount))
 		available_before := time.Now().Add(access_token_expire)
 		access_token = paste.Token(available_before)
-		c.SetCookie("access_token_"+paste.HexHash(), access_token, 0, c.Request.URL.Path, "", false, true)
+		c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Expires: available_before})
 		paste.Access(available_before)
 	}
 	paste.Hold()
-	c.Header("X-Robots-Tag", "noindex")
+	response.Header().Set("X-Access-Token", access_token)
 	if paste.Extra.MineType != "" {
-		c.Header("Content-Type", paste.Extra.MineType)
+		response.Header().Set("Content-Type", paste.Extra.MineType)
 	}
+	response.Header().Set("X-Origin-Filename", paste.Extra.FileName)
 	if download || paste.Extra.MineType == "application/octet-stream" {
-		c.FileAttachment(paste.Path(), paste.Extra.FileName)
+		c.Attachment(paste.Path(), paste.Extra.FileName)
 	} else {
-		c.Header("X-Origin-Filename", paste.Extra.FileName)
 		c.File(paste.Path())
 	}
 	paste.Unhold()
+	return nil
 }
 
-func CheckURL(c *gin.Context) {
+func CheckURL(c echo.Context) error {
 	id := c.Param("id")
 	_, err := database.QueryPasteByShortURLOrHash(id)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
-			c.JSON(200, gin.H{"available": true})
-			return
+			c.JSON(200, map[string]any{"available": true})
+			return nil
 		}
 	}
-	c.JSON(200, gin.H{"available": false})
+	c.JSON(200, map[string]any{"available": false})
+	return err
 }

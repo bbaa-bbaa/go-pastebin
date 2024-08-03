@@ -17,34 +17,100 @@ package pastebin
 import (
 	"embed"
 	"html/template"
-	"net/http"
+	"io"
+	"io/fs"
+	"strings"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/controllers"
-	"github.com/gin-contrib/static"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 //go:embed assets/*
-var staticfs embed.FS
+var embed_assets embed.FS
+
+var e *echo.Echo
 
 func httpServe() {
-	service = gin.Default()
-	index_template := template.Must(template.ParseFS(staticfs, "assets/index.html"))
-	service.SetHTMLTemplate(index_template)
-	service.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{
+	e = echo.New()
+	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format: "[${time_rfc3339}] ${status} ${method} ${path} (${remote_ip}) ${latency_human}\n",
+		Output: e.Logger.Output(),
+	}))
+	//e.Use(middleware.Recover())
+	e.Use(controllers.UserMiddleware)
+	setupIndex()
+	e.POST("/api/login", controllers.UserLogin)
+	e.GET("/api/user", controllers.User)
+	e.GET("/api/check_url/:id", controllers.CheckURL)
+	e.POST("/", controllers.NewPaste)
+	e.PUT("/", controllers.NewPaste)
+	e.GET("/*", Static)
+	e.Logger.Fatal(e.Start(":8080"))
+}
+
+type TemplateRenderer struct {
+	templates *template.Template
+}
+
+func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
+
+func setupIndex() {
+	var renderer *TemplateRenderer
+	if controllers.Config.Mode == "debug" {
+		renderer = &TemplateRenderer{
+			templates: template.Must(template.ParseGlob("assets/index.html")),
+		}
+	} else {
+		renderer = &TemplateRenderer{
+			templates: template.Must(template.ParseFS(embed_assets, "assets/index.html")),
+		}
+	}
+	e.Renderer = renderer
+	e.GET("/", func(c echo.Context) error {
+		return c.Render(200, "index.html", map[string]any{
 			"SiteName": controllers.Config.SiteName,
 		})
 	})
-	service.Use(controllers.UserMiddleware)
-	service.POST("/api/login", controllers.UserLogin)
-	service.GET("/api/user", controllers.User)
-	service.GET("/api/check_url/:id", controllers.CheckURL)
-	service.POST("/", controllers.NewPaste)
-	service.PUT("/", controllers.NewPaste)
-	service.Use(static.Serve("/", static.EmbedFolder(staticfs, "assets")))
-	service.GET("/:id", controllers.GetPaste)
-	service.GET("/:id/*variant", controllers.GetPaste)
+}
 
-	service.Run()
+type WarpPaste struct {
+	echo.Context
+}
+
+func (c *WarpPaste) Param(name string) string {
+	param := c.Context.Param("*")
+	id := ""
+	variant := ""
+	param_frag := strings.Split(param, "/")
+	if len(param_frag) >= 1 {
+		id = param_frag[0]
+	}
+	if len(param_frag) == 2 {
+		variant = param_frag[1]
+	}
+	if name == "id" {
+		return id
+	}
+	if name == "variant" {
+		return variant
+	}
+	return ""
+}
+
+func Static(c echo.Context) error {
+	var assets fs.FS
+	if controllers.Config.Mode == "debug" {
+		assets = echo.MustSubFS(e.Filesystem, "assets")
+	} else {
+		assets = echo.MustSubFS(embed_assets, "assets")
+	}
+	static_hanlder := echo.StaticDirectoryHandler(assets, false)
+	err := static_hanlder(c)
+	if err == nil {
+		return nil
+	}
+	return controllers.GetPaste(&WarpPaste{c})
 }

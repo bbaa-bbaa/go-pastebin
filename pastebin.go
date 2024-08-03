@@ -18,12 +18,9 @@ import (
 	"cgit.bbaa.fun/bbaa/go-pastebin/controllers"
 	database "cgit.bbaa.fun/bbaa/go-pastebin/database"
 	"cgit.bbaa.fun/bbaa/go-pastebin/logger"
-	"github.com/gin-gonic/gin"
 )
 
 var log logger.Logger = logger.Logger{Scope: "Pastebin"}
-
-var service *gin.Engine
 
 func initDatabase() (err error) {
 	log.Info("初始化数据库连接")

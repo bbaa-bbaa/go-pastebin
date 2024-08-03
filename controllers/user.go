@@ -15,8 +15,10 @@
 package controllers
 
 import (
+	"net/http"
+
 	"cgit.bbaa.fun/bbaa/go-pastebin/database"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
 type ReqUserLogin struct {
@@ -25,46 +27,50 @@ type ReqUserLogin struct {
 	//CheckCode string `json:"check_code"`
 }
 
-func UserLogin(c *gin.Context) {
+func UserLogin(c echo.Context) error {
 	var user ReqUserLogin
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(400, gin.H{"code": -2, "error": "bad request"})
-		return
+	if err := c.Bind(&user); err != nil {
+		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
+		return nil
 	}
 	u, err := database.Login(user.Account, user.Password)
 	if err != nil {
-		c.JSON(403, gin.H{"code": -1, "error": "用户名或密码错误"})
-		return
+		c.JSON(403, map[string]any{"code": -1, "error": "用户名或密码错误"})
+		return nil
 	}
-	c.SetCookie("user_token", u.Token(), 0, "", "", false, true)
-	c.JSON(200, gin.H{"code": 0, "user": u.Username, "token": u.Token()})
+	c.SetCookie(&http.Cookie{Name: "user_token", Value: u.Token(), HttpOnly: true})
+	c.JSON(200, map[string]any{"code": 0, "user": u.Username, "token": u.Token()})
+	return nil
 }
 
-func User(c *gin.Context) {
-	user_info, ok := c.Get("user")
+func User(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
 	if !ok {
-		c.JSON(403, gin.H{"code": -1, "error": "未登录"})
-		return
+		c.JSON(403, map[string]any{"code": -1, "error": "未登录"})
+		return nil
 	}
-	var user *database.User
-	if user, ok = user_info.(*database.User); !ok {
-		c.JSON(403, gin.H{"code": -1, "error": "未登录"})
-		return
-	}
-	c.JSON(200, gin.H{"code": 0, "info": user})
+	c.JSON(200, map[string]any{"code": 0, "info": user})
+	return nil
 }
 
-func UserMiddleware(c *gin.Context) {
-	token, err := c.Cookie("user_token")
-	if err != nil {
-		token = c.GetHeader("X-User-Token")
-		if token == "" {
-			return
+func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var token string
+		token_cookie, err := c.Cookie("user_token")
+		if token_cookie != nil && err != nil {
+			token = token_cookie.Value
 		}
+		if token == "" {
+			token = c.Request().Header.Get("X-User-Token")
+			if token == "" {
+				return next(c)
+			}
+		}
+		user, err := database.GetUser(token)
+		if err != nil {
+			return next(c)
+		}
+		c.Set("user", user)
+		return next(c)
 	}
-	user, err := database.GetUser(token)
-	if err != nil {
-		return
-	}
-	c.Set("user", user)
 }
