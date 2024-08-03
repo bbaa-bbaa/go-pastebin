@@ -58,7 +58,7 @@
       const short_url_error = $("#short-url-error");
       let text_file = {
         filename: "",
-        mine_type: ""
+        mime_type: ""
       };
       let paste_file = null; // file object
 
@@ -112,7 +112,7 @@
           reader.readAsText(file);
           paste_file = null;
           text_file.filename = file.name;
-          text_file.mine_type = file.type;
+          text_file.mime_type = file.type;
           return;
         }
         paste_file = file;
@@ -282,7 +282,7 @@
         if (paste_file) {
           data.append("c", paste_file);
         } else {
-          data.append("c", new File([text], text_file.filename || "-", { type: text_file.mine_type == "" ? "text/plain" : text_file.mine_type }));
+          data.append("c", new File([text], text_file.filename || "-", { type: text_file.mime_type == "" ? "text/plain" : text_file.mime_type }));
         }
 
         function upload_progress(e) {

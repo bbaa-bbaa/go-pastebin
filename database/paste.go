@@ -91,7 +91,7 @@ func (p *Paste) HexHash() string {
 }
 
 type Paste_Extra struct {
-	MineType    string `json:"mine_type"`
+	MimeType    string `json:"mime_type"`
 	FileName    string `json:"filename"`
 	Size        uint64 `json:"size"`
 	HashPadding bool   `json:"hash_padding"`
@@ -319,12 +319,12 @@ func (p *Paste) save(paste_file *os.File) {
 	reader := bufio.NewReader(p.Content)
 	hash := xxhash.New()
 	buf := make([]byte, block_size)
-	var mine_detector *io.PipeWriter
-	var mine_result chan string
-	mine_detect_complete_flag := true
-	if p.Extra.MineType == "" || true {
-		mine_detect_complete_flag = false
-		mine_detector, mine_result = p.mineTypeDetector()
+	var mime_detector *io.PipeWriter
+	var mime_result chan string
+	mime_detect_complete_flag := true
+	if p.Extra.MimeType == "" || true {
+		mime_detect_complete_flag = false
+		mime_detector, mime_result = p.mimeTypeDetector()
 	}
 
 	for {
@@ -334,17 +334,17 @@ func (p *Paste) save(paste_file *os.File) {
 		}
 		hash.Write(buf[:n])
 		paste_file.Write(buf[:n])
-		if !mine_detect_complete_flag {
-			_, err := mine_detector.Write(buf[:n])
+		if !mime_detect_complete_flag {
+			_, err := mime_detector.Write(buf[:n])
 			if err != nil {
-				mine_detect_complete_flag = true
+				mime_detect_complete_flag = true
 			}
 		}
 		p.Extra.Size += uint64(n)
 	}
-	if p.Extra.MineType == "" {
-		mine_detector.Close()
-		p.Extra.MineType = <-mine_result
+	if p.Extra.MimeType == "" {
+		mime_detector.Close()
+		p.Extra.MimeType = <-mime_result
 	}
 	paste_file.Close()
 	if r, ok := p.Content.(io.ReadCloser); ok {
@@ -355,7 +355,7 @@ func (p *Paste) save(paste_file *os.File) {
 	binary.Read(bytes.NewReader(hash_buf), binary.BigEndian, &p.Hash)
 }
 
-func (p *Paste) mineTypeDetector() (w *io.PipeWriter, result chan string) {
+func (p *Paste) mimeTypeDetector() (w *io.PipeWriter, result chan string) {
 	r, w := io.Pipe()
 	result = make(chan string, 1)
 	go func() {

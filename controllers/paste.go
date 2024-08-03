@@ -17,7 +17,10 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +32,8 @@ import (
 )
 
 const access_token_expire = 24 * time.Hour
+
+var DefaultAttachmentExtensions = []string{"7z", "bz2", "gz", "rar", "tar", "xz", "zip", "iso", "img", "docx", "doc", "ppt", "pptx", "xls", "xlsx", "exe", "msixbundle", "apk"}
 
 func NewPaste(c echo.Context) error {
 	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
@@ -105,7 +110,7 @@ func NewPaste(c echo.Context) error {
 			MaxAccessCount: MaxAccessCount,
 			ExpireAfter:    Expire,
 			Extra: &database.Paste_Extra{
-				MineType: file.Header.Get("Content-Type"),
+				MimeType: file.Header.Get("Content-Type"),
 				FileName: file.Filename,
 			},
 			Short_url: Short_url,
@@ -117,7 +122,7 @@ func NewPaste(c echo.Context) error {
 			MaxAccessCount: MaxAccessCount,
 			ExpireAfter:    Expire,
 			Extra: &database.Paste_Extra{
-				MineType: "",
+				MimeType: "",
 				FileName: "",
 			},
 			Short_url: Short_url,
@@ -309,7 +314,7 @@ func GetPaste(c echo.Context) error {
 		}
 	}
 
-	if !raw_response && paste.MaxAccessCount != 0 || !raw_response && paste.Password != "" {
+	if !raw_response && (paste.MaxAccessCount != 0 || paste.Password != "") {
 		redirect_url := "/"
 		if c.Request().URL.RawQuery != "" {
 			redirect_url += "?" + c.Request().URL.RawQuery
@@ -337,11 +342,20 @@ func GetPaste(c echo.Context) error {
 	}
 	paste.Hold()
 	response.Header().Set("X-Access-Token", access_token)
-	if paste.Extra.MineType != "" {
-		response.Header().Set("Content-Type", paste.Extra.MineType)
+	if paste.Extra.MimeType != "" {
+		response.Header().Set("Content-Type", paste.Extra.MimeType)
 	}
 	response.Header().Set("X-Origin-Filename", paste.Extra.FileName)
-	if download || paste.Extra.MineType == "application/octet-stream" {
+	mime_type, _, _ := mime.ParseMediaType(paste.Extra.MimeType)
+	ext := filepath.Ext(paste.Extra.FileName)
+	if ext == "" {
+		exts, err := mime.ExtensionsByType(mime_type)
+		if err == nil {
+			ext = exts[0]
+		}
+	}
+	ext = strings.TrimLeft(strings.ToLower(ext), ".")
+	if download || !raw_response && (mime_type == "application/octet-stream" || slices.Contains(DefaultAttachmentExtensions, ext)) {
 		c.Attachment(paste.Path(), paste.Extra.FileName)
 	} else {
 		c.File(paste.Path())
