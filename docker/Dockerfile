@@ -11,7 +11,7 @@ FROM alpine:latest
 COPY --from=builder /var/tmp/go-pastebin/go-pastebin /usr/bin/go-pastebin
 RUN set -ex \
   && apk update \
-  && apk add --no-cache tzdata ca-certificates \
+  && apk add --no-cache tzdata ca-certificates mailcap \
   && mkdir -p /var/lib/go-pastebin \
   && chmod +x /usr/bin/go-pastebin
 WORKDIR /var/lib/go-pastebin

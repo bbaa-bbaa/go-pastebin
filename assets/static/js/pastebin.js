@@ -322,10 +322,10 @@
 
         paste_submit.attr("disabled", "disabled");
         new_paste_result.css("height", "0px");
-        const query_string = $.param(query_params);
+        const query_string = $.param(query_params).trim();
         $.ajax({
           method: "POST",
-          url: "/" + query_string.length != 0 ? "?" + query_string : "",
+          url: "/" + query_string !== "" ? "?" + query_string : "",
           data: data,
           headers: {
             Accept: "application/json"

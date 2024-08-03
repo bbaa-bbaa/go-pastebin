@@ -352,7 +352,7 @@ func GetPaste(c echo.Context) error {
 	ext := filepath.Ext(paste.Extra.FileName)
 	if ext == "" {
 		exts, err := mime.ExtensionsByType(mime_type)
-		if err == nil {
+		if err == nil && len(exts) > 0 {
 			ext = exts[0]
 		}
 	}
