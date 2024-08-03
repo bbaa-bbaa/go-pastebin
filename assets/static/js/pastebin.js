@@ -41,9 +41,13 @@
       const paste_update = $("#paste-update");
       const paste_submit = $("#paste-submit");
       const paste_load = $("#paste-load-from-file");
+
       const file_paste_icon = $("#file-paste-icon");
       const file_paste_preview = $("#file-paste-preview");
       const file_paste_filename = $("#file-paste-filename");
+      const file_paste_progress = $("#file-paste-progress");
+      const file_paste_progress_bar = $("#file-paste-progress-bar");
+      const file_paste_progress_text = $("#file-paste-progress-text");
 
       const new_paste_result = $("#new-paste-result");
       const new_paste_result_link = $("#new-paste-result-link");
@@ -246,13 +250,13 @@
         let short_url = paste_short_url.val();
         let delete_if_expired = paste_delete_if_expired.prop("checked");
         let data = new FormData();
-        let query_params = new URLSearchParams();
+        let query_params = {};
         if (password.length != 0) {
-          query_params.append("password", password);
+          query_params.password = password;
         }
 
         if (expire != "0") {
-          query_params.append("expire", new Date().getTime() + parseInt(expire));
+          query_params.expire = new Date().getTime() + parseInt(expire);
         }
 
         if (max_access_count.length != 0) {
@@ -260,7 +264,7 @@
             mdui.snackbar("最大访问次数必须为数字");
             return;
           }
-          query_params.append("max_access_count", parseInt(max_access_count, 10));
+          query_params.max_access_count = parseInt(max_access_count, 10);
         }
 
         if (short_url.length != 0) {
@@ -268,11 +272,11 @@
             mdui.snackbar(short_url_error.text());
             return;
           }
-          query_params.append("short_url", short_url);
+          query_params.short_url = short_url;
         }
 
         if (delete_if_expired) {
-          query_params.append("delete_if_expired", "true");
+          query_params.delete_if_expired = "true";
         }
 
         if (paste_file) {
@@ -281,17 +285,29 @@
           data.append("c", new File([text], text_file.filename || "-", { type: text_file.mine_type == "" ? "text/plain" : text_file.mine_type }));
         }
 
+        function upload_progress(e) {
+          if (e.lengthComputable) {
+            file_paste_progress_text.text((e.loaded / 1024 / 1024).toFixed(2) + " MiB / " + (e.total / 1024 / 1024).toFixed(2) + " MiB - " + (e.loaded / e.total * 100).toFixed(2) + "%");
+            file_paste_progress_bar.css("width", (e.loaded / e.total * 100).toFixed(2) + "%");
+          }
+        }
+
         paste_submit.attr("disabled", "disabled");
-        new_paste_result.hide();
+        new_paste_result.css("height", "0px");
+        const query_string = $.param(query_params);
         $.ajax({
           method: 'POST',
-          url: '/' + query_params.size != 0 ? "?" + query_params.toString() : "",
+          url: '/' + query_string.length != 0 ? "?" + query_string : "",
           data: data,
           headers: {
             "Accept": "application/json"
           },
           contentType: false,
-          processData: false
+          processData: false,
+          beforeSend: function (xhr) {
+            xhr.upload.addEventListener("progress", upload_progress);
+            file_paste_progress.css("height", "18px")
+          }
         }).then(res => {
           response = JSON.parse(res);
           if (response.code != 0) {
@@ -321,7 +337,7 @@
           paste_uuid.val(response.uuid);
           paste_uuid.get(0).dispatchEvent(new Event("input"));
           QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, width: 168 }, function () { });
-          new_paste_result.show();
+          new_paste_result.css("height", new_paste_result.children().height() + "px");
         }).catch(err => {
           paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
           setTimeout(() => {
@@ -330,6 +346,7 @@
           mdui.snackbar("创建失败: " + err);
         }).finally(() => {
           paste_submit.removeAttr("disabled");
+          file_paste_progress.css("height", "0px")
         });
       });
 

@@ -30,7 +30,7 @@ type Pastebin_Config struct {
 var Config *Pastebin_Config = &Pastebin_Config{
 	SiteName:          "Pastebin",
 	SupportNoFilename: true,
-	Mode:              "debug",
+	Mode:              "release",
 }
 
 func SaveConfig() {

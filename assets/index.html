@@ -39,8 +39,15 @@
         margin: 1px 0;
       }
 
+      @font-face {
+        font-family: "Hack";
+        src: url("static/font/Hack/hack-regular.woff2") format("woff2"), url("font/Hack/hack-regular.woff") format("woff");
+        font-weight: 400;
+        font-style: normal;
+      }
+
       #new-paste-result-raw {
-        font-family: Consolas, "Courier New", Courier, monospace;
+        font-family: Consolas, Hack, monospace;
       }
 
       @font-face {
@@ -68,6 +75,21 @@
 
       #new-paste-result {
         transition: all 0.6s ease-out;
+        height: 0px;
+        overflow: hidden;
+      }
+
+      #file-paste-progress {
+        transition: all 0.6s ease-out;
+        height: 0px;
+        overflow: hidden;
+      }
+
+      #file-paste-progress p {
+        margin: 0;
+        font-family: Consolas, Hack, monospace;
+        text-align: center;
+        line-height: 1;
       }
     </style>
   </head>
@@ -86,32 +108,32 @@
         <a href="#paste-viewer" class="mdui-ripple mdui-ripple-white">Paste Viewer</a>
       </div>
     </div>
-    <div class="mdui-container mdui-m-t-4">
+    <div class="mdui-container mdui-m-t-1">
       <div id="new-paste">
-        <div id="new-paste-result" class="mdui-card mdui-m-y-2" style="display: none;">
-          <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title">创建结果</div>
-            <div class="mdui-card-content">
-              <div class="mdui-container-fluid">
-                <div class="mdui-row">
-                  <div class="mdui-col-xs-12 mdui-col-sm-8">
-                    <div id="new-paste-result-raw">
+        <div id="new-paste-result" class="mdui-m-y-2 mdui-card">
+          <div>
+            <div class="mdui-card-primary">
+              <div class="mdui-card-primary-title">创建结果</div>
+              <div class="mdui-card-content">
+                <div class="mdui-container-fluid">
+                  <div class="mdui-row">
+                    <div class="mdui-col-xs-12 mdui-col-sm-8">
+                      <div id="new-paste-result-raw"></div>
+                      <div>
+                        <p class="new-paste-result-link">url: <a id="new-paste-result-link"></a></p>
+                        <button class="mdui-btn mdui-btn-icon mdui-ripple" id="new-paste-result-copy">
+                          <i class="mdui-icon material-icons">content_copy</i>
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <p class="new-paste-result-link">url: <a id="new-paste-result-link"></a></p>
-                      <button class="mdui-btn mdui-btn-icon mdui-ripple" id="new-paste-result-copy">
-                        <i class="mdui-icon material-icons">content_copy</i>
-                      </button>
+                    <div class="mdui-col-xs-12 mdui-col-sm-4" style="text-align: center">
+                      <canvas id="new-paste-result-qrcode" height="168" width="168"></canvas>
                     </div>
-                  </div>
-                  <div class="mdui-col-xs-12 mdui-col-sm-4" style="text-align: center">
-                    <canvas id="new-paste-result-qrcode" height="168" width="168"></canvas>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="mdui-card-content"></div>
         </div>
         <div class="mdui-card mdui-m-y-2">
           <div class="mdui-card-primary">
@@ -151,6 +173,14 @@
                       <p id="file-paste-filename" class="mdui-m-a-0" style="color: #707070"></p>
                     </div>
                   </div>
+                  <div id="file-paste-progress">
+                    <div>
+                      <p id="file-paste-progress-text" style="background-color: #f0f0f0">0.00MiB / 0.00MiB - 0.00%</p>
+                      <div class="mdui-progress">
+                        <div id="file-paste-progress-bar" class="mdui-progress-determinate" style="width: 0%"></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="mdui-row">
@@ -171,6 +201,9 @@
                       <option value="86400">1 天</option>
                       <option value="604800">7 天</option>
                       <option value="2592000">30 天</option>
+                      <option value="7776000">90 天</option>
+                      <option value="15552000">180 天</option>
+                      <option value="31536000">365 天</option>
                     </select>
                   </div>
                 </div>

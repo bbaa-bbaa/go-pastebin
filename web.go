@@ -49,26 +49,32 @@ func httpServe() {
 	e.Logger.Fatal(e.Start(":8080"))
 }
 
-type TemplateRenderer struct {
+type TemplateRender struct {
 	templates *template.Template
 }
 
-func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+func (t *TemplateRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
+type DebugRender struct{}
+
+func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	tmpl, err := template.ParseGlob("assets/*.html")
+	if err != nil {
+		return err
+	}
+	return tmpl.ExecuteTemplate(w, name, data)
+}
+
 func setupIndex() {
-	var renderer *TemplateRenderer
 	if controllers.Config.Mode == "debug" {
-		renderer = &TemplateRenderer{
-			templates: template.Must(template.ParseGlob("assets/index.html")),
-		}
+		e.Renderer = &DebugRender{}
 	} else {
-		renderer = &TemplateRenderer{
+		e.Renderer = &TemplateRender{
 			templates: template.Must(template.ParseFS(embed_assets, "assets/index.html")),
 		}
 	}
-	e.Renderer = renderer
 	e.GET("/", func(c echo.Context) error {
 		return c.Render(200, "index.html", map[string]any{
 			"SiteName": controllers.Config.SiteName,
