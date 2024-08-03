@@ -17,3 +17,4 @@ package controllers
 import "cgit.bbaa.fun/bbaa/go-pastebin/logger"
 
 var log logger.Logger = logger.Logger{Scope: "Controller"}
+var _ = log

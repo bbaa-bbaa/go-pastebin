@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/database"
-	"github.com/fatih/color"
 	"github.com/labstack/echo/v4"
 	"github.com/matthewhartstonge/argon2"
 )
@@ -233,7 +232,6 @@ func NewPaste(c echo.Context) error {
 				)
 			}
 		} else {
-			log.Error(err)
 			if response_is_json {
 				c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
 			} else {
@@ -255,6 +253,11 @@ func GetPaste(c echo.Context) error {
 	if accept_header := c.Request().Header.Get("Accept"); !(strings.Contains(accept_header, "text/html") || strings.Contains(accept_header, "application/json")) {
 		raw_response = true
 	}
+
+	if c.Request().URL.Query().Has("raw") {
+		raw_response = true
+	}
+
 	password := c.QueryParam("pwd")
 	id := c.Param("id")
 	if id == "" {
@@ -334,7 +337,6 @@ func GetPaste(c echo.Context) error {
 		access_token = c.QueryParam("access_token")
 	}
 	if access_token == "" || !paste.VerifyToken(access_token) {
-		log.Info(color.YellowString("Paste: "), color.CyanString(paste.UUID), color.BlueString("["+paste.Short_url+"]"), color.YellowString("计数"), color.MagentaString("%d", paste.AccessCount))
 		available_before := time.Now().Add(access_token_expire)
 		access_token = paste.Token(available_before)
 		c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Expires: available_before})
