@@ -17,6 +17,7 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"io"
 	"mime"
 	"net/http"
 	"path/filepath"
@@ -26,6 +27,7 @@ import (
 	"time"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/database"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/matthewhartstonge/argon2"
 )
@@ -34,121 +36,103 @@ const access_token_expire = 24 * time.Hour
 
 var DefaultAttachmentExtensions = []string{"7z", "bz2", "gz", "rar", "tar", "xz", "zip", "iso", "img", "docx", "doc", "ppt", "pptx", "xls", "xlsx", "exe", "msixbundle", "apk"}
 
-func NewPaste(c echo.Context) error {
-	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
-	var Expire time.Time
-	var MaxAccessCount int64
-	var DeleteIfExpire bool
-	var err error
-	Password := c.QueryParam("password")
-	Short_url := c.QueryParam("short_url")
-	expire_after := c.QueryParam("expire_after")
-	if expire_after != "" {
-		expire, err := strconv.ParseInt(expire_after, 10, 64)
-		if err != nil {
-			if response_is_json {
-				c.JSON(400, map[string]any{"code": -2, "error": "bad request: expire_after"})
-			} else {
-				c.String(400, "bad request: expire_after")
-			}
-			return err
-		}
-		Expire = time.UnixMilli(expire)
-	}
-	max_access_count := c.QueryParam("max_access_count")
-	if max_access_count != "" {
-		MaxAccessCount, err = strconv.ParseInt(max_access_count, 10, 64)
-		if err != nil {
-			if response_is_json {
-				c.JSON(400, map[string]any{"code": -2, "error": "bad request: max_access_count"})
-			} else {
-				c.String(400, "bad request: max_access_count")
-			}
-			return err
-		}
-	}
-	delete_if_expire := c.QueryParam("delete_if_expire")
-	if delete_if_expire != "" {
-		DeleteIfExpire, err = strconv.ParseBool(delete_if_expire)
-		if err != nil {
-			if response_is_json {
-				c.JSON(400, map[string]any{"code": -2, "error": "bad request: delete_if_expire"})
-			} else {
-				c.String(400, "bad request: delete_if_expire")
-			}
-			return err
-		}
-	}
+func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extra, expire_after time.Time, max_access_count int64, delete_if_expire bool, password string, short_url string, err error) {
+	short_url = c.QueryParam("short_url")
+	password = c.QueryParam("password")
+	query_expire_after := c.QueryParam("expire_after")
 
-	var content string
-	file, err := c.FormFile("c")
-	if err != nil {
-		if errors.Is(err, http.ErrMissingFile) {
-			content = c.FormValue("c")
-			if content == "" && Config.SupportNoFilename {
-				if response_is_json {
-					c.JSON(400, map[string]any{"code": -2, "error": "bad request: file"})
-				} else {
-					c.String(400, "bad request: file")
-				}
-				return err
-			}
-		} else {
-			if response_is_json {
-				c.JSON(400, map[string]any{"code": -2, "error": "bad request: file"})
-			} else {
-				c.String(400, "bad request: file")
-			}
-			return err
+	if query_expire_after != "" {
+		var expire int64
+		expire, err = strconv.ParseInt(query_expire_after, 10, 64)
+		if err != nil {
+			err = fmt.Errorf("bad request: expire_after")
+			return
+		}
+		expire_after = time.UnixMilli(expire)
+	}
+	query_max_access_count := c.QueryParam("max_access_count")
+	if query_max_access_count != "" {
+		max_access_count, err = strconv.ParseInt(query_max_access_count, 10, 64)
+		if err != nil {
+			err = fmt.Errorf("bad request: max_access_count")
+			return
 		}
 	}
-	var paste *database.Paste
-	if file != nil {
-		paste = &database.Paste{
-			DeleteIfExpire: DeleteIfExpire,
-			MaxAccessCount: MaxAccessCount,
-			ExpireAfter:    Expire,
-			Extra: &database.Paste_Extra{
-				MimeType: file.Header.Get("Content-Type"),
-				FileName: file.Filename,
-			},
-			Short_url: Short_url,
-			UID:       1,
+	query_delete_if_expire := c.QueryParam("delete_if_expire")
+	if query_delete_if_expire != "" {
+		delete_if_expire, err = strconv.ParseBool(query_delete_if_expire)
+		if err != nil {
+			err = fmt.Errorf("bad request: delete_if_expire")
+		}
+		return
+	}
+	extra = &database.Paste_Extra{
+		MimeType: "text/plain; charset=utf-8",
+		FileName: "-",
+	}
+	file, err := c.FormFile("c")
+	if err == nil {
+		extra = &database.Paste_Extra{
+			MimeType: file.Header.Get("Content-Type"),
+			FileName: file.Filename,
+		}
+		reader, err = file.Open()
+		if err != nil {
+			err = fmt.Errorf("internal error")
+			return
+		}
+	} else if errors.Is(err, http.ErrMissingFile) {
+		if !Config.SupportNoFilename {
+			err = fmt.Errorf("bad request: no file")
+			return
+		}
+		content := c.FormValue("c")
+		if content != "" {
+			reader = strings.NewReader(content)
 		}
 	} else {
-		paste = &database.Paste{
-			DeleteIfExpire: DeleteIfExpire,
-			MaxAccessCount: MaxAccessCount,
-			ExpireAfter:    Expire,
-			Extra: &database.Paste_Extra{
-				MimeType: "",
-				FileName: "",
-			},
-			Short_url: Short_url,
-			UID:       1,
+		err = fmt.Errorf("internal error")
+		return
+	}
+	err = nil
+	return
+}
+
+func NewPaste(c echo.Context) error {
+	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
+	reader, extra, expire_after, max_access_count, delete_if_expire, password, short_url, err := parseParseArg(c)
+	if err != nil {
+		if response_is_json {
+			c.JSON(400, map[string]any{"code": -2, "error": err.Error()})
+		} else {
+			c.String(400, err.Error())
 		}
+		return err
+	}
+
+	paste := &database.Paste{
+		Content:        reader,
+		DeleteIfExpire: delete_if_expire,
+		MaxAccessCount: max_access_count,
+		ExpireAfter:    expire_after,
+		Extra:          extra,
+		Short_url:      short_url,
+		UID:            1,
 	}
 
 	if user, ok := c.Get("user").(*database.User); ok {
 		paste.UID = user.Uid
 	}
 
-	paste.SetPassword(Password)
+	paste.SetPassword(password)
 
-	if file != nil {
-		paste.Content, err = file.Open()
-	} else {
-		paste.Content, err = strings.NewReader(content), nil
-	}
-	if err != nil {
-		if response_is_json {
-			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
-		} else {
-			c.String(500, "status: internal error")
-		}
-		return err
-	}
 	paste, err = paste.Save()
+	pasteActionStatus("created", paste, err, c)
+	return nil
+}
+
+func pasteActionStatus(action string, paste *database.Paste, err error, c echo.Context) {
+	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
 	url := c.Scheme() + "://" + c.Request().Host + "/"
 	if paste.Short_url != "" {
 		url += paste.Short_url
@@ -164,7 +148,7 @@ func NewPaste(c echo.Context) error {
 				"long":   paste.Base64Hash(),
 				"size":   paste.Extra.Size,
 				"short":  paste.Short_url,
-				"status": "created",
+				"status": action,
 				"url":    url,
 				"uuid":   paste.UUID,
 			})
@@ -177,7 +161,7 @@ func NewPaste(c echo.Context) error {
 					"long: ", paste.Base64Hash(), "\n",
 					"short: ", paste.Short_url, "\n",
 					"size: ", fmt.Sprint(paste.Extra.Size), "\n",
-					"status: created", "\n",
+					"status: " + action, "\n",
 					"url: ", url, "\n",
 					"uuid: ", paste.UUID,
 				}, ""),
@@ -219,7 +203,7 @@ func NewPaste(c echo.Context) error {
 					"digest": paste.HexHash(),
 					"long":   paste.Base64Hash(),
 					"size":   paste.Extra.Size,
-					"status": "created, but short url not available",
+					"status": action + ", but short url not available",
 					"url":    url,
 					"uuid":   paste.UUID,
 				})
@@ -231,11 +215,52 @@ func NewPaste(c echo.Context) error {
 						"digest: ", paste.HexHash(), "\n",
 						"long: ", paste.Base64Hash(), "\n",
 						"size: ", fmt.Sprint(paste.Extra.Size), "\n",
-						"status: created, but short url not available", "\n",
+						"status: " + action + ", but short url not available", "\n",
 						"url: ", url, "\n",
 						"uuid: ", paste.UUID,
 					}, ""),
 				)
+			}
+		} else {
+			if response_is_json {
+				c.JSON(500, map[string]any{"code": -3, "error": "internal error", "err": err.Error()})
+			} else {
+				c.String(500, "status: internal error")
+			}
+		}
+	}
+}
+
+func UpdatePaste(c echo.Context) error {
+	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
+	param_uuid := c.Param("uuid")
+	parsed_uuid, err := uuid.Parse(param_uuid)
+	if err != nil {
+		if response_is_json {
+			c.JSON(400, map[string]any{"code": -2, "error": "bad request: uuid"})
+		} else {
+			c.String(400, "bad request: uuid")
+		}
+		return err
+	}
+	reader, extra, expire_after, max_access_count, delete_if_expire, password, short_url, err := parseParseArg(c)
+	if err != nil {
+		if response_is_json {
+			c.JSON(400, map[string]any{"code": -2, "error": err.Error()})
+		} else {
+			c.String(400, err.Error())
+		}
+		return err
+	}
+
+	paste_uuid := parsed_uuid.String()
+	paste, err := database.QueryPasteByUUID(paste_uuid)
+	if err != nil {
+		if errors.Is(err, database.ErrNotFound) {
+			if response_is_json {
+				c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
+			} else {
+				c.String(404, "paste not found or not available yet")
 			}
 		} else {
 			if response_is_json {
@@ -244,8 +269,106 @@ func NewPaste(c echo.Context) error {
 				c.String(500, "status: internal error")
 			}
 		}
+		return err
 	}
-	return err
+
+	query := c.QueryParams()
+	if reader != nil {
+		paste.Content = reader
+		paste.Extra.MimeType = extra.MimeType
+		paste.Extra.FileName = extra.FileName
+	}
+	if query.Has("delete_if_expire") {
+		paste.DeleteIfExpire = delete_if_expire
+	}
+	if query.Has("max_access_count") {
+		paste.MaxAccessCount = max_access_count
+	}
+	if query.Has("expire_after") {
+		paste.ExpireAfter = expire_after
+	}
+	if query.Has("short_url") {
+		paste.Short_url = short_url
+	}
+	if user, ok := c.Get("user").(*database.User); ok {
+		paste.UID = user.Uid
+	}
+
+	if query.Has("password") {
+		paste.SetPassword(password)
+	}
+
+	paste, err = paste.Update()
+	pasteActionStatus("updated", paste, err, c)
+	return nil
+}
+
+func DeletePaste(c echo.Context) error {
+	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
+	param_uuid := c.Param("uuid")
+	parsed_uuid, err := uuid.Parse(param_uuid)
+	if err != nil {
+		if response_is_json {
+			c.JSON(400, map[string]any{"code": -2, "error": "bad request: uuid"})
+		} else {
+			c.String(400, "bad request: uuid")
+		}
+		return err
+	}
+	paste_uuid := parsed_uuid.String()
+	paste, err := database.QueryPasteByUUID(paste_uuid)
+	if err != nil {
+		if errors.Is(err, database.ErrNotFound) {
+			if response_is_json {
+				c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
+			} else {
+				c.String(404, "paste not found or not available yet")
+			}
+		} else {
+			if response_is_json {
+				c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
+			} else {
+				c.String(500, "status: internal error")
+			}
+		}
+		return err
+	}
+	err = paste.Delete()
+	if err != nil {
+		if errors.Is(err, database.ErrPasteHold) {
+			err = paste.FlagDelete()
+			if err == nil {
+				if response_is_json {
+					c.JSON(200, map[string]any{
+						"code":       0,
+						"status":     "on hold",
+						"hold_until": paste.HoldBefore.Format(time.RFC3339Nano),
+						"message":    "paste has been marked for deletion and will not accept new requests"})
+				} else {
+					c.String(200,
+						strings.Join([]string{
+							"status: on hold\n",
+							"hold_until: ", paste.HoldBefore.Format(time.RFC3339Nano), "\n",
+							"message: paste has been marked for deletion and will not accept new requests",
+						}, ""),
+					)
+				}
+				return nil
+			}
+		}
+		if response_is_json {
+			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
+		} else {
+			c.String(500, "status: internal error")
+		}
+		return err
+	}
+	if response_is_json {
+		c.JSON(200, map[string]any{"code": 0, "status": "deleted"})
+	} else {
+		c.String(200, "status: deleted")
+	}
+	return nil
 }
 
 func GetPaste(c echo.Context) error {
@@ -348,7 +471,9 @@ func GetPaste(c echo.Context) error {
 		c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + id})
 		paste.Access(available_before)
 	}
+
 	paste.Hold()
+
 	response.Header().Set("X-Access-Token", access_token)
 	if paste.Extra.MimeType != "" {
 		if paste.Extra.MimeType == "text/html" && !Config.Allow_HTML {

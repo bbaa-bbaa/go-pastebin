@@ -21,6 +21,9 @@
   function easeInSine(t) {
     return 1 - Math.cos((t * Math.PI) / 2);
   }
+  function isDesktop() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) === false;
+  }
   $(function () {
     document.body.addEventListener("drop", function (e) {
       e.preventDefault();
@@ -57,6 +60,7 @@
       const new_paste_result_raw = $("#new-paste-result-raw");
       const new_paste_result_qr_code = $("#new-paste-result-qrcode");
       const new_paste_result_copy = $("#new-paste-result-copy");
+      const new_paste_result_title = $("#new-paste-result-title");
 
       const short_url_error = $("#short-url-error");
 
@@ -247,8 +251,72 @@
 
       paste_expire.on("change", check_allow_delete_if_expired);
       paste_max_access_count.on("input", check_allow_delete_if_expired);
+      function show_result(title, response, sort) {
+        new_paste_result_title.text(title);
+        let raw_html = "";
+        let msgs = Object.entries(response)
+        if (sort) {
+          msgs = msgs.sort((a, b) => (a[0] + a[1]).length - (b[0] + b[1]).length);
+        }
+        for (let [k, v] of msgs) {
+          if (k == "code" || k == "url") {
+            continue;
+          }
+          if (raw_html.length != 0) {
+            raw_html += "\n";
+          }
+          raw_html += `<p><strong>${k}:</strong> ${v}</p>`;
+        }
+        new_paste_result_raw.html(raw_html);
+        if (response.url) {
+          new_paste_result_link.attr("href", response.url).text(response.url);
+          if (isDesktop()) {
+            new_paste_result_link.attr("target", "_blank");
+          }
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () { });
+          new_paste_result_link.closest("div").show();
+          new_paste_result_qr_code.show();
+        } else {
+          new_paste_result_link.closest("div").hide();
+          new_paste_result_qr_code.hide();
+        }
+        if (response.uuid) {
+          paste_uuid.val(response.uuid);
+        }
+        paste_uuid.get(0).dispatchEvent(new Event("input"));
+        return new Promise(resolve => {
+          let from = document.documentElement.scrollTop;
+          let to = 0;
+          if (from > to) {
+            let start_time = new Date().getTime();
+            (function animate(duration) {
+              let progress = Math.max(Math.min((new Date().getTime() - start_time) / duration, 1), 0);
+              document.documentElement.scrollTop = from - (from - to) * easeInSine(progress);
+              if (progress < 1) {
+                requestAnimationFrame(() => animate(duration));
+              } else {
+                document.documentElement.scrollTop = to;
+                resolve();
+              }
+            })(300);
+          } else {
+            resolve();
+          }
+        }).then(() => {
+          new_paste_result.css("height", new_paste_result.children().height() + "px");
+        });
+      }
 
-      paste_submit.on("click", function () {
+      function upload_progress(e) {
+        if (e.lengthComputable) {
+          file_paste_progress_text.text(
+            (e.loaded / 1024 / 1024).toFixed(2) + " MiB / " + (e.total / 1024 / 1024).toFixed(2) + " MiB - " + ((e.loaded / e.total) * 100).toFixed(2) + "%"
+          );
+          file_paste_progress_bar.css("width", ((e.loaded / e.total) * 100).toFixed(2) + "%");
+        }
+      }
+
+      function prepare_data() {
         let text = text_input.val();
         let password = paste_password.val();
         let expire = paste_expire.val();
@@ -290,40 +358,13 @@
         } else {
           data.append("c", new File([text], text_file.filename || "-", { type: text_file.mime_type == "" ? "text/plain; charset=utf-8" : text_file.mime_type }));
         }
+        return { data, query_params };
+      }
 
-        function upload_progress(e) {
-          if (e.lengthComputable) {
-            file_paste_progress_text.text(
-              (e.loaded / 1024 / 1024).toFixed(2) + " MiB / " + (e.total / 1024 / 1024).toFixed(2) + " MiB - " + ((e.loaded / e.total) * 100).toFixed(2) + "%"
-            );
-            file_paste_progress_bar.css("width", ((e.loaded / e.total) * 100).toFixed(2) + "%");
-          }
-        }
-
-        function show_result() {
-          return new Promise(resolve => {
-            let from = document.documentElement.scrollTop;
-            let to = 0;
-            if (from > to) {
-              let start_time = new Date().getTime();
-              (function animate(duration) {
-                let progress = Math.max(Math.min((new Date().getTime() - start_time) / duration, 1), 0);
-                document.documentElement.scrollTop = from - (from - to) * easeInSine(progress);
-                if (progress < 1) {
-                  requestAnimationFrame(() => animate(duration));
-                } else {
-                  document.documentElement.scrollTop = to;
-                  resolve();
-                }
-              })(300);
-            } else {
-              resolve();
-            }
-          }).then(() => {
-            new_paste_result.css("height", new_paste_result.children().height() + "px");
-          });
-        }
-
+      paste_submit.on("click", function () {
+        let prepared_data = prepare_data();
+        let data = prepared_data.data;
+        let query_params = prepared_data.query_params;
         action_button.attr("disabled", "disabled");
         new_paste_result.css("height", "0px");
         const query_string = $.param(query_params).trim();
@@ -344,7 +385,7 @@
             }
           }
         }).then(res => {
-          response = JSON.parse(res);
+          let response = JSON.parse(res);
           if (response.code != 0) {
             paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
             setTimeout(() => {
@@ -356,31 +397,113 @@
               paste_submit.removeClass("mdui-color-green-accent").addClass("mdui-color-theme-accent");
             }, 1000);
           }
-          raw_html = "";
-          for (let [k, v] of Object.entries(response)) {
-            if (k == "code" || k == "url") {
-              continue;
-            }
-            if (raw_html.length != 0) {
-              raw_html += "\n";
-            }
-            raw_html += `<p><strong>${k}:</strong> ${v}</p>`;
-          }
-          new_paste_result_raw.html(raw_html);
-          new_paste_result_link.text(response.url);
-          new_paste_result_link.attr("href", response.url);
-          if (response.uuid) {
-            paste_uuid.val(response.uuid);
-          }
-          paste_uuid.get(0).dispatchEvent(new Event("input"));
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6}, function () { });
-          return show_result();
+          return show_result("创建结果", response, false);
         }).catch(err => {
           paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
           setTimeout(() => {
             paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
           }, 1000);
           mdui.snackbar("创建失败: " + err);
+        }).finally(() => {
+          action_button.removeAttr("disabled");
+          file_paste_progress.css("height", "0px");
+        });
+      });
+
+      paste_update.on("click", function () {
+        let uuid = paste_uuid.val();
+        if (!check_uuid(uuid) || uuid.length == 0) {
+          mdui.snackbar("无效的 UUID");
+          return;
+        }
+        let prepared_data = prepare_data();
+        let data = prepared_data.data;
+        if (data.get("c").size == 0) {
+          data.delete("c");
+        }
+        let query_params = prepared_data.query_params;
+
+        action_button.attr("disabled", "disabled");
+        new_paste_result.css("height", "0px");
+        const query_string = $.param(query_params).trim();
+        $.ajax({
+          method: "PUT",
+          url: "/" + uuid + (query_string !== "" ? "?" + query_string : ""),
+          data: data,
+          headers: {
+            Accept: "application/json"
+          },
+          contentType: false,
+          processData: false,
+          beforeSend: function (xhr) {
+            if (paste_file) {
+              upload_progress({ loaded: 0, total: paste_file.size, lengthComputable: true });
+              xhr.upload.addEventListener("progress", upload_progress);
+              file_paste_progress.css("height", "18px");
+            }
+          }
+        }).then(res => {
+          let response = JSON.parse(res);
+          if (response.code != 0) {
+            paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
+            setTimeout(() => {
+              paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
+            }, 1000);
+          } else {
+            paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-accent");
+            setTimeout(() => {
+              paste_update.removeClass("mdui-color-green-accent").addClass("mdui-color-blue-accent");
+            }, 1000);
+          }
+          return show_result("更新结果", response, false);
+        }).catch(err => {
+          paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
+          setTimeout(() => {
+            paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
+          }, 1000);
+          mdui.snackbar("更新失败: " + err);
+        }).finally(() => {
+          action_button.removeAttr("disabled");
+          file_paste_progress.css("height", "0px");
+        });
+      });
+
+      paste_delete.on("click", function () {
+        let uuid = paste_uuid.val();
+        if (!check_uuid(uuid) || uuid.length == 0) {
+          mdui.snackbar("无效的 UUID");
+          return;
+        }
+
+        action_button.attr("disabled", "disabled");
+        $.ajax({
+          method: "DELETE",
+          url: "/" + uuid,
+          headers: {
+            Accept: "application/json"
+          },
+          contentType: false,
+          processData: false
+        }).then(res => {
+          let response = JSON.parse(res);
+          if (response.code != 0) {
+            paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
+            setTimeout(() => {
+              paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
+            }, 1000);
+          } else {
+            paste_delete.removeClass("mdui-color-red").addClass("mdui-color-green-accent");
+            setTimeout(() => {
+              paste_delete.removeClass("mdui-color-green-accent").addClass("mdui-color-red");
+            }, 1000);
+          }
+          return show_result("删除结果", response, true);
+        }).catch(err => {
+          paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
+          setTimeout(() => {
+            paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
+          }, 1000);
+          mdui.snackbar("删除失败: " + err);
         }).finally(() => {
           action_button.removeAttr("disabled");
           file_paste_progress.css("height", "0px");

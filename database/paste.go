@@ -147,10 +147,14 @@ func (p *Paste) Save() (*Paste, error) {
 		}
 		break
 	}
-	p.save(paste_file)
+	err := p.save(paste_file)
+	if err != nil {
+		os.Remove(paste_file.Name())
+		return nil, err
+	}
 	p.CreatedAt = time.Now()
 	p.Extra.HashPadding = ShortURLExist(p.Hash.base64())
-	_, err := db.Exec(`INSERT INTO pastes (uuid, hash, password, expire_after, access_count, max_access_count, delete_if_expire, hold_count, hold_before, extra, uid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	_, err = db.Exec(`INSERT INTO pastes (uuid, hash, password, expire_after, access_count, max_access_count, delete_if_expire, hold_count, hold_before, extra, uid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.UUID,
 		p.Hash,
 		p.Password,
@@ -254,16 +258,39 @@ func (p *Paste) SetPassword(password string) (err error) {
 	return nil
 }
 
-func (p *Paste) Update() error {
+func (p *Paste) Update() (paste *Paste, err error) {
 	if len(p.UUID) == 0 {
-		return ErrNotFound
+		return p, ErrNotFound
 	}
-	paste_file, err := os.OpenFile(p.Path(), os.O_RDONLY|os.O_CREATE, 0644)
+	var paste_file *os.File
+	if p.Content != nil {
+		paste_file, err = os.CreateTemp(GetPastesDir(), "paste_update")
+		if err != nil {
+			return p, err
+		}
+		p.save(paste_file)
+	}
+	err = p.UpdateMetadata()
 	if err != nil {
-		return err
+		if sqliteErr, ok := err.(sqlite3.Error); ok {
+			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				if paste_file != nil {
+					os.Remove(paste_file.Name())
+				}
+				paste, err := QueryPasteByHash(p.Hash)
+				if err != nil {
+					return nil, err
+				}
+				return paste, ErrAlreadyExist
+			}
+		}
+		return nil, err
 	}
-	p.save(paste_file)
-	return p.UpdateMetadata()
+	if paste_file != nil {
+		os.Remove(p.Path())
+		os.Rename(paste_file.Name(), p.Path())
+	}
+	return p, p.UpdateShortURL()
 }
 
 func (p *Paste) Path() string {
@@ -272,7 +299,7 @@ func (p *Paste) Path() string {
 
 func (p *Paste) UpdateMetadata() error {
 	p.CreatedAt = time.Now()
-	_, err := db.Exec(`UPDATE pastes SET hash = ?, password = ?, expire_after = ?, access_count = ?, max_access_count = ?, delete_if_expire = ?, hold_count = ?, hold_before = ?, extra = ?, created_at = ?, WHERE uuid = ?`,
+	_, err := db.Exec(`UPDATE pastes SET hash = ?, password = ?, expire_after = ?, access_count = ?, max_access_count = ?, delete_if_expire = ?, hold_count = ?, hold_before = ?, extra = ?, created_at = ? WHERE uuid = ?`,
 		p.Hash,
 		p.Password,
 		p.ExpireAfter,
@@ -282,8 +309,8 @@ func (p *Paste) UpdateMetadata() error {
 		p.HoldCount,
 		p.HoldBefore,
 		p.Extra,
-		p.UUID,
 		p.CreatedAt,
+		p.UUID,
 	)
 	if err != nil {
 		log.Error(err)
@@ -330,8 +357,8 @@ func (p *Paste) Access(hold_before time.Time) error {
 
 var ErrPasteHold = fmt.Errorf("paste hold")
 
-func (p *Paste) Delete() error {
-	if p.HoldCount > 0 || p.HoldBefore.After(time.Now()) {
+func (p *Paste) delete(force bool) error {
+	if !force && (p.HoldCount > 0 || p.HoldBefore.After(time.Now())) {
 		return ErrPasteHold
 	}
 	_, err := db.Exec(`DELETE FROM pastes WHERE uuid = ?`, p.UUID)
@@ -339,11 +366,29 @@ func (p *Paste) Delete() error {
 		log.Error(err)
 		return err
 	}
+	os.Remove(p.Path())
 	log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.RedString(" 删除"))
 	return nil
 }
 
-func (p *Paste) save(paste_file *os.File) {
+func (p *Paste) Delete() error {
+	return p.delete(false)
+}
+
+func (p *Paste) ForceDelete() error {
+	return p.delete(true)
+}
+
+func (p *Paste) FlagDelete() error {
+	_, err := db.Exec(`UPDATE pastes SET expire_after = datetime("now"), max_access_count = access_count, delete_if_expire = 1 WHERE uuid = ?`, p.UUID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+func (p *Paste) save(paste_file *os.File) error {
 	reader := bufio.NewReader(p.Content)
 	hash := xxhash.New()
 	buf := make([]byte, block_size)
@@ -381,6 +426,7 @@ func (p *Paste) save(paste_file *os.File) {
 	hash_buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(hash_buf, hash.Sum64())
 	binary.Read(bytes.NewReader(hash_buf), binary.BigEndian, &p.Hash)
+	return nil
 }
 
 func (p *Paste) mimeTypeDetector(fallback string) (w *io.PipeWriter, result chan string) {
@@ -409,6 +455,10 @@ func (p *Paste) UpdateShortURL() error {
 		return ErrShortURLAlreadyExist
 	}
 
+	if HashExist(p.Short_url) {
+		return ErrShortURLAlreadyExist
+	}
+
 	result, err := db.Exec(`UPDATE short_url SET name = ? WHERE target = ?`, p.Short_url, p.UUID)
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok {
@@ -416,11 +466,9 @@ func (p *Paste) UpdateShortURL() error {
 				return ErrShortURLAlreadyExist
 			}
 		}
-		log.Error(err)
 		return err
 	}
 	if rowsAffected, err := result.RowsAffected(); err != nil {
-		log.Error(err)
 		return err
 	} else if rowsAffected != 0 {
 		return nil
@@ -444,7 +492,7 @@ func (p *Paste) CreateShortURL() error {
 	_, err := db.Exec(`INSERT INTO short_url (name,target) VALUES (?, ?)`, p.Short_url, p.UUID)
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok {
-			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+			if sqliteErr.Code == sqlite3.ErrConstraint {
 				return ErrShortURLAlreadyExist
 			}
 		}
@@ -511,10 +559,8 @@ func parsePaste(row *sqlx.Row) (*Paste, error) {
 		return nil, err
 	}
 	if !paste.Vaild() && paste.DeleteIfExpire {
-		err := paste.Delete()
-		if err != nil {
-			return nil, ErrNotFound
-		}
+		paste.Delete()
+		return nil, ErrNotFound
 	}
 	return paste, nil
 }

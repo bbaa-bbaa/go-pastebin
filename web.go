@@ -44,7 +44,8 @@ func httpServe() {
 	e.GET("/api/user", controllers.User)
 	e.GET("/api/check_url/:id", controllers.CheckURL)
 	e.POST("/", controllers.NewPaste)
-	e.PUT("/", controllers.NewPaste)
+	e.PUT("/:uuid", controllers.UpdatePaste)
+	e.DELETE("/:uuid", controllers.DeletePaste)
 	e.GET("/*", Static)
 	e.Logger.Fatal(e.Start(":8080"))
 }
