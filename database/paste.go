@@ -350,9 +350,9 @@ func (p *Paste) save(paste_file *os.File) {
 	var mime_detector *io.PipeWriter
 	var mime_result chan string
 	mime_detect_complete_flag := true
-	if p.Extra.MimeType == "" || true {
+	if p.Extra.MimeType == "" || strings.HasPrefix(p.Extra.MimeType, "text/") && !strings.Contains(p.Extra.MimeType, "charset=") {
 		mime_detect_complete_flag = false
-		mime_detector, mime_result = p.mimeTypeDetector()
+		mime_detector, mime_result = p.mimeTypeDetector(p.Extra.MimeType)
 	}
 
 	for {
@@ -370,7 +370,7 @@ func (p *Paste) save(paste_file *os.File) {
 		}
 		p.Extra.Size += uint64(n)
 	}
-	if p.Extra.MimeType == "" {
+	if mime_detector != nil {
 		mime_detector.Close()
 		p.Extra.MimeType = <-mime_result
 	}
@@ -383,15 +383,15 @@ func (p *Paste) save(paste_file *os.File) {
 	binary.Read(bytes.NewReader(hash_buf), binary.BigEndian, &p.Hash)
 }
 
-func (p *Paste) mimeTypeDetector() (w *io.PipeWriter, result chan string) {
+func (p *Paste) mimeTypeDetector(fallback string) (w *io.PipeWriter, result chan string) {
 	r, w := io.Pipe()
 	result = make(chan string, 1)
 	go func() {
 		mtype, err := mimetype.DetectReader(r)
 		r.Close()
 		if err != nil {
-			log.Error(err)
-			result <- ""
+			result <- fallback
+			return
 		}
 		result <- mtype.String()
 	}()

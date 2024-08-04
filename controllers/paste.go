@@ -345,13 +345,17 @@ func GetPaste(c echo.Context) error {
 	if access_token == "" || !paste.VerifyToken(access_token) {
 		available_before := time.Now().Add(access_token_expire)
 		access_token = paste.Token(available_before)
-		c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Expires: available_before})
+		c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + id})
 		paste.Access(available_before)
 	}
 	paste.Hold()
 	response.Header().Set("X-Access-Token", access_token)
 	if paste.Extra.MimeType != "" {
-		response.Header().Set("Content-Type", paste.Extra.MimeType)
+		if paste.Extra.MimeType == "text/html" && !Config.Allow_HTML {
+			response.Header().Set("Content-Type", "text/plain")
+		} else {
+			response.Header().Set("Content-Type", paste.Extra.MimeType)
+		}
 	}
 	response.Header().Set("X-Origin-Filename", paste.Extra.FileName)
 	mime_type, _, _ := mime.ParseMediaType(paste.Extra.MimeType)

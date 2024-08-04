@@ -25,12 +25,14 @@ type Pastebin_Config struct {
 	SiteName          string `yaml:"site_name"`
 	SupportNoFilename bool   `yaml:"support_no_filename"`
 	Mode              string `yaml:"mode"`
+	Allow_HTML        bool   `yaml:"allow_html"`
 }
 
 var Config *Pastebin_Config = &Pastebin_Config{
 	SiteName:          "Pastebin",
 	SupportNoFilename: true,
 	Mode:              "release",
+	Allow_HTML:        false,
 }
 
 func SaveConfig() {

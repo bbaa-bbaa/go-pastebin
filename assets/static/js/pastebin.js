@@ -288,7 +288,7 @@
         if (paste_file) {
           data.append("c", paste_file);
         } else {
-          data.append("c", new File([text], text_file.filename || "-", { type: text_file.mime_type == "" ? "text/plain" : text_file.mime_type }));
+          data.append("c", new File([text], text_file.filename || "-", { type: text_file.mime_type == "" ? "text/plain; charset=utf-8" : text_file.mime_type }));
         }
 
         function upload_progress(e) {
@@ -373,7 +373,7 @@
             paste_uuid.val(response.uuid);
           }
           paste_uuid.get(0).dispatchEvent(new Event("input"));
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, width: 168 }, function () { });
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6}, function () { });
           return show_result();
         }).catch(err => {
           paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
