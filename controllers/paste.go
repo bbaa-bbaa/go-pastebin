@@ -149,7 +149,12 @@ func NewPaste(c echo.Context) error {
 		return err
 	}
 	paste, err = paste.Save()
-	url := c.Scheme() + "://" + c.Request().Host + "/" + paste.Short_url
+	url := c.Scheme() + "://" + c.Request().Host + "/"
+	if paste.Short_url != "" {
+		url += paste.Short_url
+	} else {
+		url += paste.Base64Hash()
+	}
 	if err == nil {
 		if response_is_json {
 			c.JSON(200, map[string]any{
@@ -205,7 +210,8 @@ func NewPaste(c echo.Context) error {
 					}, ""),
 				)
 			}
-		} else if errors.Is(err, database.ErrShortURLAlreadyExist) {
+		} else if errors.Is(err, database.ErrShortURLAlreadyExist) || errors.Is(err, database.ErrInvalidShortURL) {
+			url := c.Scheme() + "://" + c.Request().Host + "/" + paste.Base64Hash()
 			if response_is_json {
 				c.JSON(200, map[string]any{
 					"code":   0,
@@ -287,9 +293,17 @@ func GetPaste(c echo.Context) error {
 	}
 
 	// 权限控制
+	var access_token string
+	access_token_cookie, err := c.Cookie("access_token_" + paste.HexHash())
+	if err == nil {
+		access_token = access_token_cookie.Value
+	}
+	if access_token == "" {
+		access_token = c.QueryParam("access_token")
+	}
 
 	// 访问次数限制
-	if (paste.AccessCount >= paste.MaxAccessCount && paste.MaxAccessCount != 0) || (!paste.ExpireAfter.IsZero() && paste.ExpireAfter.Before(time.Now())) {
+	if !paste.Vaild() {
 		if !raw_response {
 			c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
 		} else {
@@ -298,7 +312,7 @@ func GetPaste(c echo.Context) error {
 		return nil
 	}
 
-	if paste.Password != "" {
+	if paste.Password != "" && !paste.VerifyToken(access_token) {
 		if password == "" {
 			if !raw_response {
 				c.JSON(401, map[string]any{"code": -1, "error": "paste need password, you can provide it by ?pwd=paste_password query"})
@@ -328,14 +342,6 @@ func GetPaste(c echo.Context) error {
 	}
 
 	// 访问次数计数
-	var access_token string
-	access_token_cookie, err := c.Cookie("access_token_" + paste.HexHash())
-	if err == nil {
-		access_token = access_token_cookie.Value
-	}
-	if access_token == "" {
-		access_token = c.QueryParam("access_token")
-	}
 	if access_token == "" || !paste.VerifyToken(access_token) {
 		available_before := time.Now().Add(access_token_expire)
 		access_token = paste.Token(available_before)

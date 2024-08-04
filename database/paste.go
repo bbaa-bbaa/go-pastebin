@@ -126,6 +126,7 @@ var ErrNotFound = fmt.Errorf("paste not found")
 var ErrNoDatabase = fmt.Errorf("database not connect")
 var ErrAlreadyExist = fmt.Errorf("paste already exist")
 var ErrShortURLAlreadyExist = fmt.Errorf("short url already exist")
+var ErrInvalidShortURL = fmt.Errorf("invalid short url")
 
 const block_size = 1024 * 1024 // 1M
 func (p *Paste) Save() (*Paste, error) {
@@ -148,7 +149,7 @@ func (p *Paste) Save() (*Paste, error) {
 	}
 	p.save(paste_file)
 	p.CreatedAt = time.Now()
-	p.Extra.HashPadding = p.hashBumpWithShortURL()
+	p.Extra.HashPadding = ShortURLExist(p.Hash.base64())
 	_, err := db.Exec(`INSERT INTO pastes (uuid, hash, password, expire_after, access_count, max_access_count, delete_if_expire, hold_count, hold_before, extra, uid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.UUID,
 		p.Hash,
@@ -184,9 +185,31 @@ func (p *Paste) Save() (*Paste, error) {
 	return p, p.CreateShortURL()
 }
 
-func (p *Paste) hashBumpWithShortURL() bool {
+func ShortURLExist(name string) bool {
 	count := 0
-	err := db.Get(&count, "SELECT COUNT(*) FROM short_url WHERE name = ?", p.Hash.base64WithoutPadding())
+	err := db.Get(&count, "SELECT COUNT(*) FROM short_url WHERE name = ?", name)
+	if err != nil {
+		return false
+	}
+	return count != 0
+}
+
+func HashExist(hash any) bool {
+	var decoded_hash Paste_Hash
+	var err error
+	switch query_hash := hash.(type) {
+	case int64:
+		decoded_hash = Paste_Hash(query_hash)
+	case string:
+		decoded_hash, err = DecodeBase64Hash(query_hash)
+		if err != nil {
+			return false
+		}
+	default:
+		return false
+	}
+	count := 0
+	err = db.Get(&count, "SELECT COUNT(*) FROM pastes WHERE hash = ?", decoded_hash)
 	if err != nil {
 		return false
 	}
@@ -305,7 +328,12 @@ func (p *Paste) Access(hold_before time.Time) error {
 	return nil
 }
 
+var ErrPasteHold = fmt.Errorf("paste hold")
+
 func (p *Paste) Delete() error {
+	if p.HoldCount > 0 || p.HoldBefore.After(time.Now()) {
+		return ErrPasteHold
+	}
 	_, err := db.Exec(`DELETE FROM pastes WHERE uuid = ?`, p.UUID)
 	if err != nil {
 		log.Error(err)
@@ -406,6 +434,10 @@ func (p *Paste) CreateShortURL() error {
 	}
 
 	if !ShortURLRule.MatchString(p.Short_url) {
+		return ErrInvalidShortURL
+	}
+
+	if HashExist(p.Short_url) {
 		return ErrShortURLAlreadyExist
 	}
 
@@ -432,6 +464,10 @@ func (p *Paste) Token(ExpireAfter time.Time) string {
 	hash.Write(buuid)
 	copy(buf[8:], hash.Sum([]byte{}))
 	return base64.URLEncoding.EncodeToString(buf[:])
+}
+
+func (p *Paste) Vaild() bool {
+	return (p.MaxAccessCount == 0 || p.AccessCount < p.MaxAccessCount) && (p.ExpireAfter.IsZero() || p.ExpireAfter.After(time.Now()))
 }
 
 func (p *Paste) VerifyToken(token string) bool {
@@ -474,27 +510,60 @@ func parsePaste(row *sqlx.Row) (*Paste, error) {
 		log.Error(err)
 		return nil, err
 	}
+	if !paste.Vaild() && paste.DeleteIfExpire {
+		err := paste.Delete()
+		if err != nil {
+			return nil, ErrNotFound
+		}
+	}
 	return paste, nil
 }
 
-func QueryPasteByShortURLOrHash(name string) (*Paste, error) {
+var ErrDecodeBase64Hash = fmt.Errorf("invalid base64 hash")
+
+func DecodeBase64Hash(base64_hash string) (Paste_Hash, error) {
+	base64_hash = strings.TrimRight(base64_hash, "=")
+	padding := (4 - len(base64_hash)%4) % 4
+	if padding == 3 {
+		return 0, ErrDecodeBase64Hash
+	}
+	if padding <= 2 {
+		base64_hash += strings.Repeat("=", padding)
+	}
+	hash_buf, err := base64.URLEncoding.DecodeString(base64_hash)
+	if err != nil {
+		return 0, err
+	}
+	if len(hash_buf) != 8 {
+		return 0, ErrDecodeBase64Hash
+	}
 	var hash int64
+	err = binary.Read(bytes.NewReader(hash_buf), binary.BigEndian, &hash)
+	if err != nil {
+		return 0, err
+	}
+	return Paste_Hash(hash), nil
+}
+
+func QueryPasteByShortURLOrHash(name string) (p *Paste, err error) {
+	var hash Paste_Hash
 	hash_query := false
-	if len(name) == 11 {
-		hash_base64 := name + "="
-		hash_buf, err := base64.URLEncoding.DecodeString(hash_base64)
-		if err == nil {
-			err := binary.Read(bytes.NewReader(hash_buf), binary.BigEndian, &hash)
-			if err == nil {
-				hash_query = true
-			}
-		}
+	if hash, err = DecodeBase64Hash(name); err == nil {
+		hash_query = true
 	}
 	if !hash_query {
-		row := db.QueryRowx(`SELECT p.*, s.name AS short_url FROM pastes p INNER JOIN short_url s ON p.uuid = s.target WHERE s.name = ?`, name)
+		row := db.QueryRowx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p INNER JOIN short_url s ON p.uuid = s.target WHERE s.name = ?`, name)
 		return parsePaste(row)
 	} else {
-		row := db.QueryRowx(`SELECT p.*, s.name AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target WHERE s.name = ? OR p.hash = ?`, name, hash)
+		row := db.QueryRowx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target WHERE s.name = ? OR p.hash = ?`, name, hash)
 		return parsePaste(row)
 	}
+}
+
+func ResetHoldCount() error {
+	_, err := db.Exec(`UPDATE pastes SET hold_count = 0 WHERE hold_count > 0`)
+	if err != nil {
+		log.Error(err)
+	}
+	return err
 }

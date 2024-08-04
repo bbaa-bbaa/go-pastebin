@@ -59,6 +59,9 @@
       const new_paste_result_copy = $("#new-paste-result-copy");
 
       const short_url_error = $("#short-url-error");
+
+      const action_button = $(".action-button");
+
       let text_file = {
         filename: "",
         mime_type: ""
@@ -229,8 +232,8 @@
           paste_short_url.closest(".mdui-textfield").addClass("mdui-textfield-invalid");
         } else {
           paste_short_url.closest(".mdui-textfield").removeClass("mdui-textfield-invalid");
+          check_short_url_available(url);
         }
-        check_short_url_available(url);
       });
 
       function check_allow_delete_if_expired() {
@@ -299,16 +302,17 @@
 
         function show_result() {
           return new Promise(resolve => {
-            let begin = document.documentElement.scrollTop;
-            let target = Math.max(new_paste_result.offset().top - 16, 0);
-            if (begin > target) {
+            let from = document.documentElement.scrollTop;
+            let to = 0;
+            if (from > to) {
               let start_time = new Date().getTime();
               (function animate(duration) {
                 let progress = Math.max(Math.min((new Date().getTime() - start_time) / duration, 1), 0);
-                document.documentElement.scrollTop = begin - (begin - target) * easeInSine(progress);
+                document.documentElement.scrollTop = from - (from - to) * easeInSine(progress);
                 if (progress < 1) {
                   requestAnimationFrame(() => animate(duration));
                 } else {
+                  document.documentElement.scrollTop = to;
                   resolve();
                 }
               })(300);
@@ -320,7 +324,7 @@
           });
         }
 
-        paste_submit.attr("disabled", "disabled");
+        action_button.attr("disabled", "disabled");
         new_paste_result.css("height", "0px");
         const query_string = $.param(query_params).trim();
         $.ajax({
@@ -378,7 +382,7 @@
           }, 1000);
           mdui.snackbar("创建失败: " + err);
         }).finally(() => {
-          paste_submit.removeAttr("disabled");
+          action_button.removeAttr("disabled");
           file_paste_progress.css("height", "0px");
         });
       });

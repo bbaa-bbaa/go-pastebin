@@ -20,7 +20,7 @@
         border-bottom: 1px solid rgba(0, 0, 0, 0.42);
       }
 
-      .button-transition {
+      .action-button {
         transition: background-color 0.6s ease-out;
       }
       .paste-file-drop-overlay * {
@@ -227,8 +227,8 @@
                   <div class="mdui-textfield">
                     <label class="mdui-textfield-label">短链接</label>
                     <input id="paste-short_url" class="mdui-textfield-input" type="text" placeholder="pastebin" />
-                    <div class="mdui-textfield-error" id="short-url-error">仅可使用大小写字母(A-Za-z) 数字(0-9) 部分特殊符号[连字符(-) 下划线(_) 点(.)]</div>
-                    <div class="mdui-textfield-helper">仅可使用大小写字母(A-Za-z) 数字(0-9) 部分特殊符号[连字符(-) 下划线(_) 点(.)]</div>
+                    <div class="mdui-textfield-error" id="short-url-error">仅可使用[A-Za-z0-9._-]</div>
+                    <div class="mdui-textfield-helper">仅可使用[A-Za-z0-9._-]</div>
                   </div>
                 </div>
               </div>
@@ -249,13 +249,13 @@
               </div>
               <div class="mdui-row">
                 <div class="mdui-col-md-4 mdui-col-xs-6 mdui-p-a-1">
-                  <button class="mdui-btn mdui-btn-block mdui-color-red-accent mdui-ripple button-transition" id="paste-delete" disabled>删除 Paste</button>
+                  <button class="mdui-btn mdui-btn-block mdui-color-red-accent mdui-ripple action-button" id="paste-delete" disabled>删除 Paste</button>
                 </div>
                 <div class="mdui-col-md-4 mdui-col-xs-6 mdui-p-a-1">
-                  <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple button-transition" id="paste-update" disabled>更新 Paste</button>
+                  <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple action-button" id="paste-update" disabled>更新 Paste</button>
                 </div>
                 <div class="mdui-col-md-4 mdui-col-xs-12 mdui-p-a-1">
-                  <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple button-transition" id="paste-submit">创建 Paste</button>
+                  <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple action-button" id="paste-submit">创建 Paste</button>
                 </div>
               </div>
             </div>

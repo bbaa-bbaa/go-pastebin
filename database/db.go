@@ -67,5 +67,5 @@ func Init() (err error) {
 		AddUser("anonymous", "anonymous@go-pastebin.app", "user", "")
 		log.Info("管理员账号: ", color.YellowString("admin"), " 密码: ", color.YellowString(adminPassword))
 	}
-	return
+	return ResetHoldCount()
 }
