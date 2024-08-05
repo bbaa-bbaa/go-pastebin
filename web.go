@@ -20,10 +20,12 @@ import (
 	"io"
 	"io/fs"
 	"strings"
+	"time"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/controllers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"golang.org/x/net/http2"
 )
 
 //go:embed assets/*
@@ -47,7 +49,12 @@ func httpServe() {
 	e.PUT("/:uuid", controllers.UpdatePaste)
 	e.DELETE("/:uuid", controllers.DeletePaste)
 	e.GET("/*", Static)
-	e.Logger.Fatal(e.Start(":8080"))
+	s := &http2.Server{
+		MaxConcurrentStreams: 250,
+		MaxReadFrameSize:     1048576,
+		IdleTimeout:          10 * time.Second,
+	}
+	e.Logger.Fatal(e.StartH2CServer(":8080", s))
 }
 
 type TemplateRender struct {
