@@ -514,7 +514,7 @@ func (p *Paste) Token(ExpireAfter time.Time) string {
 	return base64.URLEncoding.EncodeToString(buf[:])
 }
 
-func (p *Paste) Vaild() bool {
+func (p *Paste) Valid() bool {
 	return (p.MaxAccessCount == 0 || p.AccessCount < p.MaxAccessCount) && (p.ExpireAfter.IsZero() || p.ExpireAfter.After(time.Now()))
 }
 
@@ -558,9 +558,11 @@ func parsePaste(row *sqlx.Row) (*Paste, error) {
 		log.Error(err)
 		return nil, err
 	}
-	if !paste.Vaild() && paste.DeleteIfExpire {
-		paste.Delete()
-		return nil, ErrNotFound
+	if !paste.Valid() && paste.DeleteIfExpire {
+		err := paste.Delete()
+		if err == nil {
+			return nil, ErrNotFound
+		}
 	}
 	return paste, nil
 }

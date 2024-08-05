@@ -35,6 +35,7 @@ import (
 const access_token_expire = 24 * time.Hour
 
 var DefaultAttachmentExtensions = []string{"7z", "bz2", "gz", "rar", "tar", "xz", "zip", "iso", "img", "docx", "doc", "ppt", "pptx", "xls", "xlsx", "exe", "msixbundle", "apk"}
+var HTML_MIME = []string{"text/html", "application/xhtml+xml"}
 
 func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extra, expire_after time.Time, max_access_count int64, delete_if_expire bool, password string, short_url string, err error) {
 	short_url = c.QueryParam("short_url")
@@ -109,7 +110,9 @@ func NewPaste(c echo.Context) error {
 		}
 		return err
 	}
-
+	if reader == nil {
+		c.JSON(400, map[string]any{"code": -2, "error": "bad request: file"})
+	}
 	paste := &database.Paste{
 		Content:        reader,
 		DeleteIfExpire: delete_if_expire,
@@ -152,6 +155,7 @@ func pasteActionStatus(action string, paste *database.Paste, err error, c echo.C
 				"url":    url,
 				"uuid":   paste.UUID,
 			})
+			return
 		} else {
 			c.String(
 				200,
@@ -166,68 +170,76 @@ func pasteActionStatus(action string, paste *database.Paste, err error, c echo.C
 					"uuid: ", paste.UUID,
 				}, ""),
 			)
+			return
 		}
 	} else {
-		if errors.Is(err, database.ErrAlreadyExist) {
-			if response_is_json {
-				c.JSON(200, map[string]any{
-					"code":   0,
-					"date":   paste.CreatedAt.Format(time.RFC3339Nano),
-					"digest": paste.HexHash(),
-					"long":   paste.Base64Hash(),
-					"short":  paste.Short_url,
-					"size":   paste.Extra.Size,
-					"status": "already exist",
-					"url":    url,
-				})
-			} else {
-				c.String(
-					200,
-					strings.Join([]string{
-						"date: ", paste.CreatedAt.Format(time.RFC3339Nano), "\n",
-						"digest: ", paste.HexHash(), "\n",
-						"long: ", paste.Base64Hash(), "\n",
-						"size: ", fmt.Sprint(paste.Extra.Size), "\n",
-						"short: ", paste.Short_url, "\n",
-						"status: already exist", "\n",
-						"url: ", url, "\n",
-					}, ""),
-				)
-			}
-		} else if errors.Is(err, database.ErrShortURLAlreadyExist) || errors.Is(err, database.ErrInvalidShortURL) {
-			url := c.Scheme() + "://" + c.Request().Host + "/" + paste.Base64Hash()
-			if response_is_json {
-				c.JSON(200, map[string]any{
-					"code":   0,
-					"date":   paste.CreatedAt.Format(time.RFC3339Nano),
-					"digest": paste.HexHash(),
-					"long":   paste.Base64Hash(),
-					"size":   paste.Extra.Size,
-					"status": action + ", but short url not available",
-					"url":    url,
-					"uuid":   paste.UUID,
-				})
-			} else {
-				c.String(
-					200,
-					strings.Join([]string{
-						"date: ", paste.CreatedAt.Format(time.RFC3339Nano), "\n",
-						"digest: ", paste.HexHash(), "\n",
-						"long: ", paste.Base64Hash(), "\n",
-						"size: ", fmt.Sprint(paste.Extra.Size), "\n",
-						"status: " + action + ", but short url not available", "\n",
-						"url: ", url, "\n",
-						"uuid: ", paste.UUID,
-					}, ""),
-				)
-			}
-		} else {
-			if response_is_json {
-				c.JSON(500, map[string]any{"code": -3, "error": "internal error", "err": err.Error()})
-			} else {
-				c.String(500, "status: internal error")
+		if paste != nil {
+			if errors.Is(err, database.ErrAlreadyExist) {
+				if response_is_json {
+					c.JSON(200, map[string]any{
+						"code":   0,
+						"date":   paste.CreatedAt.Format(time.RFC3339Nano),
+						"digest": paste.HexHash(),
+						"long":   paste.Base64Hash(),
+						"short":  paste.Short_url,
+						"size":   paste.Extra.Size,
+						"status": "already exist",
+						"url":    url,
+					})
+					return
+				} else {
+					c.String(
+						200,
+						strings.Join([]string{
+							"date: ", paste.CreatedAt.Format(time.RFC3339Nano), "\n",
+							"digest: ", paste.HexHash(), "\n",
+							"long: ", paste.Base64Hash(), "\n",
+							"size: ", fmt.Sprint(paste.Extra.Size), "\n",
+							"short: ", paste.Short_url, "\n",
+							"status: already exist", "\n",
+							"url: ", url, "\n",
+						}, ""),
+					)
+					return
+				}
+			} else if errors.Is(err, database.ErrShortURLAlreadyExist) || errors.Is(err, database.ErrInvalidShortURL) {
+				url := c.Scheme() + "://" + c.Request().Host + "/" + paste.Base64Hash()
+				if response_is_json {
+					c.JSON(200, map[string]any{
+						"code":   0,
+						"date":   paste.CreatedAt.Format(time.RFC3339Nano),
+						"digest": paste.HexHash(),
+						"long":   paste.Base64Hash(),
+						"size":   paste.Extra.Size,
+						"status": action + ", but short url not available",
+						"url":    url,
+						"uuid":   paste.UUID,
+					})
+					return
+				} else {
+					c.String(
+						200,
+						strings.Join([]string{
+							"date: ", paste.CreatedAt.Format(time.RFC3339Nano), "\n",
+							"digest: ", paste.HexHash(), "\n",
+							"long: ", paste.Base64Hash(), "\n",
+							"size: ", fmt.Sprint(paste.Extra.Size), "\n",
+							"status: " + action + ", but short url not available", "\n",
+							"url: ", url, "\n",
+							"uuid: ", paste.UUID,
+						}, ""),
+					)
+					return
+				}
 			}
 		}
+		log.Error(err)
+		if response_is_json {
+			c.JSON(500, map[string]any{"code": -3, "error": "internal error", "err": err.Error()})
+		} else {
+			c.String(500, "status: internal error")
+		}
+
 	}
 }
 
@@ -417,43 +429,50 @@ func GetPaste(c echo.Context) error {
 
 	// 权限控制
 	var access_token string
+	access_token_valid := false
 	access_token_cookie, err := c.Cookie("access_token_" + paste.HexHash())
 	if err == nil {
 		access_token = access_token_cookie.Value
+		access_token_valid = paste.VerifyToken(access_token)
 	}
 	if access_token == "" {
 		access_token = c.QueryParam("access_token")
-	}
-
-	// 访问次数限制
-	if !paste.Vaild() {
-		if !raw_response {
-			c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
-		} else {
-			c.String(404, "paste not found or not available yet")
+		access_token_valid = paste.VerifyToken(access_token)
+		if access_token_valid {
+			c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + id})
 		}
-		return nil
 	}
 
-	if paste.Password != "" && !paste.VerifyToken(access_token) {
-		if password == "" {
+	if !access_token_valid {
+		// 访问次数限制
+		if !paste.Valid() {
 			if !raw_response {
-				c.JSON(401, map[string]any{"code": -1, "error": "paste need password, you can provide it by ?pwd=paste_password query"})
+				c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
 			} else {
-				c.String(401, "paste need password, you can provide it by ?pwd=paste_password query")
+				c.String(404, "paste not found or not available yet")
 			}
 			return nil
 		}
-		if ok, _ := argon2.VerifyEncoded([]byte(password), []byte(paste.Password)); !ok {
-			if !raw_response {
-				c.JSON(401, map[string]any{"code": -1, "error": "password is incorrect"})
-			} else {
-				c.String(401, "password is incorrect")
+
+		if paste.Password != "" {
+			if password == "" {
+				if !raw_response {
+					c.JSON(401, map[string]any{"code": -1, "error": "paste need password, you can provide it by ?pwd=paste_password query"})
+				} else {
+					c.String(401, "paste need password, you can provide it by ?pwd=paste_password query")
+				}
+				return nil
 			}
-			return nil
+			if ok, _ := argon2.VerifyEncoded([]byte(password), []byte(paste.Password)); !ok {
+				if !raw_response {
+					c.JSON(401, map[string]any{"code": -1, "error": "password is incorrect"})
+				} else {
+					c.String(401, "password is incorrect")
+				}
+				return nil
+			}
 		}
 	}
-
 	if !raw_response && (paste.MaxAccessCount != 0 || paste.Password != "") {
 		redirect_url := "/"
 		if c.Request().URL.RawQuery != "" {
@@ -465,20 +484,28 @@ func GetPaste(c echo.Context) error {
 	}
 
 	// 访问次数计数
-	if access_token == "" || !paste.VerifyToken(access_token) {
+	if !access_token_valid {
 		available_before := time.Now().Add(access_token_expire)
 		access_token = paste.Token(available_before)
 		c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + id})
+		response.Header().Set("X-Access-Token", access_token)
 		paste.Access(available_before)
 	}
 
 	paste.Hold()
 
-	response.Header().Set("X-Access-Token", access_token)
 	if paste.Extra.MimeType != "" {
-		if paste.Extra.MimeType == "text/html" && !Config.Allow_HTML {
-			response.Header().Set("Content-Type", "text/plain")
-		} else {
+		html_flag := false
+		if !Config.Allow_HTML {
+			for _, html_mime := range HTML_MIME {
+				if strings.HasPrefix(paste.Extra.MimeType, html_mime) {
+					html_flag = true
+					response.Header().Set("Content-Type", strings.Replace(paste.Extra.MimeType, html_mime, "text/plain", 1))
+					break
+				}
+			}
+		}
+		if !html_flag {
 			response.Header().Set("Content-Type", paste.Extra.MimeType)
 		}
 	}

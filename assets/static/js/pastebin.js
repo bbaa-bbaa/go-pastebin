@@ -398,12 +398,13 @@
             }, 1000);
           }
           return show_result("创建结果", response, false);
-        }).catch(err => {
+        }).catch(res => {
+          let response = JSON.parse(res);
           paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
           setTimeout(() => {
             paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
           }, 1000);
-          mdui.snackbar("创建失败: " + err);
+          mdui.snackbar("创建失败: " + response.error);
         }).finally(() => {
           action_button.removeAttr("disabled");
           file_paste_progress.css("height", "0px");
@@ -456,12 +457,13 @@
             }, 1000);
           }
           return show_result("更新结果", response, false);
-        }).catch(err => {
+        }).catch(res => {
+          let response = JSON.parse(res);
           paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
           setTimeout(() => {
             paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
           }, 1000);
-          mdui.snackbar("更新失败: " + err);
+          mdui.snackbar("删除失败: " + response.error);
         }).finally(() => {
           action_button.removeAttr("disabled");
           file_paste_progress.css("height", "0px");
@@ -498,12 +500,13 @@
             }, 1000);
           }
           return show_result("删除结果", response, true);
-        }).catch(err => {
+        }).catch(res  => {
+          let response = JSON.parse(res);
           paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
           setTimeout(() => {
             paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
           }, 1000);
-          mdui.snackbar("删除失败: " + err);
+          mdui.snackbar("删除失败: " + response.error);
         }).finally(() => {
           action_button.removeAttr("disabled");
           file_paste_progress.css("height", "0px");
