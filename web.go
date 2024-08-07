@@ -48,6 +48,7 @@ func httpServe() {
 	e.POST("/", controllers.NewPaste)
 	e.PUT("/:uuid", controllers.UpdatePaste)
 	e.DELETE("/:uuid", controllers.DeletePaste)
+	e.HEAD("/:id", controllers.GetPaste)
 	e.GET("/*", Static)
 	s := &http2.Server{
 		MaxConcurrentStreams: 250,

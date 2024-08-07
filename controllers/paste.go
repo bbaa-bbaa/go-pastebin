@@ -20,6 +20,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -385,18 +386,24 @@ func DeletePaste(c echo.Context) error {
 
 func GetPaste(c echo.Context) error {
 	response := c.Response()
-
 	variant := c.Param("variant")
 
 	raw_response := variant == "raw"
-	download := variant == "download"
-
 	if accept_header := c.Request().Header.Get("Accept"); !(strings.Contains(accept_header, "text/html") || strings.Contains(accept_header, "application/json")) {
 		raw_response = true
 	}
-
 	if c.Request().URL.Query().Has("raw") {
+		raw_query := c.QueryParam("raw")
+		raw_response, _ = strconv.ParseBool(raw_query)
+	}
+	if c.Request().Method == "HEAD" {
 		raw_response = true
+	}
+
+	download := variant == "download"
+	if c.Request().URL.Query().Has("download") {
+		download_query := c.QueryParam("download")
+		download, _ = strconv.ParseBool(download_query)
 	}
 
 	password := c.QueryParam("pwd")
@@ -454,6 +461,20 @@ func GetPaste(c echo.Context) error {
 			return nil
 		}
 
+		if !raw_response && (paste.MaxAccessCount != 0 || paste.Password != "") {
+			redirect_url := "/"
+			if c.Request().URL.RawQuery != "" {
+				redirect_url += "?" + c.Request().URL.RawQuery
+			}
+			if paste.Short_url != "" {
+				redirect_url += "#" + paste.Short_url
+			} else {
+				redirect_url += "#" + paste.Base64Hash()
+			}
+			c.Redirect(302, redirect_url)
+			return nil
+		}
+
 		if paste.Password != "" {
 			if password == "" {
 				if !raw_response {
@@ -473,15 +494,6 @@ func GetPaste(c echo.Context) error {
 			}
 		}
 	}
-	if !raw_response && (paste.MaxAccessCount != 0 || paste.Password != "") {
-		redirect_url := "/"
-		if c.Request().URL.RawQuery != "" {
-			redirect_url += "?" + c.Request().URL.RawQuery
-		}
-		redirect_url += "#" + paste.Short_url
-		c.Redirect(302, redirect_url)
-		return nil
-	}
 
 	// 访问次数计数
 	if !access_token_valid {
@@ -490,6 +502,15 @@ func GetPaste(c echo.Context) error {
 		c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + id})
 		response.Header().Set("X-Access-Token", access_token)
 		paste.Access(available_before)
+	}
+
+	if c.Request().Method == "HEAD" {
+		response.Header().Set("Content-Length", fmt.Sprint(paste.Extra.Size))
+		response.Header().Set("Content-Type", paste.Extra.MimeType)
+		response.Header().Set("X-Origin-Filename", paste.Extra.FileName)
+		response.Header().Set("X-Origin-Filename-Encoded", strings.ReplaceAll(url.QueryEscape(paste.Extra.FileName), "+", "%20"))
+		response.Header().Set("X-Access-Token", access_token)
+		c.NoContent(200)
 	}
 
 	paste.Hold()

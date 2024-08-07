@@ -32,28 +32,118 @@
     document.body.addEventListener("dragover", function (e) {
       e.preventDefault();
     });
-    (function new_paste() {
-      const text_input = $("#text-input");
-      const file_input = $("#file-input");
-      const file_paste = $("#file-paste");
-      const drop_file_overlay = $(".paste-file-drop-overlay");
-      const paste_password = $("#paste-password");
-      const paste_expire = $("#paste-expire");
-      const paste_max_access_count = $("#paste-max-access-count");
-      const paste_uuid = $("#paste-uuid");
-      const paste_short_url = $("#paste-short_url");
-      const paste_delete_if_expired = $("#paste-delete-if-expired");
-      const paste_delete = $("#paste-delete");
-      const paste_update = $("#paste-update");
-      const paste_submit = $("#paste-submit");
-      const paste_load = $("#paste-load-from-file");
+    function Collapse(jq, heightBox, margin) {
+      this.$ = jq;
+      this.element = (heightBox || jq).get(0);
+      this.expand = this.$.hasClass("card-collapse-open");
+      this.autoLock = false;
+      this.margin = margin === undefined ? 16 : margin;
+      this.callback = null;
+      this.$.on("transitionend", e => {
+        if (!heightBox && !this.autoLock && this.expand) {
+          this.$.css("height", "auto");
+        }
+        if (this.callback) {
+          this.callback();
+          this.callback = null;
+        }
+      });
+    }
 
-      const file_paste_icon = $("#file-paste-icon");
-      const file_paste_preview = $("#file-paste-preview");
-      const file_paste_filename = $("#file-paste-filename");
-      const file_paste_progress = $("#file-paste-progress");
-      const file_paste_progress_bar = $("#file-paste-progress-bar");
-      const file_paste_progress_text = $("#file-paste-progress-text");
+    Collapse.prototype.fixed = function () {
+      if (this.expand) {
+        this.$.css("height", this.element.scrollHeight + "px");
+      }
+    };
+
+    Collapse.prototype.close = function (fixed) {
+      this.autoLock = true;
+      if (!fixed) {
+        this.fixed();
+        requestAnimationFrame(() => {
+          this.close(true);
+        });
+        return new Promise(resolve => {
+          this.callback = resolve;
+        });
+      }
+      this.expand = false;
+      this.autoLock = false;
+      this.$.css("height", "0");
+      if (this.margin) {
+        this.$.css("margin", "0");
+      }
+    };
+
+    Collapse.prototype.open = function () {
+      this.expand = true;
+      this.$.css("height", this.element.scrollHeight + "px");
+      if (this.margin) {
+        this.$.css("margin", this.margin + "px 0");
+      }
+      return new Promise(resolve => {
+        this.callback = resolve;
+      });
+    };
+
+    function CollapseGroupProxy(group, target) {
+      this._group = group;
+      this._target = target;
+    }
+    CollapseGroupProxy.prototype.open = function () {
+      return this._group._open(this._target);
+    };
+    CollapseGroupProxy.prototype.close = function () {
+      return this._group._close(this._target);
+    };
+    function CollapseGroup(group) {
+      this._group = [];
+      for (let [k, v] of Object.entries(group)) {
+        let collapseManager = new Collapse(v);
+        this._group.push(collapseManager);
+        this[k] = new CollapseGroupProxy(this, collapseManager);
+      }
+    }
+
+    CollapseGroup.prototype._open = function (target) {
+      let result;
+      for (let item of this._group) {
+        if (item === target) {
+          result = item.open();
+        } else {
+          item.close();
+        }
+      }
+      return result;
+    };
+
+    CollapseGroup.prototype._close = function (target) {
+      return target.close();
+    };
+
+    const paste_mdui_tab = new mdui.Tab("#paste-mdui-tab");
+    (function new_paste() {
+      const text_input = $("#new-paste-text-input");
+      const file_input = $("#new-paste-file-input");
+      const file_paste = $("#new-paste-file");
+      const drop_file_overlay = $(".paste-file-drop-overlay");
+      const paste_password = $("#new-paste-password");
+      const paste_expire = $("#new-paste-expire");
+      const paste_max_access_count = $("#new-paste-max-access-count");
+      const paste_uuid = $("#new-paste-uuid");
+      const paste_short_url = $("#new-paste-short-url");
+      const paste_delete_if_expired = $("#new-paste-delete-if-expired");
+      const paste_delete = $("#new-paste-delete");
+      const paste_update = $("#new-paste-update");
+      const paste_submit = $("#new-paste-submit");
+      const paste_load = $("#new-paste-load-from-file");
+
+      const file_paste_icon = $("#new-paste-file-icon");
+      const file_paste_preview = $("#new-paste-file-preview");
+      const file_paste_filename = $("#new-paste-file-filename");
+      const file_paste_progress = $("#new-paste-file-progress");
+      const file_paste_progress_bar = $("#new-paste-file-progress-bar");
+      const file_paste_progress_text = $("#new-paste-file-progress-text");
 
       const new_paste_result = $("#new-paste-result");
       const new_paste_result_link = $("#new-paste-result-link");
@@ -62,9 +152,9 @@
       const new_paste_result_copy = $("#new-paste-result-copy");
       const new_paste_result_title = $("#new-paste-result-title");
 
-      const short_url_error = $("#short-url-error");
+      const short_url_error = $("#new-paste-short-url-error");
 
-      const action_button = $(".action-button");
+      const action_button = $(".new-paste-action-button");
 
       let text_file = {
         filename: "",
@@ -147,7 +237,6 @@
       });
 
       file_paste.on("click", function () {
-        paste_file = null;
         file_input.val("");
         file_input.get(0).click();
       });
@@ -251,10 +340,13 @@
 
       paste_expire.on("change", check_allow_delete_if_expired);
       paste_max_access_count.on("input", check_allow_delete_if_expired);
+
+      const result_collapse = new Collapse(new_paste_result);
+
       function show_result(title, response, sort) {
         new_paste_result_title.text(title);
         let raw_html = "";
-        let msgs = Object.entries(response)
+        let msgs = Object.entries(response);
         if (sort) {
           msgs = msgs.sort((a, b) => (a[0] + a[1]).length - (b[0] + b[1]).length);
         }
@@ -303,8 +395,12 @@
             resolve();
           }
         }).then(() => {
-          new_paste_result.css("height", new_paste_result.children().height() + "px");
+          result_collapse.open();
         });
+      }
+
+      function hide_result() {
+        result_collapse.close();
       }
 
       function upload_progress(e) {
@@ -366,7 +462,7 @@
         let data = prepared_data.data;
         let query_params = prepared_data.query_params;
         action_button.attr("disabled", "disabled");
-        new_paste_result.css("height", "0px");
+        hide_result();
         const query_string = $.param(query_params).trim();
         $.ajax({
           method: "POST",
@@ -384,31 +480,34 @@
               file_paste_progress.css("height", "18px");
             }
           }
-        }).then(res => {
-          let response = JSON.parse(res);
-          if (response.code != 0) {
+        })
+          .then(res => {
+            let response = JSON.parse(res);
+            if (response.code != 0) {
+              paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
+              setTimeout(() => {
+                paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
+              }, 1000);
+            } else {
+              paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-accent");
+              setTimeout(() => {
+                paste_submit.removeClass("mdui-color-green-accent").addClass("mdui-color-theme-accent");
+              }, 1000);
+            }
+            return show_result("创建结果", response, false);
+          })
+          .catch(res => {
+            let response = JSON.parse(res);
             paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
             setTimeout(() => {
               paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
             }, 1000);
-          } else {
-            paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-accent");
-            setTimeout(() => {
-              paste_submit.removeClass("mdui-color-green-accent").addClass("mdui-color-theme-accent");
-            }, 1000);
-          }
-          return show_result("创建结果", response, false);
-        }).catch(res => {
-          let response = JSON.parse(res);
-          paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
-          setTimeout(() => {
-            paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-          }, 1000);
-          mdui.snackbar("创建失败: " + response.error);
-        }).finally(() => {
-          action_button.removeAttr("disabled");
-          file_paste_progress.css("height", "0px");
-        });
+            mdui.snackbar("创建失败: " + response.error);
+          })
+          .finally(() => {
+            action_button.removeAttr("disabled");
+            file_paste_progress.css("height", "0px");
+          });
       });
 
       paste_update.on("click", function () {
@@ -425,7 +524,7 @@
         let query_params = prepared_data.query_params;
 
         action_button.attr("disabled", "disabled");
-        new_paste_result.css("height", "0px");
+        hide_result();
         const query_string = $.param(query_params).trim();
         $.ajax({
           method: "PUT",
@@ -443,31 +542,34 @@
               file_paste_progress.css("height", "18px");
             }
           }
-        }).then(res => {
-          let response = JSON.parse(res);
-          if (response.code != 0) {
+        })
+          .then(res => {
+            let response = JSON.parse(res);
+            if (response.code != 0) {
+              paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
+              setTimeout(() => {
+                paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
+              }, 1000);
+            } else {
+              paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-accent");
+              setTimeout(() => {
+                paste_update.removeClass("mdui-color-green-accent").addClass("mdui-color-blue-accent");
+              }, 1000);
+            }
+            return show_result("更新结果", response, false);
+          })
+          .catch(res => {
+            let response = JSON.parse(res);
             paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
             setTimeout(() => {
               paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
             }, 1000);
-          } else {
-            paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-accent");
-            setTimeout(() => {
-              paste_update.removeClass("mdui-color-green-accent").addClass("mdui-color-blue-accent");
-            }, 1000);
-          }
-          return show_result("更新结果", response, false);
-        }).catch(res => {
-          let response = JSON.parse(res);
-          paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
-          setTimeout(() => {
-            paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
-          }, 1000);
-          mdui.snackbar("删除失败: " + response.error);
-        }).finally(() => {
-          action_button.removeAttr("disabled");
-          file_paste_progress.css("height", "0px");
-        });
+            mdui.snackbar("删除失败: " + response.error);
+          })
+          .finally(() => {
+            action_button.removeAttr("disabled");
+            file_paste_progress.css("height", "0px");
+          });
       });
 
       paste_delete.on("click", function () {
@@ -486,31 +588,34 @@
           },
           contentType: false,
           processData: false
-        }).then(res => {
-          let response = JSON.parse(res);
-          if (response.code != 0) {
+        })
+          .then(res => {
+            let response = JSON.parse(res);
+            if (response.code != 0) {
+              paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
+              setTimeout(() => {
+                paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
+              }, 1000);
+            } else {
+              paste_delete.removeClass("mdui-color-red").addClass("mdui-color-green-accent");
+              setTimeout(() => {
+                paste_delete.removeClass("mdui-color-green-accent").addClass("mdui-color-red");
+              }, 1000);
+            }
+            return show_result("删除结果", response, true);
+          })
+          .catch(res => {
+            let response = JSON.parse(res);
             paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
             setTimeout(() => {
               paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
             }, 1000);
-          } else {
-            paste_delete.removeClass("mdui-color-red").addClass("mdui-color-green-accent");
-            setTimeout(() => {
-              paste_delete.removeClass("mdui-color-green-accent").addClass("mdui-color-red");
-            }, 1000);
-          }
-          return show_result("删除结果", response, true);
-        }).catch(res  => {
-          let response = JSON.parse(res);
-          paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
-          setTimeout(() => {
-            paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
-          }, 1000);
-          mdui.snackbar("删除失败: " + response.error);
-        }).finally(() => {
-          action_button.removeAttr("disabled");
-          file_paste_progress.css("height", "0px");
-        });
+            mdui.snackbar("删除失败: " + response.error);
+          })
+          .finally(() => {
+            action_button.removeAttr("disabled");
+            file_paste_progress.css("height", "0px");
+          });
       });
 
       new_paste_result_copy.on("click", function () {
@@ -535,6 +640,227 @@
           selectAndHint();
         }
       });
+    })();
+    (function paste_viewer() {
+      const paste_viewer_query = $("#paste-viewer-query");
+      const paste_viewer_password = $("#paste-viewer-password");
+      const paste_viewer_text = $("#paste-viewer-text");
+
+      const paste_viewer_not_found = $("#paste-viewer-not-found");
+      const paste_viewer_file = $("#paste-viewer-file");
+      const collapse_manager = new CollapseGroup({
+        paste_viewer_query,
+        paste_viewer_password,
+        paste_viewer_not_found,
+        paste_viewer_text,
+        paste_viewer_file
+      });
+
+      const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
+      const paste_viewer_action = $(".paste-viewer-action");
+
+      const paste_viewer_query_btn = $("#paste-viewer-query-btn");
+      const paste_viewer_query_input = $("#paste-viewer-query-input");
+      const paste_viewer_title = $(".paste-viewer-title");
+
+      const paste_viewer_password_input = $("#paste-viewer-password-input");
+      const paste_viewer_confirm_password = $("#paste-viewer-confirm-password");
+
+      const paste_viewer_text_content_wrapper = $("#paste-viewer-text-content-wrapper");
+      const paste_viewer_text_content = paste_viewer_text_content_wrapper.children("div");
+      const paste_viewer_enable_markdown_render = $("#paste-viewer-enable-markdown-render");
+
+      const paste_viewer_download_btn = $(".paste-viewer-download-btn");
+
+      const paste_viewer_file_icon = $("#paste-viewer-file-icon");
+      const paste_viewer_file_preview = $("#paste-viewer-file-preview");
+      const paste_viewer_file_filename = $("#paste-viewer-file-filename");
+
+      let query_id;
+      let paste_metadata = {
+        id: "",
+        size: 9 * 1024 * 1024,
+        type: "image/png",
+        filename: "Cirno.png",
+        access_token: "",
+        content: "",
+        url: ""
+      };
+      function paste_preview_file_show() {
+        let timeout = setTimeout(() => {
+          timeout = null;
+          collapse_manager.paste_viewer_file.open();
+          paste_viewer_action.removeAttr("disabled");
+        }, 1000);
+        let start = new Date().getTime();
+        return function show() {
+          if (timeout) {
+            clearTimeout(timeout);
+            let end = new Date().getTime()
+            if (end - start < 300) {
+              setTimeout(() => {
+                collapse_manager.paste_viewer_file.open();
+              }, 300 - (end - start));
+            } else {
+              collapse_manager.paste_viewer_file.open();
+            }
+          }
+        }
+      }
+      function paste_preview_file() {
+        paste_viewer_file_filename.text(paste_metadata.filename + " (" + (paste_metadata.size / 1024 / 1024).toFixed(2).toString() + " MiB)");
+        paste_viewer_file_icon.hide();
+        paste_viewer_file_preview.show();
+        let show = paste_preview_file_show();
+        if (paste_metadata.type.startsWith("image/")) {
+          $(`<img style="max-height: inherit; max-width:100%">`).on("load", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
+        } else if (paste_metadata.type.startsWith("audio/")) {
+          $('<audio controls style="max-height: inherit; max-width:100%">').on("loadedmetadata", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
+        } else if (paste_metadata.type.startsWith("video/")) {
+          $('<video controls style="max-height: inherit; max-width:100%">').on("loadedmetadata", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
+        } else {
+          paste_viewer_file_preview.hide();
+          paste_viewer_file_icon.show();
+        }
+
+      }
+      let collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0);
+      function paste_preview_text_render(init) {
+        if (paste_viewer_enable_markdown_render.prop("checked")) {
+          paste_viewer_text_content.css("white-space", "");
+          paste_viewer_text_content.html(DOMPurify.sanitize(marked.parse(paste_metadata.content)));
+        } else {
+          paste_viewer_text_content.css("white-space", "pre-wrap");
+          paste_viewer_text_content.text(paste_metadata.content);
+          collapse_manager.paste_viewer_text.open();
+        }
+        if (init) {
+          paste_viewer_text_content_wrapper.css("height", "auto")
+          collapse_manager.paste_viewer_text.open();
+        }
+        collapse_paste_viewer_text_content.open();
+      }
+
+      paste_viewer_enable_markdown_render.on("change", () => { paste_preview_text_render() });
+
+      function paste_preview_text() {
+        $.ajax({
+          method: "GET",
+          url: "/" + paste_metadata.id //+ "?access_token=" + paste_metadata.access_token,
+        })
+          .then(res => {
+            paste_metadata.content = res;
+            if (paste_metadata.type.startsWith("text/markdown")) {
+              paste_viewer_enable_markdown_render.prop("checked", true);
+            }
+            paste_preview_text_render(true);
+          })
+          .catch(() => {
+            paste_viewer_text_content.text("无法加载 Paste");
+            collapse_paste_viewer_text_content.open();
+          })
+      }
+
+      function paste_preview() {
+        if (paste_metadata.type.startsWith("text/") && paste_metadata.size <= 1024 * 1024) {
+          paste_preview_text();
+          paste_viewer_action.removeAttr("disabled");
+        } else {
+          paste_preview_file();
+        }
+      }
+      function parse_filename(xhr) {
+        try {
+          if (TextDecoder) {
+            let filename = xhr.getResponseHeader("X-Origin-Filename").split("").map(a => a.charCodeAt(0));
+            let utf8_decoder = new TextDecoder("utf-8");
+            return utf8_decoder.decode(new Uint8Array(filename));
+          }
+        } catch (e) {
+        }
+        let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
+        return decodeURIComponent(urlencode_filename);
+      }
+      function query_paste_metadata(id, password) {
+        paste_viewer_action.attr("disabled", "disabled");
+        paste_viewer_title.text("Paste: " + id);
+        query_id = id;
+        $.ajax({
+          method: "HEAD",
+          url: "/" + id + (password ? "?pwd=" + password : ""),
+          complete: function (xhr) {
+            if (xhr.status == 200) {
+              paste_metadata = {
+                id: id,
+                password: password,
+                size: xhr.getResponseHeader("Content-Length"),
+                type: xhr.getResponseHeader("Content-Type"),
+                filename: parse_filename(xhr),
+                access_token: xhr.getResponseHeader("X-Access-Token"),
+                url: "/" + id + "?access_token=" + xhr.getResponseHeader("X-Access-Token")
+              };
+              paste_viewer_download_btn.attr("download", paste_metadata.filename).attr("href", paste_metadata.url);
+              paste_preview();
+            } else if (xhr.status == 404) {
+              collapse_manager.paste_viewer_not_found.open();
+              paste_viewer_action.removeAttr("disabled");
+            } else if (xhr.status == 401) {
+              if (!password) {
+                collapse_manager.paste_viewer_password.open();
+              } else {
+                paste_viewer_confirm_password.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
+                setTimeout(() => {
+                  paste_viewer_confirm_password.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
+                }, 1000);
+                mdui.snackbar("密码错误");
+              }
+              paste_viewer_action.removeAttr("disabled");
+            } else {
+              paste_viewer_action.removeAttr("disabled");
+            }
+          }
+        }).catch(() => { });
+      }
+
+      paste_viewer_query_btn.on("click", function () {
+        query_id = paste_viewer_query_input.val();
+        if (query_id.length == 0) {
+          mdui.snackbar("请输入 Paste Short URL 或 Paste Hash");
+          return;
+        }
+        query_id = query_id.split("/").pop().replace(/^#/m, "");
+        query_paste_metadata(query_id);
+      });
+
+      paste_viewer_back_to_query.on("click", function () {
+        collapse_manager.paste_viewer_query.open().then(() => {
+          paste_viewer_file_preview.html("");
+          paste_viewer_file_icon.show();
+          paste_viewer_text_content.html("");
+          collapse_paste_viewer_text_content.open();
+        });
+      });
+
+      paste_viewer_confirm_password.on("click", function () {
+        let password = paste_viewer_password_input.val();
+        if (password.length == 0) {
+          mdui.snackbar("请输入密码");
+          return;
+        }
+        query_paste_metadata(query_id, password);
+      });
+      if (query_hash) {
+        let query_params = new URLSearchParams(location.search);
+        let password = query_params.get("pwd");
+        if (password) {
+          paste_viewer_password_input.val(password);
+          paste_viewer_password_input.get(0).dispatchEvent(new Event("input"));
+        }
+        paste_mdui_tab.show(1);
+        paste_viewer_query_input.val(query_hash);
+        paste_viewer_query_input.get(0).dispatchEvent(new Event("input"));
+        query_paste_metadata(query_hash);
+      }
     })();
   });
 })();
