@@ -687,10 +687,13 @@
         url: ""
       };
       function paste_preview_file_show() {
-        let timeout = setTimeout(() => {
-          timeout = null;
+        function show_preview() {
           collapse_manager.paste_viewer_file.open();
           paste_viewer_action.removeAttr("disabled");
+        }
+        let timeout = setTimeout(() => {
+          timeout = null;
+          show_preview();
         }, 1000);
         let start = new Date().getTime();
         return function show() {
@@ -699,10 +702,10 @@
             let end = new Date().getTime()
             if (end - start < 300) {
               setTimeout(() => {
-                collapse_manager.paste_viewer_file.open();
+                show_preview();
               }, 300 - (end - start));
             } else {
-              collapse_manager.paste_viewer_file.open();
+              show_preview();
             }
           }
         }
