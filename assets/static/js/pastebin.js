@@ -142,6 +142,7 @@
       const file_paste_preview = $("#new-paste-file-preview");
       const file_paste_filename = $("#new-paste-file-filename");
       const file_paste_progress = $("#new-paste-file-progress");
+      const collapse_file_paste_progress = new Collapse(file_paste_progress, null, 0);
       const file_paste_progress_bar = $("#new-paste-file-progress-bar");
       const file_paste_progress_text = $("#new-paste-file-progress-text");
 
@@ -365,7 +366,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () {});
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () { });
           new_paste_result_link.closest("div").show();
           new_paste_result_qr_code.show();
         } else {
@@ -477,7 +478,7 @@
             if (paste_file) {
               upload_progress({ loaded: 0, total: paste_file.size, lengthComputable: true });
               xhr.upload.addEventListener("progress", upload_progress);
-              file_paste_progress.css("height", "18px");
+              collapse_file_paste_progress.open();
             }
           }
         })
@@ -497,16 +498,22 @@
             return show_result("创建结果", response, false);
           })
           .catch(res => {
-            let response = JSON.parse(res);
+            let error = "";
+            if (res instanceof Error) {
+              error = res.message;
+            } else {
+              let response = JSON.parse(res);
+              error = response.error;
+            }
             paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
             setTimeout(() => {
               paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
             }, 1000);
-            mdui.snackbar("创建失败: " + response.error);
+            mdui.snackbar("创建失败: " + error);
           })
           .finally(() => {
             action_button.removeAttr("disabled");
-            file_paste_progress.css("height", "0px");
+            collapse_file_paste_progress.close();
           });
       });
 
@@ -559,12 +566,18 @@
             return show_result("更新结果", response, false);
           })
           .catch(res => {
-            let response = JSON.parse(res);
+            let error = "";
+            if (res instanceof Error) {
+              error = res.message;
+            } else {
+              let response = JSON.parse(res);
+              error = response.error;
+            }
             paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
             setTimeout(() => {
               paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
             }, 1000);
-            mdui.snackbar("删除失败: " + response.error);
+            mdui.snackbar("更新失败: " + error);
           })
           .finally(() => {
             action_button.removeAttr("disabled");
@@ -605,12 +618,18 @@
             return show_result("删除结果", response, true);
           })
           .catch(res => {
-            let response = JSON.parse(res);
+            let error = "";
+            if (res instanceof Error) {
+              error = res.message;
+            } else {
+              let response = JSON.parse(res);
+              error = response.error;
+            }
             paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
             setTimeout(() => {
               paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
             }, 1000);
-            mdui.snackbar("删除失败: " + response.error);
+            mdui.snackbar("删除失败: " + error);
           })
           .finally(() => {
             action_button.removeAttr("disabled");
@@ -821,7 +840,7 @@
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) {}
+        } catch (e) { }
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
@@ -871,7 +890,7 @@
               action_unlock();
             }
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       paste_viewer_query_btn.on("click", function () {
