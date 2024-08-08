@@ -70,7 +70,7 @@
       this.expand = false;
       this.autoLock = false;
       this.$.css("height", "0");
-      if (this.margin) {
+      if (this.margin !== undefined) {
         this.$.css("margin", "0");
       }
     };
@@ -78,7 +78,7 @@
     Collapse.prototype.open = function () {
       this.expand = true;
       this.$.css("height", this.element.scrollHeight + "px");
-      if (this.margin) {
+      if (this.margin !== undefined) {
         this.$.css("margin", this.margin + "px 0");
       }
       return new Promise(resolve => {
@@ -658,11 +658,10 @@
 
       const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
       const paste_viewer_action = $(".paste-viewer-action");
-
       const paste_viewer_query_btn = $("#paste-viewer-query-btn");
       const paste_viewer_query_input = $("#paste-viewer-query-input");
-      const paste_viewer_title = $(".paste-viewer-title");
 
+      const paste_viewer_title = $(".paste-viewer-title");
       const paste_viewer_password_input = $("#paste-viewer-password-input");
       const paste_viewer_confirm_password = $("#paste-viewer-confirm-password");
 
@@ -671,10 +670,20 @@
       const paste_viewer_enable_markdown_render = $("#paste-viewer-enable-markdown-render");
 
       const paste_viewer_download_btn = $(".paste-viewer-download-btn");
-
       const paste_viewer_file_icon = $("#paste-viewer-file-icon");
       const paste_viewer_file_preview = $("#paste-viewer-file-preview");
       const paste_viewer_file_filename = $("#paste-viewer-file-filename");
+
+      const paste_viewer_enable_highlight_js = $("#paste-viewer-enable-highlight-js");
+      const paste_viewer_highlight_language = $("#paste-viewer-highlight-language");
+      const paste_viewer_highlight_language_selector = (function initHighlightLanguage() {
+        let languages = hljs.listLanguages();
+        for (let lang of languages) {
+          paste_viewer_highlight_language.append($(`<option value="${lang}">${lang}</option>`));
+        }
+        paste_viewer_highlight_language.get(0).selectedIndex = -1;
+        return new mdui.Select(paste_viewer_highlight_language.get(0));
+      })();
 
       let query_id;
       let paste_metadata = {
@@ -699,7 +708,7 @@
         return function show() {
           if (timeout) {
             clearTimeout(timeout);
-            let end = new Date().getTime()
+            let end = new Date().getTime();
             if (end - start < 300) {
               setTimeout(() => {
                 show_preview();
@@ -708,7 +717,7 @@
               show_preview();
             }
           }
-        }
+        };
       }
       function paste_preview_file() {
         paste_viewer_file_filename.text(paste_metadata.filename + " (" + (paste_metadata.size / 1024 / 1024).toFixed(2).toString() + " MiB)");
@@ -725,26 +734,55 @@
           paste_viewer_file_preview.hide();
           paste_viewer_file_icon.show();
         }
-
       }
       let collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0);
       function paste_preview_text_render(init) {
+        if (!paste_viewer_enable_highlight_js.prop("checked")) {
+          paste_viewer_highlight_language.closest(".mdui-row").hide();
+        }
         if (paste_viewer_enable_markdown_render.prop("checked")) {
           paste_viewer_text_content.css("white-space", "");
           paste_viewer_text_content.html(DOMPurify.sanitize(marked.parse(paste_metadata.content)));
+        } else if (paste_viewer_enable_highlight_js.prop("checked")) {
+          paste_viewer_text_content.css("white-space", "pre");
+          if (!paste_viewer_highlight_language.val()) {
+            let highlighted = hljs.highlightAuto(paste_metadata.content);
+            paste_viewer_highlight_language.val(highlighted.language);
+            paste_viewer_highlight_language_selector.handleUpdate();
+            paste_viewer_text_content.html(hljs.lineNumbersValue(highlighted.value));
+          } else {
+            paste_viewer_text_content.html(hljs.lineNumbersValue(hljs.highlight(paste_viewer_highlight_language.val(), paste_metadata.content).value));
+          }
+          paste_viewer_highlight_language.closest(".mdui-row").show();
         } else {
           paste_viewer_text_content.css("white-space", "pre-wrap");
           paste_viewer_text_content.text(paste_metadata.content);
           collapse_manager.paste_viewer_text.open();
         }
         if (init) {
-          paste_viewer_text_content_wrapper.css("height", "auto")
+          paste_viewer_text_content_wrapper.css("height", "auto");
           collapse_manager.paste_viewer_text.open();
         }
         collapse_paste_viewer_text_content.open();
       }
 
-      paste_viewer_enable_markdown_render.on("change", () => { paste_preview_text_render() });
+      paste_viewer_enable_markdown_render.on("change", () => {
+        if (paste_viewer_enable_markdown_render.prop("checked")) {
+          paste_viewer_enable_highlight_js.prop("checked", false);
+        }
+        paste_preview_text_render();
+      });
+
+      paste_viewer_enable_highlight_js.on("change", () => {
+        if (paste_viewer_enable_highlight_js.prop("checked")) {
+          paste_viewer_enable_markdown_render.prop("checked", false);
+        }
+        paste_preview_text_render();
+      });
+
+      paste_viewer_highlight_language.on("change", () => {
+        paste_preview_text_render();
+      });
 
       function paste_preview_text() {
         $.ajax({
@@ -761,7 +799,7 @@
           .catch(() => {
             paste_viewer_text_content.text("无法加载 Paste");
             collapse_paste_viewer_text_content.open();
-          })
+          });
       }
 
       function paste_preview() {
@@ -775,12 +813,14 @@
       function parse_filename(xhr) {
         try {
           if (TextDecoder) {
-            let filename = xhr.getResponseHeader("X-Origin-Filename").split("").map(a => a.charCodeAt(0));
+            let filename = xhr
+              .getResponseHeader("X-Origin-Filename")
+              .split("")
+              .map(a => a.charCodeAt(0));
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) {
-        }
+        } catch (e) { }
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
@@ -840,6 +880,7 @@
           paste_viewer_file_preview.html("");
           paste_viewer_file_icon.show();
           paste_viewer_text_content.html("");
+          paste_viewer_highlight_language.val("");
           collapse_paste_viewer_text_content.open();
         });
       });
@@ -856,12 +897,20 @@
         let query_params = new URLSearchParams(location.search);
         let password = query_params.get("pwd");
         let markdown_enable = query_params.get("md");
+        let highlight = query_params.get("hl");
         if (password) {
           paste_viewer_password_input.val(password);
           paste_viewer_password_input.get(0).dispatchEvent(new Event("input"));
         }
         if (markdown_enable) {
           paste_viewer_enable_markdown_render.prop("checked", true);
+        }
+        if (query_params.has("hl")) {
+          paste_viewer_enable_highlight_js.prop("checked", true);
+          if (highlight) {
+            paste_viewer_highlight_language.val(highlight);
+            paste_viewer_highlight_language_selector.handleUpdate();
+          }
         }
         paste_mdui_tab.show(1);
         paste_viewer_query_input.val(query_hash);
