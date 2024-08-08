@@ -32,18 +32,37 @@
     document.body.addEventListener("dragover", function (e) {
       e.preventDefault();
     });
-    function Collapse(jq, heightBox, margin) {
+    let container = $("body > div.mdui-container").get(0);
+    function Collapse(jq, heightBox, margin, max_height) {
       this.$ = jq;
-      this.element = (heightBox || jq).get(0);
+      this.transition_element = jq.get(0);
+      this.height_element = (heightBox || jq).get(0);
       this.expand = this.$.hasClass("card-collapse-open");
-      this.autoLock = false;
+      this.set_auto = false;
       this.margin = margin === undefined ? 16 : margin;
       this.callback = null;
+      this.max_height = max_height === undefined ? document.documentElement.clientHeight - container.offsetTop : max_height;
+      this.transition_counter = 0;
+      this.$.on("transitionstart", e => {
+        if (e.target != this.transition_element) {
+          return;
+        }
+        this.transition_counter++;
+
+      })
+      this.$.on("transitioncancel", e => {
+        if (e.target != this.transition_element) {
+          return;
+        }
+        this.transition_counter--;
+      });
       this.$.on("transitionend", e => {
-        if (!heightBox && !this.autoLock && this.expand) {
+        if (e.target != this.transition_element) {
+          return;
+        }
+        this.transition_counter--;
+        if (!heightBox && this.set_auto && this.transition_counter == 0) {
           this.$.css("height", "auto");
-        } else {
-          this.autoLock = false;
         }
         if (this.callback) {
           this.callback();
@@ -54,12 +73,12 @@
 
     Collapse.prototype.fixed = function () {
       if (this.expand) {
-        this.$.css("height", this.element.scrollHeight + "px");
+        this.$.css("height", this.height_element.scrollHeight + "px");
       }
     };
 
     Collapse.prototype.close = function (fixed) {
-      this.autoLock = true;
+      this.set_auto = false;
       if (!fixed) {
         this.fixed();
         requestAnimationFrame(() => {
@@ -77,9 +96,9 @@
     };
 
     Collapse.prototype.open = function () {
-      this.autoLock = true;
+      this.set_auto = true;
       this.expand = true;
-      this.$.css("height", this.element.scrollHeight + "px");
+      this.$.css("height", Math.min(this.height_element.scrollHeight, this.max_height || Infinity) + "px");
       if (this.margin !== undefined) {
         this.$.css("margin", this.margin + "px 0");
       }
@@ -757,7 +776,7 @@
           paste_viewer_file_icon.show();
         }
       }
-      let collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0);
+      let collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0, 0);
       function paste_preview_text_render(init) {
         if (!paste_viewer_enable_highlight_js.prop("checked")) {
           paste_viewer_highlight_language.closest(".mdui-row").hide();
