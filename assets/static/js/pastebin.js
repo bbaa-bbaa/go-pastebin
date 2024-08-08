@@ -855,9 +855,13 @@
       if (query_hash) {
         let query_params = new URLSearchParams(location.search);
         let password = query_params.get("pwd");
+        let markdown_enable = query_params.get("md");
         if (password) {
           paste_viewer_password_input.val(password);
           paste_viewer_password_input.get(0).dispatchEvent(new Event("input"));
+        }
+        if (markdown_enable) {
+          paste_viewer_enable_markdown_render.prop("checked", true);
         }
         paste_mdui_tab.show(1);
         paste_viewer_query_input.val(query_hash);
