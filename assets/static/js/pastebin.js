@@ -42,6 +42,8 @@
       this.$.on("transitionend", e => {
         if (!heightBox && !this.autoLock && this.expand) {
           this.$.css("height", "auto");
+        } else {
+          this.autoLock = false;
         }
         if (this.callback) {
           this.callback();
@@ -68,7 +70,6 @@
         });
       }
       this.expand = false;
-      this.autoLock = false;
       this.$.css("height", "0");
       if (this.margin !== undefined) {
         this.$.css("margin", "0");
@@ -76,6 +77,7 @@
     };
 
     Collapse.prototype.open = function () {
+      this.autoLock = true;
       this.expand = true;
       this.$.css("height", this.element.scrollHeight + "px");
       if (this.margin !== undefined) {
