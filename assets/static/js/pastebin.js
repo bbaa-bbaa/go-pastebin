@@ -896,19 +896,20 @@
       if (query_hash) {
         let query_params = new URLSearchParams(location.search);
         let password = query_params.get("pwd");
-        let markdown_enable = query_params.get("md");
-        let highlight = query_params.get("hl");
+        let markdown_enable = query_params.has("md");
+        let highlight_enable = query_params.has("hl");
+        let highlight_language = query_params.get("hl");
         if (password) {
           paste_viewer_password_input.val(password);
           paste_viewer_password_input.get(0).dispatchEvent(new Event("input"));
         }
-        if (markdown_enable) {
+        if (markdown_enable && !highlight_enable) {
           paste_viewer_enable_markdown_render.prop("checked", true);
         }
-        if (query_params.has("hl")) {
+        if (highlight_enable) {
           paste_viewer_enable_highlight_js.prop("checked", true);
-          if (highlight) {
-            paste_viewer_highlight_language.val(highlight);
+          if (highlight_language) {
+            paste_viewer_highlight_language.val(highlight_language);
             paste_viewer_highlight_language_selector.handleUpdate();
           }
         }
