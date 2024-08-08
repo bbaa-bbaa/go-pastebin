@@ -99,6 +99,11 @@
         line-height: 1;
       }
 
+      .paste-viewer-progress {
+        display: none;
+        border-radius: 0;
+      }
+
       .hljs-ln-numbers {
         -webkit-touch-callout: none;
         -webkit-user-select: none;
@@ -200,7 +205,7 @@
                   <div id="new-paste-file-progress">
                     <div>
                       <p id="new-paste-file-progress-text" style="background-color: #f0f0f0">0.00MiB / 0.00MiB - 0.00%</p>
-                      <div class="mdui-progress">
+                      <div class="mdui-progress" style="border-radius: 0;">
                         <div id="new-paste-file-progress-bar" class="mdui-progress-determinate" style="width: 0%"></div>
                       </div>
                     </div>
@@ -289,7 +294,11 @@
         </div>
       </div>
       <div id="paste-viewer">
+
         <div id="paste-viewer-query" class="mdui-card card-collapse card-collapse-open">
+          <div class="mdui-progress paste-viewer-progress">
+            <div class="mdui-progress-indeterminate"></div>
+          </div>
           <div class="mdui-card-primary">
             <div class="mdui-card-primary-title">Paste-Viewer</div>
           </div>
@@ -314,6 +323,9 @@
         </div>
 
         <div id="paste-viewer-password" class="mdui-card card-collapse">
+          <div class="mdui-progress paste-viewer-progress">
+            <div class="mdui-progress-indeterminate"></div>
+          </div>
           <div class="mdui-card-primary">
             <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
             <div class="mdui-card-primary-subtitle">此 Paste 要求输入访问口令</div>

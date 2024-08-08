@@ -365,7 +365,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () { });
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () {});
           new_paste_result_link.closest("div").show();
           new_paste_result_qr_code.show();
         } else {
@@ -660,6 +660,7 @@
       const paste_viewer_action = $(".paste-viewer-action");
       const paste_viewer_query_btn = $("#paste-viewer-query-btn");
       const paste_viewer_query_input = $("#paste-viewer-query-input");
+      const paste_viewer_progress = $(".paste-viewer-progress");
 
       const paste_viewer_title = $(".paste-viewer-title");
       const paste_viewer_password_input = $("#paste-viewer-password-input");
@@ -698,7 +699,7 @@
       function paste_preview_file_show() {
         function show_preview() {
           collapse_manager.paste_viewer_file.open();
-          paste_viewer_action.removeAttr("disabled");
+          action_unlock();
         }
         let timeout = setTimeout(() => {
           timeout = null;
@@ -805,7 +806,7 @@
       function paste_preview() {
         if (paste_metadata.type.startsWith("text/") && paste_metadata.size <= 1024 * 1024) {
           paste_preview_text();
-          paste_viewer_action.removeAttr("disabled");
+          action_unlock();
         } else {
           paste_preview_file();
         }
@@ -820,12 +821,20 @@
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) { }
+        } catch (e) {}
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
-      function query_paste_metadata(id, password) {
+      function action_lock() {
         paste_viewer_action.attr("disabled", "disabled");
+        paste_viewer_progress.show();
+      }
+      function action_unlock() {
+        paste_viewer_action.removeAttr("disabled");
+        paste_viewer_progress.hide();
+      }
+      function query_paste_metadata(id, password) {
+        action_lock();
         paste_viewer_title.text("Paste: " + id);
         query_id = id;
         $.ajax({
@@ -846,7 +855,7 @@
               paste_preview();
             } else if (xhr.status == 404) {
               collapse_manager.paste_viewer_not_found.open();
-              paste_viewer_action.removeAttr("disabled");
+              action_unlock();
             } else if (xhr.status == 401) {
               if (!password) {
                 collapse_manager.paste_viewer_password.open();
@@ -857,12 +866,12 @@
                 }, 1000);
                 mdui.snackbar("密码错误");
               }
-              paste_viewer_action.removeAttr("disabled");
+              action_unlock();
             } else {
-              paste_viewer_action.removeAttr("disabled");
+              action_unlock();
             }
           }
-        }).catch(() => { });
+        }).catch(() => {});
       }
 
       paste_viewer_query_btn.on("click", function () {
