@@ -15,7 +15,6 @@
 package pastebin
 
 import (
-	"cgit.bbaa.fun/bbaa/go-pastebin/controllers"
 	database "cgit.bbaa.fun/bbaa/go-pastebin/database"
 	"cgit.bbaa.fun/bbaa/go-pastebin/logger"
 )
@@ -37,7 +36,7 @@ func Serve() (err error) {
 	if err != nil {
 		return err
 	}
-	controllers.LoadConfig()
+	database.LoadConfig()
 	httpServe()
 	return
 }

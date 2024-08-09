@@ -37,6 +37,7 @@ const access_token_expire = 24 * time.Hour
 
 var DefaultAttachmentExtensions = []string{"7z", "bz2", "gz", "rar", "tar", "xz", "zip", "iso", "img", "docx", "doc", "ppt", "pptx", "xls", "xlsx", "exe", "msixbundle", "apk"}
 var HTML_MIME = []string{"text/html", "application/xhtml+xml"}
+var Config *database.Pastebin_Config = database.Config
 
 func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extra, expire_after time.Time, max_access_count int64, delete_if_expire bool, password string, short_url string, err error) {
 	short_url = c.QueryParam("short_url")
@@ -126,6 +127,14 @@ func NewPaste(c echo.Context) error {
 
 	if user, ok := c.Get("user").(*database.User); ok {
 		paste.UID = user.Uid
+	}
+
+	if !Config.AllowAnonymous && paste.UID == database.UserAnonymous {
+		if response_is_json {
+			c.JSON(403, map[string]any{"code": -1, "error": "anonymous user not allowed, please login"})
+		} else {
+			c.String(403, "anonymous user not allowed, ensure you pass the correct cookie")
+		}
 	}
 
 	paste.SetPassword(password)
@@ -303,6 +312,7 @@ func UpdatePaste(c echo.Context) error {
 	if query.Has("short_url") {
 		paste.Short_url = short_url
 	}
+
 	if user, ok := c.Get("user").(*database.User); ok {
 		paste.UID = user.Uid
 	}
@@ -517,7 +527,7 @@ func GetPaste(c echo.Context) error {
 
 	if paste.Extra.MimeType != "" {
 		html_flag := false
-		if !Config.Allow_HTML {
+		if !Config.AllowHTML {
 			for _, html_mime := range HTML_MIME {
 				if strings.HasPrefix(paste.Extra.MimeType, html_mime) {
 					html_flag = true

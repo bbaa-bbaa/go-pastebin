@@ -32,7 +32,12 @@
     document.body.addEventListener("dragover", function (e) {
       e.preventDefault();
     });
+    
     let container = $("body > div.mdui-container").get(0);
+    let config = {
+      allow_anonymous: document.querySelector("meta[name='allow-anonymous']").content === "true",
+    }
+
     function Collapse(jq, heightBox, margin, max_height) {
       this.$ = jq;
       this.transition_element = jq.get(0);

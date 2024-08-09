@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/controllers"
+	database "cgit.bbaa.fun/bbaa/go-pastebin/database"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/net/http2"
@@ -77,7 +78,7 @@ func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.
 }
 
 func setupIndex() {
-	if controllers.Config.Mode == "debug" {
+	if database.Config.Mode == "debug" {
 		e.Renderer = &DebugRender{}
 	} else {
 		e.Renderer = &TemplateRender{
@@ -86,7 +87,8 @@ func setupIndex() {
 	}
 	e.GET("/", func(c echo.Context) error {
 		return c.Render(200, "index.html", map[string]any{
-			"SiteName": controllers.Config.SiteName,
+			"SiteName":       database.Config.SiteName,
+			"AllowAnonymous": database.Config.AllowAnonymous,
 		})
 	})
 }
@@ -117,7 +119,7 @@ func (c *WarpPaste) Param(name string) string {
 
 func Static(c echo.Context) error {
 	var assets fs.FS
-	if controllers.Config.Mode == "debug" {
+	if database.Config.Mode == "debug" {
 		assets = echo.MustSubFS(e.Filesystem, "assets")
 	} else {
 		assets = echo.MustSubFS(embed_assets, "assets")

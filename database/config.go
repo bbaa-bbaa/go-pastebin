@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controllers
+package database
 
 import (
 	"os"
 
-	"cgit.bbaa.fun/bbaa/go-pastebin/database"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,23 +24,25 @@ type Pastebin_Config struct {
 	SiteName          string `yaml:"site_name"`
 	SupportNoFilename bool   `yaml:"support_no_filename"`
 	Mode              string `yaml:"mode"`
-	Allow_HTML        bool   `yaml:"allow_html"`
+	AllowHTML         bool   `yaml:"allow_html"`
+	AllowAnonymous    bool   `yaml:"allow_anonymous"`
 }
 
 var Config *Pastebin_Config = &Pastebin_Config{
 	SiteName:          "Pastebin",
 	SupportNoFilename: true,
 	Mode:              "release",
-	Allow_HTML:        false,
+	AllowHTML:         false,
+	AllowAnonymous:    true,
 }
 
 func SaveConfig() {
 	config, _ := yaml.Marshal(Config)
-	os.WriteFile(database.GetConfigPath(), config, 0644)
+	os.WriteFile(GetConfigPath(), config, 0644)
 }
 
 func LoadConfig() {
-	config_file, err := os.ReadFile(database.GetConfigPath())
+	config_file, err := os.ReadFile(GetConfigPath())
 	if err != nil {
 		SaveConfig()
 		return

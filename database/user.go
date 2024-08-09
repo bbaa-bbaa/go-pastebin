@@ -27,6 +27,8 @@ import (
 	"github.com/matthewhartstonge/argon2"
 )
 
+const UserAnonymous = 1
+
 func AddUser(username string, email string, role string, password string) (err error) {
 	argon := argon2.DefaultConfig()
 	encoded := []byte{}
