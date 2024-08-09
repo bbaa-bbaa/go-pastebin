@@ -26,6 +26,7 @@ type Pastebin_Config struct {
 	Mode              string `yaml:"mode"`
 	AllowHTML         bool   `yaml:"allow_html"`
 	AllowAnonymous    bool   `yaml:"allow_anonymous"`
+	UserCookieMaxAge  int    `yaml:"user_cookie_max_age"`
 }
 
 var Config *Pastebin_Config = &Pastebin_Config{
@@ -34,6 +35,7 @@ var Config *Pastebin_Config = &Pastebin_Config{
 	Mode:              "release",
 	AllowHTML:         false,
 	AllowAnonymous:    true,
+	UserCookieMaxAge:  86400 * 30,
 }
 
 func SaveConfig() {

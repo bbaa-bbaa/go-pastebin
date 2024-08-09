@@ -38,7 +38,7 @@ func UserLogin(c echo.Context) error {
 		c.JSON(403, map[string]any{"code": -1, "error": "用户名或密码错误"})
 		return nil
 	}
-	c.SetCookie(&http.Cookie{Name: "user_token", Value: u.Token(), HttpOnly: true})
+	c.SetCookie(&http.Cookie{Name: "user_token", Value: u.Token(), HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: Config.UserCookieMaxAge})
 	c.JSON(200, map[string]any{"code": 0, "user": u.Username, "token": u.Token()})
 	return nil
 }
@@ -50,6 +50,20 @@ func User(c echo.Context) error {
 		return nil
 	}
 	c.JSON(200, map[string]any{"code": 0, "info": user})
+	return nil
+}
+
+func UserLogout(c echo.Context) error {
+	c.SetCookie(&http.Cookie{
+		Name:   "user_token",
+		MaxAge: -1,
+	})
+	_, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(200, map[string]any{"code": -1, "error": "未登录"})
+		return nil
+	}
+	c.JSON(200, map[string]any{"code": 0})
 	return nil
 }
 

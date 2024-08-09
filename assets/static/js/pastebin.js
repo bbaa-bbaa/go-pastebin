@@ -18,61 +18,15 @@
     "application/x-markdown",
     "application/x-yaml"
   ];
-  const global_is_allow_anonymous = document.querySelector("meta[name='x-allow-anonymous']").content === "true"
-  const global_login_button = $("#global-login-button");
-  const global_login_username = $("#global-login-username")[0];
-  const global_login_password = $("#global-login-password")[0];
-  const paste_mdui_tab = new mdui.Tab("#paste-mdui-tab");
-  const paste_viewer_tab = $("#paste-viewer-tab")
-  const new_paste_tab = $("#new-paste-tab")
-  function isLogin() {
-    return $.ajax({
-      method: 'GET',
-      url: './api/user',
-      contentType: "application/json",
-    }).then(res => JSON.parse(res).code === 0)
-      .catch(() => false);
-  }
-  
-  isLogin().then(is_login => {
-    if (!is_login && !global_is_allow_anonymous) {
-      mdui.snackbar({
-        message: '本站已禁止匿名Paste，请登录后使用所有功能'
-      });
-      paste_mdui_tab.show(1);
-      new_paste_tab.attr("disabled", "disabled");
-      paste_viewer_tab.attr("disabled", "disabled");
-    }
-  });
-  
-  global_login_button.on("click", function () {
-    $.ajax({
-      method: 'POST',
-      url: './api/login',
-      data: JSON.stringify({
-          "account": global_login_username.value,
-          "password": global_login_password.value,
-      }),
-      contentType: "application/json",
-      success: function () {
-        mdui.snackbar({
-          message: '登录成功'
-        });
-        new_paste_tab.removeAttr("disabled");
-        paste_viewer_tab.removeAttr("disabled");
-      },
-      error: function (xhr) {
-          mdui.alert(JSON.parse(xhr.responseText).error)
-      }
-    });
-  });
-
   function easeInSine(t) {
     return 1 - Math.cos((t * Math.PI) / 2);
   }
   function isDesktop() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) === false;
   }
+
+  let user_info = {};
+
   $(function () {
     document.body.addEventListener("drop", function (e) {
       e.preventDefault();
@@ -81,11 +35,81 @@
     document.body.addEventListener("dragover", function (e) {
       e.preventDefault();
     });
-    
+
     let container = $("body > div.mdui-container").get(0);
     let config = {
-      allow_anonymous: document.querySelector("meta[name='x-allow-anonymous']").content === "true",
+      allow_anonymous: document.querySelector("meta[name='x-allow-anonymous']").content === "true"
+    };
+    const login_button = $("#login-button");
+    const login_username = $("#login-username")[0];
+    const login_password = $("#login-password")[0];
+    const login_diglog_action = $(".login-dialog-action");
+    const paste_mdui_tab = new mdui.Tab("#paste-mdui-tab");
+    const new_paste_tab = $("#new-paste-tab");
+
+    function update_user_info() {
+      $.ajax({
+        method: "GET",
+        url: "./api/user",
+        contentType: "application/json"
+      })
+        .then(res => {
+          let response = JSON.parse(res);
+          if (response.code != 0) {
+            return false;
+          }
+          user_info = response.info;
+          return true;
+        })
+        .catch(() => false)
+        .then(is_login => {
+          if (!is_login && !config.allow_anonymous) {
+            paste_mdui_tab.show(1);
+            new_paste_tab.attr("disabled", "disabled");
+          } else {
+            new_paste_tab.removeAttr("disabled");
+          }
+        });
     }
+
+    login_button.on("click", function () {
+      login_button.attr("disabled", "disabled");
+      $.ajax({
+        method: "POST",
+        url: "./api/login",
+        data: JSON.stringify({
+          account: login_username.value,
+          password: login_password.value
+        }),
+        contentType: "application/json",
+        complete: function (xhr) {
+          let response = JSON.parse(xhr.responseText);
+          if (xhr.status == 200 && response.code === 0) {
+            update_user_info().then(() => {
+              mdui.snackbar("登录成功");
+              login_button.removeClass(".mdui-color-theme-accent").addClass("mdui-color-green-accent");
+              setTimeout(() => {
+                login_button.removeClass("mdui-color-green-accent").addClass("mdui-color-theme-accent");
+              }, 600);
+              login_button.removeAttr("disabled");
+            });
+          } else {
+            mdui.snackbar("登录失败: " + response.error);
+            login_button.removeAttr("disabled");
+            login_button.removeClass(".mdui-color-theme-accent").addClass("mdui-color-red-accent");
+            setTimeout(() => {
+              login_button.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
+            }, 600);
+          }
+        }
+      });
+    });
+    new_paste_tab.on("click", function (e) {
+      if (new_paste_tab.attr("disabled")) {
+        mdui.snackbar("此 Pastebin 仅允许登录用户创建 Paste");
+      }
+    });
+    update_user_info();
 
     function Collapse(jq, heightBox, margin, max_height) {
       this.$ = jq;
@@ -102,8 +126,7 @@
           return;
         }
         this.transition_counter++;
-
-      })
+      });
       this.$.on("transitioncancel", e => {
         if (e.target != this.transition_element) {
           return;
@@ -196,7 +219,6 @@
       return target.close();
     };
 
-    const paste_mdui_tab = new mdui.Tab("#paste-mdui-tab");
     (function new_paste() {
       const text_input = $("#new-paste-text-input");
       const file_input = $("#new-paste-file-input");
@@ -563,12 +585,12 @@
               paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
               setTimeout(() => {
                 paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-              }, 1000);
+              }, 600);
             } else {
               paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-accent");
               setTimeout(() => {
                 paste_submit.removeClass("mdui-color-green-accent").addClass("mdui-color-theme-accent");
-              }, 1000);
+              }, 600);
             }
             return show_result("创建结果", response, false);
           })
@@ -583,7 +605,7 @@
             paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
             setTimeout(() => {
               paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-            }, 1000);
+            }, 600);
             mdui.snackbar("创建失败: " + error);
           })
           .finally(() => {
@@ -631,12 +653,12 @@
               paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
               setTimeout(() => {
                 paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
-              }, 1000);
+              }, 600);
             } else {
               paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-accent");
               setTimeout(() => {
                 paste_update.removeClass("mdui-color-green-accent").addClass("mdui-color-blue-accent");
-              }, 1000);
+              }, 600);
             }
             return show_result("更新结果", response, false);
           })
@@ -651,7 +673,7 @@
             paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
             setTimeout(() => {
               paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
-            }, 1000);
+            }, 600);
             mdui.snackbar("更新失败: " + error);
           })
           .finally(() => {
@@ -683,12 +705,12 @@
               paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
               setTimeout(() => {
                 paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
-              }, 1000);
+              }, 600);
             } else {
               paste_delete.removeClass("mdui-color-red").addClass("mdui-color-green-accent");
               setTimeout(() => {
                 paste_delete.removeClass("mdui-color-green-accent").addClass("mdui-color-red");
-              }, 1000);
+              }, 600);
             }
             return show_result("删除结果", response, true);
           })
@@ -703,7 +725,7 @@
             paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
             setTimeout(() => {
               paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
-            }, 1000);
+            }, 600);
             mdui.snackbar("删除失败: " + error);
           })
           .finally(() => {
@@ -798,7 +820,7 @@
         let timeout = setTimeout(() => {
           timeout = null;
           show_preview();
-        }, 1000);
+        }, 600);
         let start = new Date().getTime();
         return function show() {
           if (timeout) {
@@ -957,7 +979,7 @@
                 paste_viewer_confirm_password.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
                 setTimeout(() => {
                   paste_viewer_confirm_password.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-                }, 1000);
+                }, 600);
                 mdui.snackbar("密码错误");
               }
               action_unlock();
