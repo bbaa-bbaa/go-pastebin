@@ -108,7 +108,7 @@ func GetUser(token string) (*User, error) {
 		return nil, err
 	}
 	var uid int64
-	err = binary.Read(bytes.NewReader(buf[:8]), binary.BigEndian, uid)
+	err = binary.Read(bytes.NewReader(buf[:8]), binary.BigEndian, &uid)
 	if err != nil {
 		return nil, err
 	}

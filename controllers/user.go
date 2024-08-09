@@ -57,7 +57,7 @@ func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var token string
 		token_cookie, err := c.Cookie("user_token")
-		if token_cookie != nil && err != nil {
+		if token_cookie != nil && err == nil {
 			token = token_cookie.Value
 		}
 		if token == "" {
