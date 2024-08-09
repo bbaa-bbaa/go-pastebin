@@ -18,6 +18,28 @@
     "application/x-markdown",
     "application/x-yaml"
   ];
+
+  const global_login_button = $("#global-login-button");
+  const global_login_username = $("#global-login-username")[0];
+  const global_login_password = $("#global-login-password")[0];
+  global_login_button.on("click", function () {
+    $.ajax({
+      method: 'POST',
+      url: './api/login',
+      data: JSON.stringify({
+          "account": global_login_username.value,
+          "password": global_login_password.value,
+      }),
+      contentType: "application/json",
+      success: function () {
+          mdui.alert("登录成功！")
+      },
+      error: function (xhr, textStatus) {
+          mdui.alert(JSON.parse(xhr.responseText).error)
+      }
+    });
+  });
+
   function easeInSine(t) {
     return 1 - Math.cos((t * Math.PI) / 2);
   }
@@ -35,7 +57,7 @@
     
     let container = $("body > div.mdui-container").get(0);
     let config = {
-      allow_anonymous: document.querySelector("meta[name='allow-anonymous']").content === "true",
+      allow_anonymous: document.querySelector("meta[name='x-allow-anonymous']").content === "true",
     }
 
     function Collapse(jq, heightBox, margin, max_height) {
