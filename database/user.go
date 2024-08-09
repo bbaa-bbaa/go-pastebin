@@ -16,6 +16,7 @@ package database
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -92,13 +93,14 @@ func Login(account string, password string) (*User, error) {
 }
 
 func (u *User) Token() string {
+	key := []byte(u.Password)
+	hash := hmac.New(sha256.New, key)
 	buf := [48]byte{}
 	binary.Write(bytes.NewBuffer(buf[:0]), binary.BigEndian, u.Uid)
 	rand.Read(buf[8:16])
-	hash := sha256.New()
 	hash.Write(buf[:16])
-	hash.Write([]byte(u.Password))
-	copy(buf[16:], hash.Sum([]byte{}))
+	digest := hash.Sum(nil)
+	copy(buf[16:], digest)
 	return base64.URLEncoding.EncodeToString(buf[:])
 }
 
@@ -118,10 +120,10 @@ func GetUser(token string) (*User, error) {
 	if err != nil {
 		return nil, ErrNotFoundOrPasswordWrong
 	}
-	hash := sha256.New()
+	key := []byte(user.Password)
+	hash := hmac.New(sha256.New, key)
 	hash.Write(buf[:16])
-	hash.Write([]byte(user.Password))
-	sum := hash.Sum([]byte{})
+	sum := hash.Sum(nil)
 	if !slices.Equal(buf[16:], sum) {
 		return nil, ErrNotFoundOrPasswordWrong
 	}
