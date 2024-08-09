@@ -18,10 +18,33 @@
     "application/x-markdown",
     "application/x-yaml"
   ];
-
+  const global_is_allow_anonymous = document.querySelector("meta[name='x-allow-anonymous']").content === "true"
   const global_login_button = $("#global-login-button");
   const global_login_username = $("#global-login-username")[0];
   const global_login_password = $("#global-login-password")[0];
+  const paste_mdui_tab = new mdui.Tab("#paste-mdui-tab");
+  const paste_viewer_tab = $("#paste-viewer-tab")
+  const new_paste_tab = $("#new-paste-tab")
+  function isLogin() {
+    return $.ajax({
+      method: 'GET',
+      url: './api/user',
+      contentType: "application/json",
+    }).then(res => JSON.parse(res).code === 0)
+      .catch(() => false);
+  }
+  
+  isLogin().then(is_login => {
+    if (!is_login && !global_is_allow_anonymous) {
+      mdui.snackbar({
+        message: '本站已禁止匿名Paste，请登录后使用所有功能'
+      });
+      paste_mdui_tab.show(1);
+      new_paste_tab.attr("disabled", "disabled");
+      paste_viewer_tab.attr("disabled", "disabled");
+    }
+  });
+  
   global_login_button.on("click", function () {
     $.ajax({
       method: 'POST',
@@ -32,9 +55,13 @@
       }),
       contentType: "application/json",
       success: function () {
-          mdui.alert("登录成功！")
+        mdui.snackbar({
+          message: '登录成功'
+        });
+        new_paste_tab.removeAttr("disabled");
+        paste_viewer_tab.removeAttr("disabled");
       },
-      error: function (xhr, textStatus) {
+      error: function (xhr) {
           mdui.alert(JSON.parse(xhr.responseText).error)
       }
     });

@@ -135,6 +135,7 @@ func NewPaste(c echo.Context) error {
 		} else {
 			c.String(403, "anonymous user not allowed, ensure you pass the correct cookie")
 		}
+		return nil
 	}
 
 	paste.SetPassword(password)
