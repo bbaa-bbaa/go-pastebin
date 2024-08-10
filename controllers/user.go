@@ -58,13 +58,7 @@ func UserLogout(c echo.Context) error {
 		Name:   "user_token",
 		MaxAge: -1,
 	})
-	_, ok := c.Get("user").(*database.User)
-	if !ok {
-		c.JSON(200, map[string]any{"code": -1, "error": "未登录"})
-		return nil
-	}
-	c.JSON(200, map[string]any{"code": 0})
-	return nil
+	return c.Redirect(http.StatusSeeOther, "/")
 }
 
 func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {

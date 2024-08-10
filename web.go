@@ -45,6 +45,7 @@ func httpServe() {
 	setupIndex()
 	e.POST("/api/login", controllers.UserLogin)
 	e.GET("/api/user", controllers.User)
+	e.GET("/api/logout", controllers.UserLogout)
 	e.GET("/api/check_url/:id", controllers.CheckURL)
 	e.POST("/", controllers.NewPaste)
 	e.PUT("/:uuid", controllers.UpdatePaste)

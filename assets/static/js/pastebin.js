@@ -46,9 +46,13 @@
     const login_diglog_action = $(".login-dialog-action");
     const paste_mdui_tab = new mdui.Tab("#paste-mdui-tab");
     const new_paste_tab = $("#new-paste-tab");
-
+    const user_profile_tab = $("#user-profile-tab");
+    const user_profile_uid_text = $("#user-profile-uid-text");
+    const user_profile_username_text = $("#user-profile-username-text");
+    const user_profile_role_text = $("#user-profile-role-text");
+    const user_profile_email_text = $("#user-profile-email-text");
     function update_user_info() {
-      $.ajax({
+      return $.ajax({
         method: "GET",
         url: "./api/user",
         contentType: "application/json"
@@ -59,6 +63,7 @@
             return false;
           }
           user_info = response.info;
+          console.log(user_info)
           return true;
         })
         .catch(() => false)
@@ -66,11 +71,27 @@
           if (!is_login && !config.allow_anonymous) {
             paste_mdui_tab.show(1);
             new_paste_tab.attr("disabled", "disabled");
+            user_profile_tab.attr("disabled", "disabled");
           } else {
             new_paste_tab.removeAttr("disabled");
+            user_profile_tab.removeAttr("disabled");
           }
+          return is_login
         });
     }
+
+    user_profile_tab.on("click", function () {
+      update_user_info().then(is_login => {
+        if(is_login){
+          user_profile_uid_text.text(user_info.uid);
+          user_profile_username_text.text(user_info.username);
+          user_profile_role_text.text(user_info.role);
+          user_profile_email_text.text(user_info.email);
+        } else {
+          mdui.snackbar("登录态异常或网络异常，请重新登录");
+        }
+      })
+    });
 
     login_button.on("click", function () {
       login_button.attr("disabled", "disabled");
@@ -1042,6 +1063,23 @@
         paste_viewer_query_input.get(0).dispatchEvent(new Event("input"));
         query_paste_metadata(query_hash);
       }
+    })();
+    (function user_profile(){
+      const user_profile_update_btn = $("#user-profile-update-btn");
+
+      user_profile_update_btn.on("click", function () {
+        update_user_info().then(is_login => {
+          if(is_login){
+            user_profile_uid_text.text(user_info.uid);
+            user_profile_username_text.text(user_info.username);
+            user_profile_role_text.text(user_info.role);
+            user_profile_email_text.text(user_info.email);
+            mdui.snackbar("更新成功");
+          } else {
+            mdui.snackbar("未登录或网络异常，请重新登录");
+          }
+        })
+      });
     })();
   });
 })();
