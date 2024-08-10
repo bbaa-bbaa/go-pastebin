@@ -868,13 +868,12 @@
             paste_viewer_highlight_language_selector.handleUpdate();
             paste_viewer_text_content.html(hljs.lineNumbersValue(highlighted.value));
           } else {
-            paste_viewer_text_content.html(hljs.lineNumbersValue(hljs.highlight(paste_viewer_highlight_language.val(), paste_metadata.content).value));
+            paste_viewer_text_content.html(hljs.lineNumbersValue(hljs.highlight(paste_metadata.content, { language: paste_viewer_highlight_language.val() }).value));
           }
           paste_viewer_highlight_language.closest(".mdui-row").show();
         } else {
           paste_viewer_text_content.css("white-space", "pre-wrap");
           paste_viewer_text_content.text(paste_metadata.content);
-          collapse_manager.paste_viewer_text.open();
         }
         if (init) {
           paste_viewer_text_content_wrapper.css("height", "auto");
