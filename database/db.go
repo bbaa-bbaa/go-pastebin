@@ -46,7 +46,8 @@ func randStr(n int) string {
 func Init() (err error) {
 	ensureDir("pastes")
 	log.Info("数据库路径: ", color.BlueString(base_path))
-	dbx, err := sqlx.Open("sqlite3", GetDBPath()+"?_fk=true")
+	dbx, err := sqlx.Open("sqlite3", GetDBPath()+"?_fk=true&_journal_mode=WAL&_busy_timeout=5000")
+	dbx.SetMaxOpenConns(1)
 	if err != nil {
 		return err
 	}

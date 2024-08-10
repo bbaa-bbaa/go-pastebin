@@ -93,14 +93,12 @@ func Login(account string, password string) (*User, error) {
 }
 
 func (u *User) Token() string {
-	key := []byte(u.Password)
-	hash := hmac.New(sha256.New, key)
+	hash := hmac.New(sha256.New, []byte(u.Password))
 	buf := [48]byte{}
 	binary.Write(bytes.NewBuffer(buf[:0]), binary.BigEndian, u.Uid)
 	rand.Read(buf[8:16])
 	hash.Write(buf[:16])
-	digest := hash.Sum(nil)
-	copy(buf[16:], digest)
+	copy(buf[16:], hash.Sum(nil))
 	return base64.URLEncoding.EncodeToString(buf[:])
 }
 
@@ -120,11 +118,9 @@ func GetUser(token string) (*User, error) {
 	if err != nil {
 		return nil, ErrNotFoundOrPasswordWrong
 	}
-	key := []byte(user.Password)
-	hash := hmac.New(sha256.New, key)
+	hash := hmac.New(sha256.New, []byte(user.Password))
 	hash.Write(buf[:16])
-	sum := hash.Sum(nil)
-	if !slices.Equal(buf[16:], sum) {
+	if !slices.Equal(buf[16:], hash.Sum(nil)) {
 		return nil, ErrNotFoundOrPasswordWrong
 	}
 	return user, nil
