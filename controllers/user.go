@@ -35,7 +35,7 @@ func UserLogin(c echo.Context) error {
 	}
 	u, err := database.Login(user.Account, user.Password)
 	if err != nil {
-		c.JSON(403, map[string]any{"code": -1, "error": "用户名或密码错误"})
+		c.JSON(200, map[string]any{"code": -1, "error": "用户名或密码错误"})
 		return nil
 	}
 	c.SetCookie(&http.Cookie{Name: "user_token", Value: u.Token(), HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: Config.UserCookieMaxAge})
@@ -46,7 +46,7 @@ func UserLogin(c echo.Context) error {
 func User(c echo.Context) error {
 	user, ok := c.Get("user").(*database.User)
 	if !ok {
-		c.JSON(403, map[string]any{"code": -1, "error": "未登录"})
+		c.JSON(200, map[string]any{"code": -1, "error": "未登录"})
 		return nil
 	}
 	c.JSON(200, map[string]any{"code": 0, "info": user})
@@ -58,7 +58,7 @@ func UserLogout(c echo.Context) error {
 		Name:   "user_token",
 		MaxAge: -1,
 	})
-	return c.Redirect(http.StatusSeeOther, "/")
+	return c.Redirect(http.StatusFound, "/")
 }
 
 func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
