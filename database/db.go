@@ -20,6 +20,7 @@ import (
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/logger"
 	"github.com/fatih/color"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -68,5 +69,9 @@ func Init() (err error) {
 		AddUser("anonymous", "anonymous@go-pastebin.app", "user", "")
 		log.Info("管理员账号: ", color.YellowString("admin"), " 密码: ", color.YellowString(adminPassword))
 	}
-	return ResetHoldCount()
+	ResetHoldCount()
+	s, _ := gocron.NewScheduler()
+	s.NewJob(gocron.CronJob("*/10 * * * *", false), gocron.NewTask(pasteCleaner))
+	s.Start()
+	return nil
 }

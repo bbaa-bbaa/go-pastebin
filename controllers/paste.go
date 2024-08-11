@@ -33,11 +33,40 @@ import (
 	"github.com/matthewhartstonge/argon2"
 )
 
-const access_token_expire = 24 * time.Hour
-
 var DefaultAttachmentExtensions = []string{"7z", "bz2", "gz", "rar", "tar", "xz", "zip", "iso", "img", "docx", "doc", "ppt", "pptx", "xls", "xlsx", "exe", "msixbundle", "apk"}
 var HTML_MIME = []string{"text/html", "application/xhtml+xml"}
-var Config *database.Pastebin_Config = database.Config
+
+type PasteInfo struct {
+	UUID           string    `json:"uuid"`
+	UID            int64     `json:"uid"`
+	Hash           string    `json:"hash"`
+	ExpireAfter    time.Time `json:"expire_after"`
+	AccessCount    int64     `json:"access_count"`
+	MaxAccessCount int64     `json:"max_access_count"`
+	DeleteIfExpire bool      `json:"delete_if_expire"`
+	CreatedAt      time.Time `json:"created_at"`
+	Short_url      string    `json:"short_url"`
+	MimeType       string    `json:"mime_type"`
+	FileName       string    `json:"filename"`
+	Size           uint64    `json:"size"`
+}
+
+func pasteInfo(paste *database.Paste) *PasteInfo {
+	return &PasteInfo{
+		UUID:           paste.UUID,
+		UID:            paste.UID,
+		Hash:           paste.Base64Hash(),
+		ExpireAfter:    paste.ExpireAfter,
+		AccessCount:    paste.AccessCount,
+		MaxAccessCount: paste.MaxAccessCount,
+		DeleteIfExpire: paste.DeleteIfExpire,
+		CreatedAt:      paste.CreatedAt,
+		Short_url:      paste.Short_url,
+		MimeType:       paste.Extra.MimeType,
+		FileName:       paste.Extra.FileName,
+		Size:           paste.Extra.Size,
+	}
+}
 
 func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extra, expire_after time.Time, max_access_count int64, delete_if_expire bool, password string, short_url string, err error) {
 	short_url = c.QueryParam("short_url")
@@ -129,7 +158,7 @@ func NewPaste(c echo.Context) error {
 		paste.UID = user.Uid
 	}
 
-	if !Config.AllowAnonymous && paste.UID == database.UserAnonymous {
+	if !Config.AllowAnonymous && (&database.User{Uid: paste.UID}).IsAnonymous() {
 		if response_is_json {
 			c.JSON(403, map[string]any{"code": -1, "error": "anonymous user not allowed, please login"})
 		} else {
@@ -508,7 +537,7 @@ func GetPaste(c echo.Context) error {
 
 	// 访问次数计数
 	if !access_token_valid {
-		available_before := time.Now().Add(access_token_expire)
+		available_before := time.Now().Add(time.Duration(Config.PasteAssessTokenAge) * time.Second)
 		access_token = paste.Token(available_before)
 		c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + id})
 		response.Header().Set("X-Access-Token", access_token)
@@ -571,4 +600,23 @@ func CheckURL(c echo.Context) error {
 	}
 	c.JSON(200, map[string]any{"available": false})
 	return err
+}
+
+func QueryPaste(c echo.Context) error {
+	uuid := c.QueryParam("uuid")
+	if uuid == "" {
+		c.JSON(400, map[string]any{"code": -2, "error": "bad request: uuid"})
+		return nil
+	}
+	paste, err := database.QueryPasteByUUID(uuid)
+	if err != nil {
+		if errors.Is(err, database.ErrNotFound) {
+			c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
+		} else {
+			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
+		}
+		return err
+	}
+	c.JSON(200, map[string]any{"code": 0, "info": pasteInfo(paste)})
+	return nil
 }

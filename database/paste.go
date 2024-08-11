@@ -380,7 +380,7 @@ func (p *Paste) ForceDelete() error {
 }
 
 func (p *Paste) FlagDelete() error {
-	_, err := db.Exec(`UPDATE pastes SET expire_after = datetime("now"), max_access_count = access_count, delete_if_expire = 1 WHERE uuid = ?`, p.UUID)
+	_, err := db.Exec(`UPDATE pastes SET expire_after = datetime("now"), max_access_count = -1, delete_if_expire = 1 WHERE uuid = ?`, p.UUID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -614,4 +614,46 @@ func ResetHoldCount() error {
 		log.Error(err)
 	}
 	return err
+}
+
+func QueryAllPasteByUser(uid int64, after_uuid string, limit int64) (pastes []*Paste, err error) {
+	rows, err := db.Queryx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target WHERE uid = ? AND (uuid > ? OR ? = "") ORDER BY uuid ASC LIMIT ?`, uid, after_uuid, after_uuid, limit)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		paste := &Paste{}
+		err := rows.StructScan(paste)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		pastes = append(pastes, paste)
+	}
+	return pastes, nil
+}
+
+func pasteCleaner() {
+	rows, err := db.Queryx(`DELETE FROM pastes WHERE (expire_after < datetime("now") AND delete_if_expire = 1 OR max_access_count > 0 AND access_count >= max_access_count) AND hold_count = 0 AND hold_before < datetime("now") RETURNING uuid`)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Err()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		var uuid string
+		err = rows.Scan(&uuid)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		log.Info(color.YellowString("清理过期 Paste:"), color.CyanString(uuid))
+	}
 }

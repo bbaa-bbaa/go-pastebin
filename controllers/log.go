@@ -14,7 +14,11 @@
 
 package controllers
 
-import "cgit.bbaa.fun/bbaa/go-pastebin/logger"
+import (
+	"cgit.bbaa.fun/bbaa/go-pastebin/database"
+	"cgit.bbaa.fun/bbaa/go-pastebin/logger"
+)
 
 var log logger.Logger = logger.Logger{Scope: "Controller"}
 var _ = log
+var Config *database.Pastebin_Config = database.Config

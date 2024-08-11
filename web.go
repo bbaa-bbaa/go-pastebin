@@ -16,6 +16,7 @@ package pastebin
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
@@ -43,10 +44,19 @@ func httpServe() {
 	//e.Use(middleware.Recover())
 	e.Use(controllers.UserMiddleware)
 	setupIndex()
+
+	e.GET("/api/paste/:uuid", func(c echo.Context) error {
+		fmt.Println(c.ParamValues())
+		return nil
+	})
+	e.GET("/api/paste/check_shorturl/:id", controllers.CheckURL)
+
 	e.POST("/api/login", controllers.UserLogin)
-	e.GET("/api/user", controllers.User)
 	e.GET("/api/logout", controllers.UserLogout)
-	e.GET("/api/check_url/:id", controllers.CheckURL)
+	e.GET("/api/user", controllers.GetUser)
+	e.POST("/api/user/edit", controllers.EditUserProfile)
+	e.GET("/api/user/pastes", controllers.UserPasteList)
+
 	e.POST("/", controllers.NewPaste)
 	e.PUT("/:uuid", controllers.UpdatePaste)
 	e.DELETE("/:uuid", controllers.DeletePaste)

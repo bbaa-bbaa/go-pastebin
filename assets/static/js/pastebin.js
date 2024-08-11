@@ -368,9 +368,12 @@
       }
 
       const check_short_url_available = _.debounce(function (url) {
+        if (url.length == 0) {
+          return;
+        }
         $.ajax({
           method: "GET",
-          url: "api/check_url/" + url
+          url: "api/paste/check_shorturl/" + url
         }).then(res => {
           response = JSON.parse(res);
           if (!response.available) {
@@ -427,7 +430,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () {});
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () { });
           new_paste_result_link.closest("div").show();
           new_paste_result_qr_code.show();
         } else {
@@ -900,7 +903,7 @@
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) {}
+        } catch (e) { }
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
@@ -950,7 +953,7 @@
               action_unlock();
             }
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       paste_viewer_query_btn.on("click", function () {
@@ -1008,31 +1011,72 @@
       }
     })();
     (function user_profile() {
-      const account_dialog = $("#account-dialog");
+      const account_dialog_btn = $("#account-dialog-btn");
+      const user_profile_view = $(".user-profile-view");
+      const user_profile_edit = $(".user-profile-edit");
+
       const user_profile_uid_text = $("#user-profile-uid-text");
       const user_profile_username_text = $("#user-profile-username-text");
       const user_profile_role_text = $("#user-profile-role-text");
       const user_profile_email_text = $("#user-profile-email-text");
-      const user_profile_dialog = new mdui.Dialog("#user-profile", { history: false });
+      const user_profile_dialog = new mdui.Dialog("#user-profile-dialog", { history: false });
+      const user_profile_edit_return = $("#user-profile-edit-return");
+
+      const user_profile_edit_username = $("#user-profile-edit-username");
+      const user_profile_edit_email = $("#user-profile-edit-email");
+      const user_profile_edit_oldpwd = $("#user-profile-edit-oldpwd");
+      const user_profile_edit_newpwd = $("#user-profile-edit-newpwd");
+      const user_profile_edit_btn = $("#user-profile-edit-btn");
+      const user_profile_edit_confirm = $("#user-profile-edit-confirm");
+      const user_profile_edit_action = $(".user-profile-edit-action");
+
       const login_dialog = new mdui.Dialog("#login-dialog", { history: false });
       const login_button = $("#login-button");
       const login_username = $("#login-username");
       const login_password = $("#login-password");
-      const login_diglog_action = $(".login-dialog-action");
+      const login_dialog_action = $(".login-dialog-action");
 
-      account_dialog.on("click", function () {
-        if (!user_info) {
-          login_dialog.open();
-        } else {
+      function show_user_profile() {
+        if (user_info) {
           user_profile_uid_text.text(user_info.uid);
           user_profile_username_text.text(user_info.username);
           user_profile_role_text.text(user_info.role);
           user_profile_email_text.text(user_info.email);
+        }
+        user_profile_view.show();
+        user_profile_edit.hide();
+        user_profile_dialog.handleUpdate();
+      }
+
+      function show_user_profile_edit() {
+        if (user_info) {
+          user_profile_edit_username.attr("placeholder", user_info.username);
+          user_profile_edit_email.attr("placeholder", user_info.email);
+        }
+        user_profile_view.hide();
+        user_profile_edit.show();
+        user_profile_dialog.handleUpdate();
+      }
+
+      user_profile_edit_btn.on("click", function () {
+        show_user_profile_edit();
+      });
+
+      user_profile_edit_return.on("click", function () {
+        show_user_profile();
+      });
+
+      account_dialog_btn.on("click", function () {
+        if (!user_info) {
+          login_dialog.open();
+        } else {
+          show_user_profile();
           user_profile_dialog.open();
         }
       });
+
       login_button.on("click", function () {
-        login_diglog_action.attr("disabled", "disabled");
+        login_dialog_action.attr("disabled", "disabled");
         $.ajax({
           method: "POST",
           url: "./api/login",
@@ -1051,15 +1095,63 @@
                   login_button.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
                   login_dialog.close();
                 }, 600);
-                login_diglog_action.removeAttr("disabled");
+                login_dialog_action.removeAttr("disabled");
               });
             } else {
               mdui.snackbar("登录失败: " + response.error);
-              login_diglog_action.removeAttr("disabled");
+              login_dialog_action.removeAttr("disabled");
               login_button.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
               setTimeout(() => {
                 login_button.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
               }, 600);
+            }
+          }
+        });
+      });
+
+      user_profile_edit_confirm.on("click", function () {
+        let data = {
+          username: user_profile_edit_username.val(),
+          email: user_profile_edit_email.val(),
+          old_password: user_profile_edit_oldpwd.val(),
+          new_password: user_profile_edit_newpwd.val()
+        };
+        if (data.username.length == 0) {
+          mdui.snackbar("用户名不能为空");
+          return;
+        }
+        if (data.email.length == 0 && /^\w+[-+.\w]*@\w+[-.\w]*\.\w+[-.\w]*$/im.test(data.email)) {
+          mdui.snackbar("邮箱不能为空");
+          return;
+        }
+        if ((data.old_password !== undefined && data.old_password.length != 0) && (data.new_password === undefined || data.new_password.length == 0)) {
+          mdui.snackbar("请输入新密码");
+          return;
+        }
+        user_profile_edit_action.attr("disabled", "disabled");
+        $.ajax({
+          method: "POST",
+          url: "api/user/edit",
+          data: JSON.stringify(data),
+          contentType: "application/json",
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200 && response.code === 0) {
+              update_user_info().then(() => {
+                mdui.snackbar("修改成功");
+                user_profile_edit_confirm.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
+                setTimeout(() => {
+                  user_profile_edit_confirm.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
+                }, 600);
+                user_profile_edit_action.removeAttr("disabled");
+              });
+            } else {
+              mdui.snackbar("修改失败: " + response.error);
+              user_profile_edit_confirm.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
+              setTimeout(() => {
+                user_profile_edit_confirm.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
+              }, 600);
+              user_profile_edit_action.removeAttr("disabled");
             }
           }
         });

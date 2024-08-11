@@ -133,7 +133,7 @@
       <div class="mdui-toolbar mdui-color-theme">
         <a href="javascript:;" class="mdui-typo-title">{{.SiteName}}</a>
         <div class="mdui-toolbar-spacer"></div>
-        <button href="javascript:;" class="mdui-btn mdui-btn-icon" id="account-dialog">
+        <button href="javascript:;" class="mdui-btn mdui-btn-icon" id="account-dialog-btn">
           <i class="mdui-icon material-icons">account_circle</i>
         </button>
       </div>
@@ -226,7 +226,7 @@
                   <div class="mdui-textfield" style="overflow: visible">
                     <label class="mdui-textfield-label">过期时间</label>
                     <select id="new-paste-expire" class="mdui-select" mdui-select style="width: 100%" width="100%">
-                      <option value="0">永不过期</option>
+                      <option value="0"></option>
                       <option value="3600">1 小时</option>
                       <option value="21600">6 小时</option>
                       <option value="43200">12 小时</option>
@@ -242,7 +242,7 @@
                 <div class="mdui-col-md-4 mdui-col-xs-12">
                   <div class="mdui-textfield">
                     <label class="mdui-textfield-label">最大访问次数</label>
-                    <input id="new-paste-max-access-count" class="mdui-textfield-input" type="text" placeholder="无限制" />
+                    <input id="new-paste-max-access-count" class="mdui-textfield-input" type="text" />
                   </div>
                 </div>
               </div>
@@ -286,7 +286,12 @@
                   <button class="mdui-btn mdui-btn-block mdui-color-red mdui-ripple new-paste-action-button" id="new-paste-delete" disabled>删除 Paste</button>
                 </div>
                 <div class="mdui-col-md-4 mdui-col-xs-6 mdui-p-a-1">
-                  <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple new-paste-action-button" id="new-paste-update" disabled>更新 Paste</button>
+                  <button
+                    class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple new-paste-action-button"
+                    id="new-paste-update"
+                    disabled>
+                    更新 Paste
+                  </button>
                 </div>
                 <div class="mdui-col-md-4 mdui-col-xs-12 mdui-p-a-1">
                   <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple new-paste-action-button" id="new-paste-submit">创建 Paste</button>
@@ -458,37 +463,89 @@
           </div>
         </div>
       </div>
-      <div class="mdui-dialog" id="user-profile">
-        <div class="mdui-dialog-title">用户资料</div>
+      <div class="mdui-dialog" id="user-profile-dialog">
+        <div class="mdui-dialog-title user-profile-view">用户资料</div>
+        <div class="mdui-dialog-title user-profile-edit" style="display: none;">修改用户资料</div>
         <div class="mdui-dialog-content">
-          <div class="mdui-container-fluid">
-            <ul class="mdui-list">
-              <li class="mdui-list-item mdui-ripple">
-                <i class="mdui-list-item-icon mdui-icon material-icons">perm_identity</i>
-                <div class="mdui-list-item-content">UID</div>
-                <div class="mdui-list-item-content mdui-text-right" id="user-profile-uid-text">未登录</div>
-              </li>
-              <li class="mdui-divider"></li>
-              <li class="mdui-list-item mdui-ripple">
-                <i class="mdui-list-item-icon mdui-icon material-icons">account_circle</i>
-                <div class="mdui-list-item-content">用户名</div>
-                <div class="mdui-list-item-content mdui-text-right" id="user-profile-username-text"></div>
-              </li>
-              <li class="mdui-divider"></li>
-              <li class="mdui-list-item mdui-ripple">
-                <i class="mdui-list-item-icon mdui-icon material-icons">email</i>
-                <div class="mdui-list-item-content">邮箱</div>
-                <div class="mdui-list-item-content mdui-text-right" id="user-profile-email-text"></div>
-              </li>
-              <li class="mdui-divider"></li>
-              <li class="mdui-list-item mdui-ripple">
-                <i class="mdui-list-item-icon mdui-icon material-icons">supervisor_account</i>
-                <div class="mdui-list-item-content">用户组</div>
-                <div class="mdui-list-item-content mdui-text-right" id="user-profile-role-text"></div>
-              </li>
-            </ul>
-            <div class="mdui-dialog-actions">
-              <a class="mdui-btn-block mdui-btn mdui-color-theme-accent mdui-ripple" id="user-profile-logout-btn" href="./api/logout">登出</a>
+          <div class="mdui-container-fluid user-profile-view">
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <ul class="mdui-list">
+                  <li class="mdui-list-item mdui-ripple">
+                    <i class="mdui-list-item-icon mdui-icon material-icons">perm_identity</i>
+                    <div class="mdui-list-item-content">UID</div>
+                    <div class="mdui-list-item-content mdui-text-right" id="user-profile-uid-text">未登录</div>
+                  </li>
+                  <li class="mdui-divider"></li>
+                  <li class="mdui-list-item mdui-ripple">
+                    <i class="mdui-list-item-icon mdui-icon material-icons">account_circle</i>
+                    <div class="mdui-list-item-content">用户名</div>
+                    <div class="mdui-list-item-content mdui-text-right" id="user-profile-username-text"></div>
+                  </li>
+                  <li class="mdui-divider"></li>
+                  <li class="mdui-list-item mdui-ripple">
+                    <i class="mdui-list-item-icon mdui-icon material-icons">email</i>
+                    <div class="mdui-list-item-content">邮箱</div>
+                    <div class="mdui-list-item-content mdui-text-right" id="user-profile-email-text"></div>
+                  </li>
+                  <li class="mdui-divider"></li>
+                  <li class="mdui-list-item mdui-ripple">
+                    <i class="mdui-list-item-icon mdui-icon material-icons">supervisor_account</i>
+                    <div class="mdui-list-item-content">用户组</div>
+                    <div class="mdui-list-item-content mdui-text-right" id="user-profile-role-text"></div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div class="mdui-row mdui-p-t-1">
+              <div class="mdui-col-xs-6">
+                <button class="mdui-btn-block mdui-btn mdui-color-blue-accent mdui-ripple" id="user-profile-edit-btn">修改个人信息</button>
+              </div>
+              <div class="mdui-col-xs-6">
+                <a class="mdui-btn-block mdui-btn mdui-color-red mdui-ripple" href="./api/logout">登出</a>
+              </div>
+            </div>
+          </div>
+          <div class="mdui-container-fluid user-profile-edit" style="display: none;">
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <label class="mdui-textfield-label">用户名</label>
+                  <input id="user-profile-edit-username" class="mdui-textfield-input" type="text" />
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <label class="mdui-textfield-label">邮箱</label>
+                  <input id="user-profile-edit-email" class="mdui-textfield-input" type="text" />
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <label class="mdui-textfield-label">旧密码</label>
+                  <input id="user-profile-edit-oldpwd" class="mdui-textfield-input" type="password" placeholder="若不修改密码，无需填写" />
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <label class="mdui-textfield-label">新密码</label>
+                  <input id="user-profile-edit-newpwd" class="mdui-textfield-input" type="password" />
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row mdui-p-t-1">
+              <div class="mdui-col-xs-6">
+                <button class="mdui-btn-block mdui-btn mdui-color-blue-accent mdui-ripple user-profile-edit-action" id="user-profile-edit-return">返回</button>
+              </div>
+              <div class="mdui-col-xs-6">
+                <button class="mdui-btn-block mdui-btn mdui-color-theme-accent mdui-ripple user-profile-edit-action" id="user-profile-edit-confirm">确认</button>
+              </div>
             </div>
           </div>
         </div>

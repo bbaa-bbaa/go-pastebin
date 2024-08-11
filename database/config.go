@@ -21,21 +21,23 @@ import (
 )
 
 type Pastebin_Config struct {
-	SiteName          string `yaml:"site_name"`
-	SupportNoFilename bool   `yaml:"support_no_filename"`
-	Mode              string `yaml:"mode"`
-	AllowHTML         bool   `yaml:"allow_html"`
-	AllowAnonymous    bool   `yaml:"allow_anonymous"`
-	UserCookieMaxAge  int    `yaml:"user_cookie_max_age"`
+	SiteName            string `yaml:"site_name"`
+	SupportNoFilename   bool   `yaml:"support_no_filename"`
+	Mode                string `yaml:"mode"`
+	AllowHTML           bool   `yaml:"allow_html"`
+	AllowAnonymous      bool   `yaml:"allow_anonymous"`
+	UserCookieMaxAge    int    `yaml:"user_cookie_max_age"`
+	PasteAssessTokenAge int    `yaml:"paste_assess_token_age"`
 }
 
 var Config *Pastebin_Config = &Pastebin_Config{
-	SiteName:          "Pastebin",
-	SupportNoFilename: true,
-	Mode:              "release",
-	AllowHTML:         false,
-	AllowAnonymous:    true,
-	UserCookieMaxAge:  86400 * 30,
+	SiteName:            "Pastebin",
+	SupportNoFilename:   true,
+	Mode:                "release",
+	AllowHTML:           false,
+	AllowAnonymous:      true,
+	UserCookieMaxAge:    86400 * 30,
+	PasteAssessTokenAge: 86400,
 }
 
 func SaveConfig() {

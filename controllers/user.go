@@ -16,18 +16,18 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/database"
 	"github.com/labstack/echo/v4"
+	"github.com/samber/lo"
 )
 
-type ReqUserLogin struct {
-	Account  string `json:"account"`
-	Password string `json:"password"`
-	//CheckCode string `json:"check_code"`
-}
-
 func UserLogin(c echo.Context) error {
+	type ReqUserLogin struct {
+		Account  string `json:"account"`
+		Password string `json:"password"`
+	}
 	var user ReqUserLogin
 	if err := c.Bind(&user); err != nil {
 		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
@@ -39,11 +39,48 @@ func UserLogin(c echo.Context) error {
 		return nil
 	}
 	c.SetCookie(&http.Cookie{Name: "user_token", Value: u.Token(), HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: Config.UserCookieMaxAge})
-	c.JSON(200, map[string]any{"code": 0, "user": u.Username, "token": u.Token()})
+	c.JSON(200, map[string]any{"code": 0, "info": u, "token": u.Token()})
 	return nil
 }
 
-func User(c echo.Context) error {
+func EditUserProfile(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(200, map[string]any{"code": -1, "error": "未登录"})
+		return nil
+	}
+	type EditUserProfileReq struct {
+		Username    string `json:"username"`
+		Email       string `json:"email"`
+		OldPassword string `json:"old_password"`
+		NewPassword string `json:"new_password"`
+	}
+	var req EditUserProfileReq
+	if err := c.Bind(&req); err != nil {
+		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
+		return nil
+	}
+	if req.Username != "" {
+		user.Username = req.Username
+	}
+	if req.Email != "" {
+		user.Email = req.Email
+	}
+	if req.OldPassword != "" && req.NewPassword != "" {
+		if err := user.ChangePassword(req.OldPassword, req.NewPassword); err != nil {
+			c.JSON(200, map[string]any{"code": -1, "error": "密码错误"})
+			return nil
+		}
+	}
+	if err := user.Update(); err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "更新失败"})
+		return nil
+	}
+	c.JSON(200, map[string]any{"code": 0, "info": user})
+	return nil
+}
+
+func GetUser(c echo.Context) error {
 	user, ok := c.Get("user").(*database.User)
 	if !ok {
 		c.JSON(200, map[string]any{"code": -1, "error": "未登录"})
@@ -59,6 +96,33 @@ func UserLogout(c echo.Context) error {
 		MaxAge: -1,
 	})
 	return c.Redirect(http.StatusFound, "/")
+}
+
+func UserPasteList(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(200, map[string]any{"code": -1, "error": "未登录"})
+		return nil
+	}
+	after_uuid := c.QueryParam("after_uuid")
+	limit_string := c.QueryParam("limit")
+	limit := int64(100)
+	if limit_string != "" {
+		parsed_limit, err := strconv.ParseInt(limit_string, 10, 0)
+		if err == nil {
+			limit = parsed_limit
+		}
+	}
+	limit = max(min(1000, limit), 1)
+	pastes, err := database.QueryAllPasteByUser(user.Uid, after_uuid, limit)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "查询失败"})
+		return nil
+	}
+	c.JSON(200, map[string]any{"code": 0, "info": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
+		return pasteInfo(p)
+	})})
+	return nil
 }
 
 func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
