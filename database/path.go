@@ -23,31 +23,29 @@ import (
 	"github.com/fatih/color"
 )
 
-var base_path = "/var/lib/go-pastebin"
-
 func GetDBPath() string {
-	return filepath.Join(base_path, "go-pastebin.db")
+	return filepath.Join(Config.DataDir, "go-pastebin.db")
 }
 
 func GetPastesDir() string {
-	return filepath.Join(base_path, "pastes")
+	return filepath.Join(Config.DataDir, "pastes")
 }
 
 func GetConfigPath() string {
-	return filepath.Join(base_path, "config.yaml")
+	return filepath.Join(Config.DataDir, "config.yaml")
 }
 
 func ensureDir(sub_path string) error {
-	err := os.MkdirAll(filepath.Join(base_path, sub_path), 0755)
+	err := os.MkdirAll(filepath.Join(Config.DataDir, sub_path), 0755)
 	if err != nil && !errors.Is(err, os.ErrExist) {
-		if errors.Is(err, os.ErrPermission) && strings.HasPrefix(base_path, "/var") {
+		if errors.Is(err, os.ErrPermission) && strings.HasPrefix(Config.DataDir, "/var") {
 			return fallbackBaseDir(sub_path)
 		}
 		return err
 	}
 	if errors.Is(err, os.ErrExist) {
-		tempfile, err := os.CreateTemp(filepath.Join(base_path, sub_path), "test")
-		if err != nil && strings.HasPrefix(base_path, "/var") {
+		tempfile, err := os.CreateTemp(filepath.Join(Config.DataDir, sub_path), "test")
+		if err != nil && strings.HasPrefix(Config.DataDir, "/var") {
 			return fallbackBaseDir(sub_path)
 		}
 		tempfile.Close()
@@ -57,11 +55,11 @@ func ensureDir(sub_path string) error {
 }
 
 func fallbackBaseDir(sub_path string) error {
-	log.Warning("数据库路径: ", color.BlueString(base_path), " 无权限访问")
+	log.Warning("数据库路径: ", color.BlueString(Config.DataDir), " 无权限访问")
 	workdir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	base_path = filepath.Join(workdir, "data")
+	Config.DataDir = filepath.Join(workdir, "data")
 	return ensureDir(sub_path)
 }
