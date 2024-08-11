@@ -133,14 +133,13 @@
       <div class="mdui-toolbar mdui-color-theme">
         <a href="javascript:;" class="mdui-typo-title">{{.SiteName}}</a>
         <div class="mdui-toolbar-spacer"></div>
-        <button href="javascript:;" class="mdui-btn mdui-btn-icon" mdui-dialog="{target: '#login-dialog', history: false}">
+        <button href="javascript:;" class="mdui-btn mdui-btn-icon" id="account-dialog">
           <i class="mdui-icon material-icons">account_circle</i>
         </button>
       </div>
       <div class="mdui-tab mdui-color-theme" id="paste-mdui-tab">
         <a href="#new-paste" class="mdui-ripple mdui-ripple-white" id="new-paste-tab">New Paste</a>
         <a href="#paste-viewer" class="mdui-ripple mdui-ripple-white" id="paste-viewer-tab">Paste Viewer</a>
-        <a href="#user-profile" class="mdui-ripple mdui-ripple-white" id="user-profile-tab">User Profile</a>
       </div>
     </div>
     <div class="mdui-container mdui-p-a-1">
@@ -459,49 +458,37 @@
           </div>
         </div>
       </div>
-      <div id="user-profile">
-        <div id="paste-viewer-query" class="mdui-card card-collapse card-collapse-open">
-          <div class="mdui-progress paste-viewer-progress">
-            <div class="mdui-progress-indeterminate"></div>
-          </div>
-          <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title">用户资料</div>
-          </div>
-          <div class="mdui-card-content">
-            <div class="mdui-container-fluid">
-              <ul class="mdui-list">
-                <li class="mdui-list-item mdui-ripple">
-                  <i class="mdui-list-item-icon mdui-icon material-icons">perm_identity</i>
-                  <div class="mdui-list-item-content">UID</div>
-                  <div class="mdui-list-item-content mdui-text-right" id="user-profile-uid-text">未登录</div>
-                </li>
-                <li class="mdui-divider"></li>
-                <li class="mdui-list-item mdui-ripple">
-                  <i class="mdui-list-item-icon mdui-icon material-icons">account_circle</i>
-                  <div class="mdui-list-item-content">用户名</div>
-                  <div class="mdui-list-item-content mdui-text-right" id="user-profile-username-text"></div>
-                </li>
-                <li class="mdui-divider"></li>
-                <li class="mdui-list-item mdui-ripple">
-                  <i class="mdui-list-item-icon mdui-icon material-icons">email</i>
-                  <div class="mdui-list-item-content">邮箱</div>
-                  <div class="mdui-list-item-content mdui-text-right" id="user-profile-email-text"></div>
-                </li>
-                <li class="mdui-divider"></li>
-                <li class="mdui-list-item mdui-ripple">
-                  <i class="mdui-list-item-icon mdui-icon material-icons">supervisor_account</i>
-                  <div class="mdui-list-item-content">用户组</div>
-                  <div class="mdui-list-item-content mdui-text-right" id="user-profile-role-text"></div>
-                </li>
-              </ul>
-              <div class="mdui-row">
-                <div class="mdui-col-md-6 mdui-col-xs-6 mdui-p-a-1">
-                  <button class="mdui-btn-block mdui-btn mdui-ripple mdui-float-right" id="user-profile-update-btn">更新</button>
-                </div>
-                <div class="mdui-col-md-6 mdui-col-xs-6 mdui-p-a-1">
-                  <a class="mdui-btn-block mdui-btn mdui-color-theme-accent mdui-ripple mdui-float-right" id="user-profile-logout-btn" href="./api/logout">登出</a>
-                </div>
-              </div>
+      <div class="mdui-dialog" id="user-profile">
+        <div class="mdui-dialog-title">用户资料</div>
+        <div class="mdui-dialog-content">
+          <div class="mdui-container-fluid">
+            <ul class="mdui-list">
+              <li class="mdui-list-item mdui-ripple">
+                <i class="mdui-list-item-icon mdui-icon material-icons">perm_identity</i>
+                <div class="mdui-list-item-content">UID</div>
+                <div class="mdui-list-item-content mdui-text-right" id="user-profile-uid-text">未登录</div>
+              </li>
+              <li class="mdui-divider"></li>
+              <li class="mdui-list-item mdui-ripple">
+                <i class="mdui-list-item-icon mdui-icon material-icons">account_circle</i>
+                <div class="mdui-list-item-content">用户名</div>
+                <div class="mdui-list-item-content mdui-text-right" id="user-profile-username-text"></div>
+              </li>
+              <li class="mdui-divider"></li>
+              <li class="mdui-list-item mdui-ripple">
+                <i class="mdui-list-item-icon mdui-icon material-icons">email</i>
+                <div class="mdui-list-item-content">邮箱</div>
+                <div class="mdui-list-item-content mdui-text-right" id="user-profile-email-text"></div>
+              </li>
+              <li class="mdui-divider"></li>
+              <li class="mdui-list-item mdui-ripple">
+                <i class="mdui-list-item-icon mdui-icon material-icons">supervisor_account</i>
+                <div class="mdui-list-item-content">用户组</div>
+                <div class="mdui-list-item-content mdui-text-right" id="user-profile-role-text"></div>
+              </li>
+            </ul>
+            <div class="mdui-dialog-actions">
+              <a class="mdui-btn-block mdui-btn mdui-color-theme-accent mdui-ripple" id="user-profile-logout-btn" href="./api/logout">登出</a>
             </div>
           </div>
         </div>
@@ -509,14 +496,24 @@
     </div>
     <div class="mdui-dialog" id="login-dialog">
       <div class="mdui-dialog-title">登录</div>
-      <div class="mdui-container">
-        <div class="mdui-textfield">
-          <i class="mdui-icon material-icons">account_circle</i>
-          <input class="mdui-textfield-input" id="login-username" type="text" placeholder="User Name" />
-        </div>
-        <div class="mdui-textfield">
-          <i class="mdui-icon material-icons">vpn_key</i>
-          <input class="mdui-textfield-input" type="password" id="login-password" placeholder="Password" />
+      <div class="mdui-dialog-content">
+        <div class="mdui-container-fluid">
+          <div class="mdui-row">
+            <div class="mdui-col-xs-12">
+              <div class="mdui-textfield">
+                <i class="mdui-icon material-icons">account_circle</i>
+                <input class="mdui-textfield-input" id="login-username" type="text" placeholder="User Name" />
+              </div>
+            </div>
+          </div>
+          <div class="mdui-row">
+            <div class="mdui-col-xs-12">
+              <div class="mdui-textfield">
+                <i class="mdui-icon material-icons">vpn_key</i>
+                <input class="mdui-textfield-input" type="password" id="login-password" placeholder="Password" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="mdui-dialog-actions">

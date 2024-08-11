@@ -25,7 +25,7 @@
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) === false;
   }
 
-  let user_info = {};
+  let user_info = null;
 
   $(function () {
     document.body.addEventListener("drop", function (e) {
@@ -40,17 +40,8 @@
     let config = {
       allow_anonymous: document.querySelector("meta[name='x-allow-anonymous']").content === "true"
     };
-    const login_button = $("#login-button");
-    const login_username = $("#login-username")[0];
-    const login_password = $("#login-password")[0];
-    const login_diglog_action = $(".login-dialog-action");
     const paste_mdui_tab = new mdui.Tab("#paste-mdui-tab");
     const new_paste_tab = $("#new-paste-tab");
-    const user_profile_tab = $("#user-profile-tab");
-    const user_profile_uid_text = $("#user-profile-uid-text");
-    const user_profile_username_text = $("#user-profile-username-text");
-    const user_profile_role_text = $("#user-profile-role-text");
-    const user_profile_email_text = $("#user-profile-email-text");
     function update_user_info() {
       return $.ajax({
         method: "GET",
@@ -63,7 +54,6 @@
             return false;
           }
           user_info = response.info;
-          console.log(user_info)
           return true;
         })
         .catch(() => false)
@@ -71,60 +61,13 @@
           if (!is_login && !config.allow_anonymous) {
             paste_mdui_tab.show(1);
             new_paste_tab.attr("disabled", "disabled");
-            user_profile_tab.attr("disabled", "disabled");
           } else {
             new_paste_tab.removeAttr("disabled");
-            user_profile_tab.removeAttr("disabled");
           }
-          return is_login
+          return is_login;
         });
     }
 
-    user_profile_tab.on("click", function () {
-      update_user_info().then(is_login => {
-        if(is_login){
-          user_profile_uid_text.text(user_info.uid);
-          user_profile_username_text.text(user_info.username);
-          user_profile_role_text.text(user_info.role);
-          user_profile_email_text.text(user_info.email);
-        } else {
-          mdui.snackbar("登录态异常或网络异常，请重新登录");
-        }
-      })
-    });
-
-    login_button.on("click", function () {
-      login_button.attr("disabled", "disabled");
-      $.ajax({
-        method: "POST",
-        url: "./api/login",
-        data: JSON.stringify({
-          account: login_username.value,
-          password: login_password.value
-        }),
-        contentType: "application/json",
-        complete: function (xhr) {
-          let response = JSON.parse(xhr.responseText);
-          if (xhr.status == 200 && response.code === 0) {
-            update_user_info().then(() => {
-              mdui.snackbar("登录成功");
-              login_button.removeClass(".mdui-color-theme-accent").addClass("mdui-color-green-accent");
-              setTimeout(() => {
-                login_button.removeClass("mdui-color-green-accent").addClass("mdui-color-theme-accent");
-              }, 600);
-              login_button.removeAttr("disabled");
-            });
-          } else {
-            mdui.snackbar("登录失败: " + response.error);
-            login_button.removeAttr("disabled");
-            login_button.removeClass(".mdui-color-theme-accent").addClass("mdui-color-red-accent");
-            setTimeout(() => {
-              login_button.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-            }, 600);
-          }
-        }
-      });
-    });
     new_paste_tab.on("click", function (e) {
       if (new_paste_tab.attr("disabled")) {
         mdui.snackbar("此 Pastebin 仅允许登录用户创建 Paste");
@@ -484,7 +427,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () { });
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () {});
           new_paste_result_link.closest("div").show();
           new_paste_result_qr_code.show();
         } else {
@@ -608,9 +551,9 @@
                 paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
               }, 600);
             } else {
-              paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-accent");
+              paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
               setTimeout(() => {
-                paste_submit.removeClass("mdui-color-green-accent").addClass("mdui-color-theme-accent");
+                paste_submit.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
               }, 600);
             }
             return show_result("创建结果", response, false);
@@ -676,9 +619,9 @@
                 paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
               }, 600);
             } else {
-              paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-accent");
+              paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-600");
               setTimeout(() => {
-                paste_update.removeClass("mdui-color-green-accent").addClass("mdui-color-blue-accent");
+                paste_update.removeClass("mdui-color-green-600").addClass("mdui-color-blue-accent");
               }, 600);
             }
             return show_result("更新结果", response, false);
@@ -728,9 +671,9 @@
                 paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
               }, 600);
             } else {
-              paste_delete.removeClass("mdui-color-red").addClass("mdui-color-green-accent");
+              paste_delete.removeClass("mdui-color-red").addClass("mdui-color-green-600");
               setTimeout(() => {
-                paste_delete.removeClass("mdui-color-green-accent").addClass("mdui-color-red");
+                paste_delete.removeClass("mdui-color-green-600").addClass("mdui-color-red");
               }, 600);
             }
             return show_result("删除结果", response, true);
@@ -957,7 +900,7 @@
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) { }
+        } catch (e) {}
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
@@ -1007,7 +950,7 @@
               action_unlock();
             }
           }
-        }).catch(() => { });
+        }).catch(() => {});
       }
 
       paste_viewer_query_btn.on("click", function () {
@@ -1064,21 +1007,62 @@
         query_paste_metadata(query_hash);
       }
     })();
-    (function user_profile(){
-      const user_profile_update_btn = $("#user-profile-update-btn");
+    (function user_profile() {
+      const account_dialog = $("#account-dialog");
+      const user_profile_uid_text = $("#user-profile-uid-text");
+      const user_profile_username_text = $("#user-profile-username-text");
+      const user_profile_role_text = $("#user-profile-role-text");
+      const user_profile_email_text = $("#user-profile-email-text");
+      const user_profile_dialog = new mdui.Dialog("#user-profile", { history: false });
+      const login_dialog = new mdui.Dialog("#login-dialog", { history: false });
+      const login_button = $("#login-button");
+      const login_username = $("#login-username");
+      const login_password = $("#login-password");
+      const login_diglog_action = $(".login-dialog-action");
 
-      user_profile_update_btn.on("click", function () {
-        update_user_info().then(is_login => {
-          if(is_login){
-            user_profile_uid_text.text(user_info.uid);
-            user_profile_username_text.text(user_info.username);
-            user_profile_role_text.text(user_info.role);
-            user_profile_email_text.text(user_info.email);
-            mdui.snackbar("更新成功");
-          } else {
-            mdui.snackbar("未登录或网络异常，请重新登录");
+      account_dialog.on("click", function () {
+        if (!user_info) {
+          login_dialog.open();
+        } else {
+          user_profile_uid_text.text(user_info.uid);
+          user_profile_username_text.text(user_info.username);
+          user_profile_role_text.text(user_info.role);
+          user_profile_email_text.text(user_info.email);
+          user_profile_dialog.open();
+        }
+      });
+      login_button.on("click", function () {
+        login_diglog_action.attr("disabled", "disabled");
+        $.ajax({
+          method: "POST",
+          url: "./api/login",
+          data: JSON.stringify({
+            account: login_username.val(),
+            password: login_password.val()
+          }),
+          contentType: "application/json",
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200 && response.code === 0) {
+              update_user_info().then(() => {
+                mdui.snackbar("登录成功");
+                login_button.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
+                setTimeout(() => {
+                  login_button.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
+                  login_dialog.close();
+                }, 600);
+                login_diglog_action.removeAttr("disabled");
+              });
+            } else {
+              mdui.snackbar("登录失败: " + response.error);
+              login_diglog_action.removeAttr("disabled");
+              login_button.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
+              setTimeout(() => {
+                login_button.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
+              }, 600);
+            }
           }
-        })
+        });
       });
     })();
   });
