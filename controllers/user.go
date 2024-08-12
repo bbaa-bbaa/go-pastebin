@@ -135,7 +135,14 @@ func UserPasteList(c echo.Context) error {
 		return nil
 	}
 	c.JSON(200, map[string]any{"code": 0, "total": total, "pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
-		return pasteInfo(p)
+		pi := pasteInfo(p)
+		pi.URL = c.Scheme() + "://" + c.Request().Host + "/"
+		if p.Short_url != "" {
+			pi.URL += p.Short_url
+		} else {
+			pi.URL += p.Base64Hash()
+		}
+		return pi
 	})})
 	return nil
 }

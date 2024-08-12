@@ -1187,6 +1187,7 @@
       const paste_manage_progress = $(".paste-manage-progress");
       const paste_manage_prev = $("#paste-manage-prev");
       const paste_manage_next = $("#paste-manage-next");
+      const paste_manage_pager = $(".paste-manage-pager");
 
       let page = 1;
       let max_page = 1;
@@ -1210,6 +1211,7 @@
         const paste_manage_delete_btn = $(".paste-manage-delete-btn");
         const paste_manage_view_btn = $(".paste-manage-view-btn");
         const paste_manage_edit_btn = $(".paste-manage-edit-btn");
+        const paste_manage_copy_url_btn = $(".paste-manage-copy-url-btn");
 
         paste_manage_view_btn.on("click", function (e) {
           let uuid = $(this).closest(".mdui-panel-item").find(".paste-manage-uuid").text();
@@ -1245,6 +1247,31 @@
           });
         });
 
+        paste_manage_copy_url_btn.on("click", function () {
+          let element = $(this).closest(".mdui-panel-item").find(".paste-link > a");
+          let url = element.attr("href");
+          function selectAndHint() {
+            let selection = window.getSelection();
+            let range = document.createRange();
+            range.selectNodeContents(element.get(0));
+            selection.removeAllRanges();
+            selection.addRange(range);
+            mdui.snackbar("请按 Ctrl+C 复制");
+          }
+          if (navigator.clipboard) {
+            navigator.clipboard
+              .writeText(url)
+              .then(() => {
+                mdui.snackbar("已复制到剪贴板");
+              })
+              .catch(err => {
+                selectAndHint();
+              });
+          } else {
+            selectAndHint();
+          }
+        });
+
         paste_manage_delete_btn.on("click", function (e) {
           let uuid = $(this).closest(".mdui-panel-item").find(".paste-manage-uuid").text();
           new_paste_uuid.val(uuid);
@@ -1266,6 +1293,7 @@
 
       function list_paste() {
         paste_manage_progress.show();
+        paste_manage_pager.attr("disabled", "disabled");
         $.ajax({
           method: "GET",
           url: "api/user/pastes",
@@ -1289,7 +1317,13 @@
                     <div class="mdui-panel-item-header">
                       <div class="mdui-panel-item-title paste-manage-uuid">${paste.uuid}</div>
                       <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash">${paste.hash}</span></div>
-                      <div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl">${paste.short_url}</span></div>
+                `;
+                if (paste.filename != "" && paste.filename != "-") {
+                  pastes_panel += `<div class="mdui-panel-item-summary">Filename: <span class="paste-manage-filename">${paste.filename}</span></div>`;
+                } else {
+                  pastes_panel += `<div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl">${paste.short_url}</span></div>`;
+                }
+                pastes_panel += `
                       <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
                     </div>
                     <div class="mdui-panel-item-body">
@@ -1310,6 +1344,12 @@
                         <p><strong>password:</strong> ${paste.password ? "yes" : "no"}</p>
                         <p><strong>uuid:</strong> ${paste.uuid}</p>
                       </div>
+                      <div>
+                        <p class="paste-link">url: <a href="${paste.url}" target="${isDesktop ? "_blank" : "_self"}">${paste.url}</a></p>
+                        <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn">
+                          <i class="mdui-icon material-icons">content_copy</i>
+                        </button>
+                      </div>
                       <div class="mdui-panel-item-actions">
                         <button class="mdui-btn mdui-ripple mdui-color-red paste-manage-delete-btn">删除</button>
                         <button class="mdui-btn mdui-ripple mdui-color-blue-accent paste-manage-view-btn">查看</button>
@@ -1325,14 +1365,12 @@
               register_action_button();
             }
             paste_manage_progress.hide();
+            paste_manage_pager.removeAttr("disabled");
           }
         });
       }
 
       paste_manage_prev.on("click", function () {
-        if (paste_manage_progress.css("display") != "none") {
-          return;
-        }
         if (page > 1) {
           page--;
           list_paste();
@@ -1340,9 +1378,6 @@
       });
 
       paste_manage_next.on("click", function () {
-        if (paste_manage_progress.css("display") != "none") {
-          return;
-        }
         if (page < max_page) {
           page++;
           list_paste();

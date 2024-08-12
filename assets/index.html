@@ -41,8 +41,6 @@
       background-color: #ffffff !important;
     }
 
-
-
     @font-face {
       font-family: "Hack";
       src:
@@ -68,7 +66,7 @@
       font-weight: bold;
     }
 
-    p.new-paste-result-link {
+    p.paste-link {
       display: inline;
       font-family: "Bender";
       font-size: 1.5em;
@@ -77,11 +75,11 @@
       top: 3px;
     }
 
-    .new-paste-result-link a {
+    .paste-link a {
       text-decoration: none;
     }
 
-    .new-paste-result-link a:hover {
+    .paste-link a:hover {
       text-decoration: underline;
     }
 
@@ -109,11 +107,14 @@
       line-height: 1;
     }
 
-    .paste-viewer-progress,
-    .paste-manage-progress {
+    .paste-viewer-progress {
       display: none;
       border-radius: 0;
       position: absolute;
+    }
+
+    .paste-manage-progress {
+      border-radius: 0;
     }
 
     .hljs-ln-numbers {
@@ -178,7 +179,7 @@
                 <div class="mdui-col-xs-12 mdui-col-sm-8">
                   <div id="new-paste-result-raw" class="raw-result"></div>
                   <div>
-                    <p class="new-paste-result-link">url: <a id="new-paste-result-link"></a></p>
+                    <p class="paste-link">url: <a id="new-paste-result-link"></a></p>
                     <button class="mdui-btn mdui-btn-icon mdui-ripple" id="new-paste-result-copy">
                       <i class="mdui-icon material-icons">content_copy</i>
                     </button>
@@ -513,9 +514,6 @@
     <div id="paste-manage" style="display: none">
       {{- end}}
       <div class="mdui-card mdui-m-t-2">
-        <div class="mdui-progress paste-manage-progress" style="display: block;">
-          <div class="mdui-progress-indeterminate"></div>
-        </div>
         <div class="mdui-card-primary">
           <div class="mdui-card-primary-title">Paste-Manage</div>
         </div>
@@ -546,12 +544,15 @@
             <div class="mdui-row">
               <div class="mdui-col-xs-12 mdui-m-t-1">
                 <div class="mdui-float-right">
-                <button id="paste-manage-prev" class="mdui-btn mdui-ripple mdui-color-light-blue-accent mdui-text-color-white">上一页</button>
-                <button id="paste-manage-next" class="mdui-btn mdui-ripple mdui-color-theme-accent">下一页</button>
+                <button id="paste-manage-prev" class="mdui-btn mdui-ripple mdui-color-light-blue-accent mdui-text-color-white paste-manage-pager">上一页</button>
+                <button id="paste-manage-next" class="mdui-btn mdui-ripple mdui-color-theme-accent paste-manage-pager">下一页</button>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+        <div class="mdui-progress paste-manage-progress" style="display: block;">
+          <div class="mdui-progress-indeterminate"></div>
         </div>
       </div>
     </div>

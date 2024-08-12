@@ -51,6 +51,7 @@ type PasteInfo struct {
 	FileName       string `json:"filename"`
 	Size           uint64 `json:"size"`
 	HasPassword    bool   `json:"has_password"`
+	URL            string `json:"url"`
 }
 
 func pasteInfo(paste *database.Paste) *PasteInfo {
