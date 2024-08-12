@@ -15,6 +15,8 @@
 package database
 
 import (
+	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,7 +32,7 @@ type Pastebin_Config struct {
 	AllowAnonymous      bool   `yaml:"allow_anonymous"`
 	UserCookieMaxAge    int    `yaml:"user_cookie_max_age"`
 	PasteAssessTokenAge int    `yaml:"paste_assess_token_age"`
-	DataDir             string `yaml:"data_dir"`
+	dataDir             *string
 }
 
 var Config *Pastebin_Config = &Pastebin_Config{
@@ -41,7 +43,7 @@ var Config *Pastebin_Config = &Pastebin_Config{
 	AllowAnonymous:      true,
 	UserCookieMaxAge:    86400 * 30,
 	PasteAssessTokenAge: 86400,
-	DataDir:             "/var/lib/go-pastebin",
+	dataDir:             flag.String("data", "/var/lib/go-pastebin", "Data directory"),
 }
 
 func SaveConfig() {
@@ -50,23 +52,24 @@ func SaveConfig() {
 }
 
 func LoadConfig() {
+	flag.Parse()
+	fmt.Println(Config.dataDir)
+	ensureDir("pastes")
 	if runtime.GOOS == "windows" {
 		workdir, err := os.Getwd()
 		if err != nil {
 			workdir = "."
 		}
-		Config.DataDir = filepath.Join(workdir, "data")
+		*Config.dataDir = filepath.Join(workdir, "data")
 	}
 	config_file, err := os.ReadFile(GetConfigPath())
 	if err != nil {
 		SaveConfig()
 		return
 	}
-	var config Pastebin_Config
-	err = yaml.Unmarshal(config_file, &config)
+	err = yaml.Unmarshal(config_file, &Config)
 	if err != nil {
 		SaveConfig()
 		return
 	}
-	Config = &config
 }

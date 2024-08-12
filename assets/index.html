@@ -1,590 +1,687 @@
+{{- $show_new_paste := or .AllowAnonymous .IsLogin -}}
 <!DOCTYPE html>
 <html lang="zh-cn">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" />
-    <meta name="renderer" content="webkit" />
-    <meta name="x-allow-anonymous" content="{{.AllowAnonymous}}" />
-    <link rel="stylesheet" href="static/mdui/css/mdui.min.css" />
-    <link rel="stylesheet" href="static/highlight/styles/github.min.css" />
-    <title>{{.SiteName}}</title>
-    <style>
-      .mdui-card {
-        overflow: visible;
-      }
 
-      .mdui-textfield-input:not([disabled]):hover {
-        cursor: text;
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" />
+  <meta name="renderer" content="webkit" />
+  <meta name="x-allow-anonymous" content="{{.AllowAnonymous}}" />
+  <link rel="stylesheet" href="static/mdui/css/mdui.min.css" />
+  <link rel="stylesheet" href="static/highlight/styles/github.min.css" />
+  <title>{{.SiteName}}</title>
+  <style>
+    .mdui-card {
+      overflow: visible;
+    }
 
-      .mdui-select {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.42);
-      }
+    .mdui-textfield-input:not([disabled]):hover {
+      cursor: text;
+    }
 
-      .new-paste-action-button,
-      .new-paste-viewer-action,
-      .login-dialog-action {
-        transition: all 0.6s ease;
-      }
+    .mdui-select {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.42);
+    }
 
-      .new-paste-file-drop-overlay * {
-        pointer-events: none;
-      }
+    .new-paste-action-button,
+    .new-paste-viewer-action,
+    .login-dialog-action {
+      transition: all 0.6s ease;
+    }
 
-      .new-paste-file-drop-overlay.mdui-hidden {
-        display: none !important;
-      }
+    .new-paste-file-drop-overlay * {
+      pointer-events: none;
+    }
 
-      audio::-webkit-media-controls-panel {
-        background-color: #ffffff !important;
-      }
+    .new-paste-file-drop-overlay.mdui-hidden {
+      display: none !important;
+    }
 
-      #new-paste-result-raw p {
-        margin: 1px 0;
-      }
+    audio::-webkit-media-controls-panel {
+      background-color: #ffffff !important;
+    }
 
-      @font-face {
-        font-family: "Hack";
-        src: url("static/font/Hack/hack-regular.woff2") format("woff2"), url("font/Hack/hack-regular.woff") format("woff");
-        font-weight: 400;
-        font-style: normal;
-      }
 
-      #new-paste-result-raw {
-        font-family: Consolas, Hack, monospace;
-      }
 
-      @font-face {
-        font-family: "Bender";
-        src: url("static/font/Bender/Bender-Bold.woff2") format("woff2"), url("static/font/Bender/Bender-Bold.otf") format("otf");
-        font-weight: bold;
-      }
+    @font-face {
+      font-family: "Hack";
+      src:
+        url("static/font/Hack/hack-regular.woff2") format("woff2"),
+        url("font/Hack/hack-regular.woff") format("woff");
+      font-weight: 400;
+      font-style: normal;
+    }
 
-      p.new-paste-result-link {
-        display: inline;
-        font-family: "Bender";
-        font-size: 1.5em;
-        text-decoration: none;
-        position: relative;
-        top: 3px;
-      }
+    .raw-result {
+      font-family: Consolas, Hack, monospace;
+    }
 
-      .new-paste-result-link a {
-        text-decoration: none;
-      }
+    .raw-result p {
+      margin: 1px 0;
+    }
 
-      .new-paste-result-link a:hover {
-        text-decoration: underline;
-      }
+    @font-face {
+      font-family: "Bender";
+      src:
+        url("static/font/Bender/Bender-Bold.woff2") format("woff2"),
+        url("static/font/Bender/Bender-Bold.otf") format("otf");
+      font-weight: bold;
+    }
 
-      .card-collapse {
-        transition: all 0.6s ease-out;
-        height: 0px;
-        overflow: hidden;
-      }
+    p.new-paste-result-link {
+      display: inline;
+      font-family: "Bender";
+      font-size: 1.5em;
+      text-decoration: none;
+      position: relative;
+      top: 3px;
+    }
 
-      .card-collapse.card-collapse-open {
-        height: auto;
-        margin: 16px 0;
-      }
+    .new-paste-result-link a {
+      text-decoration: none;
+    }
 
-      #new-paste-file-progress {
-        transition: all 0.6s ease-out;
-        height: 0px;
-        overflow: hidden;
-      }
+    .new-paste-result-link a:hover {
+      text-decoration: underline;
+    }
 
-      #new-paste-file-progress p {
-        margin: 0;
-        font-family: Consolas, Hack, monospace;
-        text-align: center;
-        line-height: 1;
-      }
+    .card-collapse {
+      transition: all 0.6s ease-out;
+      height: 0px;
+      overflow: hidden;
+    }
 
-      .paste-viewer-progress {
-        display: none;
-        border-radius: 0;
-        position: absolute;
-      }
+    .card-collapse.card-collapse-open {
+      height: auto;
+      margin: 16px 0;
+    }
 
-      .hljs-ln-numbers {
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        -khtml-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
+    #new-paste-file-progress {
+      transition: all 0.6s ease-out;
+      height: 0px;
+      overflow: hidden;
+    }
 
-        text-align: center;
-        color: #ccc;
-        border-right: 1px solid #ccc;
-        vertical-align: top;
-        padding-right: 4px !important;
-      }
+    #new-paste-file-progress p {
+      margin: 0;
+      font-family: Consolas, Hack, monospace;
+      text-align: center;
+      line-height: 1;
+    }
 
-      td.hljs-ln-code {
-        padding-left: 8px !important;
-      }
-    </style>
-  </head>
+    .paste-viewer-progress,
+    .paste-manage-progress {
+      display: none;
+      border-radius: 0;
+      position: absolute;
+    }
 
-  <body class="mdui-theme-primary-indigo mdui-theme-accent-pink">
-    <div class="mdui-appbar">
-      <div class="mdui-toolbar mdui-color-theme">
-        <a href="javascript:;" class="mdui-typo-title">{{.SiteName}}</a>
-        <div class="mdui-toolbar-spacer"></div>
-        <button href="javascript:;" class="mdui-btn mdui-btn-icon" id="account-dialog-btn">
-          <i class="mdui-icon material-icons">account_circle</i>
-        </button>
-      </div>
-      <div class="mdui-tab mdui-color-theme" id="paste-mdui-tab">
-        <a href="#new-paste" class="mdui-ripple mdui-ripple-white" id="new-paste-tab">New Paste</a>
-        <a href="#paste-viewer" class="mdui-ripple mdui-ripple-white" id="paste-viewer-tab">Paste Viewer</a>
-      </div>
+    .hljs-ln-numbers {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+
+      text-align: center;
+      color: #ccc;
+      border-right: 1px solid #ccc;
+      vertical-align: top;
+      padding-right: 4px !important;
+    }
+
+    td.hljs-ln-code {
+      padding-left: 8px !important;
+    }
+  </style>
+</head>
+
+<body class="mdui-theme-primary-indigo mdui-theme-accent-pink">
+  <div class="mdui-appbar">
+    <div class="mdui-toolbar mdui-color-theme">
+      <a href="javascript:;" class="mdui-typo-title">{{.SiteName}}</a>
+      <div class="mdui-toolbar-spacer"></div>
+      <button href="javascript:;" class="mdui-btn mdui-btn-icon" id="account-dialog-btn">
+        <i class="mdui-icon material-icons">account_circle</i>
+      </button>
     </div>
-    <div class="mdui-container mdui-p-a-1">
-      <div id="new-paste">
-        <div id="new-paste-result" class="mdui-card card-collapse">
-          <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title" id="new-paste-result-title"></div>
-            <div class="mdui-card-content">
-              <div class="mdui-container-fluid">
-                <div class="mdui-row">
-                  <div class="mdui-col-xs-12 mdui-col-sm-8">
-                    <div id="new-paste-result-raw"></div>
-                    <div>
-                      <p class="new-paste-result-link">url: <a id="new-paste-result-link"></a></p>
-                      <button class="mdui-btn mdui-btn-icon mdui-ripple" id="new-paste-result-copy">
-                        <i class="mdui-icon material-icons">content_copy</i>
-                      </button>
-                    </div>
+    <div class="mdui-tab mdui-color-theme" id="paste-mdui-tab">
+      {{- if $show_new_paste }}
+      <a href="#new-paste" class="mdui-ripple mdui-ripple-white mdui-tab-active" id="new-paste-tab">New Paste</a>
+      <a href="#paste-viewer" class="mdui-ripple mdui-ripple-white" id="paste-viewer-tab">Paste Viewer</a>
+      {{- else }}
+      <a href="#new-paste" class="mdui-ripple mdui-ripple-white" id="new-paste-tab">New Paste</a>
+      <a href="#paste-viewer" class="mdui-ripple mdui-ripple-white mdui-tab-active" id="paste-viewer-tab">Paste
+        Viewer</a>
+      {{- end }}
+      {{- if .IsLogin }}
+      <a href="#paste-manage" class="mdui-ripple mdui-ripple-white" id="paste-manage-tab">Paste Manage</a>
+      {{- else }}
+      <a href="#paste-manage" class="mdui-ripple mdui-ripple-white" id="paste-manage-tab" style="display: none;">Paste
+        Manage</a>
+      {{- end }}
+    </div>
+  </div>
+  <div class="mdui-container mdui-p-a-1">
+    {{- if $show_new_paste }}
+    <div id="new-paste">{{- if false -}}</div>
+    {{- /* make html formatter happy */ -}} {{- end -}} {{- else }}
+    <div id="new-paste" style="display: none">
+      {{- end}}
+      <div id="new-paste-result" class="mdui-card card-collapse">
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title" id="new-paste-result-title"></div>
+          <div class="mdui-card-content">
+            <div class="mdui-container-fluid">
+              <div class="mdui-row">
+                <div class="mdui-col-xs-12 mdui-col-sm-8">
+                  <div id="new-paste-result-raw" class="raw-result"></div>
+                  <div>
+                    <p class="new-paste-result-link">url: <a id="new-paste-result-link"></a></p>
+                    <button class="mdui-btn mdui-btn-icon mdui-ripple" id="new-paste-result-copy">
+                      <i class="mdui-icon material-icons">content_copy</i>
+                    </button>
                   </div>
-                  <div class="mdui-col-xs-12 mdui-col-sm-4" style="text-align: center">
-                    <canvas id="new-paste-result-qrcode" height="168" width="168"></canvas>
-                  </div>
+                </div>
+                <div class="mdui-col-xs-12 mdui-col-sm-4" style="text-align: center">
+                  <canvas id="new-paste-result-qrcode" height="168" width="168"></canvas>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="mdui-card mdui-m-y-2">
-          <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title">新 Paste</div>
-          </div>
-          <div class="mdui-card-content">
-            <div class="mdui-container-fluid">
-              <div class="mdui-row" id="new-paste-text-paste">
-                <div class="mdui-col-xs-12" style="height: 100%">
-                  <div
-                    class="mdui-valign paste-file-drop-overlay mdui-hidden"
-                    style="position: absolute; background-color: #f0f0f0; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
-                    <div class="mdui-center mdui-p-a-2">
-                      <i class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
-                      <p class="mdui-m-a-0" style="color: #707070">松开鼠标加载文件</p>
-                    </div>
+      </div>
+      <div class="mdui-card mdui-m-y-2">
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title">新 Paste</div>
+        </div>
+        <div class="mdui-card-content">
+          <div class="mdui-container-fluid">
+            <div class="mdui-row" id="new-paste-text-paste">
+              <div class="mdui-col-xs-12" style="height: 100%">
+                <div class="mdui-valign paste-file-drop-overlay mdui-hidden"
+                  style="position: absolute; background-color: #f0f0f0; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
+                  <div class="mdui-center mdui-p-a-2">
+                    <i class="mdui-icon material-icons"
+                      style="font-size: 48px; color: #707070; display: block">description</i>
+                    <p class="mdui-m-a-0" style="color: #707070">松开鼠标加载文件</p>
                   </div>
-                  <div class="mdui-textfield">
-                    <textarea id="new-paste-text-input" class="mdui-textfield-input" rows="8" placeholder="输入Paste内容，或拖放文件到此处" maxlength="2147483648"></textarea>
+                </div>
+                <div class="mdui-textfield">
+                  <textarea id="new-paste-text-input" class="mdui-textfield-input" rows="8"
+                    placeholder="输入Paste内容，或拖放文件到此处" maxlength="2147483648"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row" id="new-paste-file" style="display: none">
+              <div class="mdui-col-xs-12" style="height: 100%">
+                <div class="mdui-valign paste-file-drop-overlay mdui-hidden"
+                  style="position: absolute; background-color: #f0f0f0; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
+                  <div class="mdui-center mdui-p-a-2" style="max-height: 320px; overflow: hidden">
+                    <i class="mdui-icon material-icons"
+                      style="font-size: 48px; color: #707070; display: block">description</i>
+                    <p class="mdui-m-a-0" style="color: #707070">松开鼠标加载文件</p>
+                  </div>
+                </div>
+                <div class="mdui-valign mdui-p-a-2"
+                  style="min-height: 200px; background-color: #f0f0f0; text-align: center">
+                  <div class="mdui-center">
+                    <i id="new-paste-file-icon" class="mdui-icon material-icons"
+                      style="font-size: 48px; color: #707070; display: block">description</i>
+                    <div id="new-paste-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
+                    <p id="new-paste-file-filename" class="mdui-m-a-0" style="color: #707070"></p>
+                  </div>
+                </div>
+                <div id="new-paste-file-progress">
+                  <div>
+                    <p id="new-paste-file-progress-text" style="background-color: #f0f0f0">0.00MiB / 0.00MiB - 0.00%</p>
+                    <div class="mdui-progress" style="border-radius: 0">
+                      <div id="new-paste-file-progress-bar" class="mdui-progress-determinate" style="width: 0%"></div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="mdui-row" id="new-paste-file" style="display: none">
-                <div class="mdui-col-xs-12" style="height: 100%">
-                  <div
-                    class="mdui-valign paste-file-drop-overlay mdui-hidden"
-                    style="position: absolute; background-color: #f0f0f0; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
-                    <div class="mdui-center mdui-p-a-2" style="max-height: 320px; overflow: hidden">
-                      <i class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
-                      <p class="mdui-m-a-0" style="color: #707070">松开鼠标加载文件</p>
-                    </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-md-4 mdui-col-xs-6">
+                <div class="mdui-textfield">
+                  <label class="mdui-textfield-label">口令</label>
+                  <input id="new-paste-password" class="mdui-textfield-input" type="text" />
+                </div>
+              </div>
+              <div class="mdui-col-md-4 mdui-col-xs-6">
+                <div class="mdui-textfield" style="overflow: visible">
+                  <label class="mdui-textfield-label">过期时间</label>
+                  <select id="new-paste-expire" class="mdui-select" mdui-select style="width: 100%" width="100%">
+                    <option value="0"></option>
+                    <option value="3600">1 小时</option>
+                    <option value="21600">6 小时</option>
+                    <option value="43200">12 小时</option>
+                    <option value="86400">1 天</option>
+                    <option value="604800">7 天</option>
+                    <option value="2592000">30 天</option>
+                    <option value="7776000">90 天</option>
+                    <option value="15552000">180 天</option>
+                    <option value="31536000">365 天</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mdui-col-md-4 mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <label class="mdui-textfield-label">最大访问次数</label>
+                  <input id="new-paste-max-access-count" class="mdui-textfield-input" type="text" />
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-md-6 mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <label class="mdui-textfield-label">UUID</label>
+                  <input id="new-paste-uuid" class="mdui-textfield-input mdui-text-lowercase" type="text"
+                    placeholder="00000000-0000-0000-0000-000000000000" />
+                  <div class="mdui-textfield-error">非法UUID</div>
+                  <div class="mdui-textfield-helper">填写需要更新的 Paste UUID</div>
+                </div>
+              </div>
+              <div class="mdui-col-md-6 mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <label class="mdui-textfield-label">短链接</label>
+                  <input id="new-paste-short-url" class="mdui-textfield-input" type="text" placeholder="pastebin" />
+                  <div class="mdui-textfield-error" id="new-paste-short-url-error">仅可使用[A-Za-z0-9._-]</div>
+                  <div class="mdui-textfield-helper">仅可使用[A-Za-z0-9._-]</div>
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-float-right mdui-p-a-1">
+                  <label class="mdui-checkbox">
+                    不再可用后删除 Paste
+                    <input id="new-paste-delete-if-expired" type="checkbox" disabled />
+                    <i class="mdui-checkbox-icon"></i>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row mdui-p-y-1">
+              <div class="mdui-col-xs-12">
+                <input type="file" id="new-paste-file-input" style="display: none" />
+                <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple"
+                  id="new-paste-load-from-file">从文件中加载</button>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-md-4 mdui-col-xs-6 mdui-p-a-1">
+                <button class="mdui-btn mdui-btn-block mdui-color-red mdui-ripple new-paste-action-button"
+                  id="new-paste-delete" disabled>删除 Paste</button>
+              </div>
+              <div class="mdui-col-md-4 mdui-col-xs-6 mdui-p-a-1">
+                <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple new-paste-action-button"
+                  id="new-paste-update" disabled>更新 Paste</button>
+              </div>
+              <div class="mdui-col-md-4 mdui-col-xs-12 mdui-p-a-1">
+                <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple new-paste-action-button"
+                  id="new-paste-submit">创建 Paste</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{- if $show_new_paste }}
+    <div id="paste-viewer" style="display: none">{{- if false -}}</div>
+    {{- /* make html formatter happy */ -}} {{- end -}} {{- else}}
+    <div id="paste-viewer">
+      {{- end}}
+      <div id="paste-viewer-query" class="mdui-card card-collapse card-collapse-open">
+        <div class="mdui-progress paste-viewer-progress">
+          <div class="mdui-progress-indeterminate"></div>
+        </div>
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title">Paste-Viewer</div>
+        </div>
+        <div class="mdui-card-content">
+          <div class="mdui-container-fluid">
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <i class="mdui-icon material-icons">search</i>
+                  <label class="mdui-textfield-label">Paste</label>
+                  <input id="paste-viewer-query-input" class="mdui-textfield-input paste-viewer-action" type="text"
+                    placeholder="输入需要查询的Paste Hash或短链接" />
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <button class="mdui-btn mdui-color-theme-accent mdui-ripple mdui-float-right paste-viewer-action"
+                  id="paste-viewer-query-btn">查询</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="paste-viewer-password" class="mdui-card card-collapse">
+        <div class="mdui-progress paste-viewer-progress">
+          <div class="mdui-progress-indeterminate"></div>
+        </div>
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
+          <div class="mdui-card-primary-subtitle">此 Paste 要求输入访问口令</div>
+        </div>
+        <div class="mdui-card-content">
+          <div class="mdui-container-fluid">
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <i class="mdui-icon material-icons">lock</i>
+                  <label class="mdui-textfield-label">Paste 口令</label>
+                  <input id="paste-viewer-password-input" class="mdui-textfield-input paste-viewer-action"
+                    type="password" placeholder="输入 Paste 访问口令" />
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-float-right">
+                  <button
+                    class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query paste-viewer-action">返回</button>
+                  <button id="paste-viewer-confirm-password"
+                    class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-action">确定</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="paste-viewer-not-found" class="mdui-card card-collapse">
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
+        </div>
+        <div class="mdui-card-content">
+          <div class="mdui-container-fluid">
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12" style="height: 100%">
+                <div class="mdui-valign mdui-p-a-2 mdui-m-y-1"
+                  style="min-height: 200px; background-color: #f0f0f0; text-align: center">
+                  <div class="mdui-center">
+                    <i class="mdui-icon material-icons"
+                      style="font-size: 48px; color: #707070; display: block">sentiment_neutral</i>
+                    <p class="mdui-m-a-0" style="color: #707070">Paste 不存在或已不再可用</p>
                   </div>
-                  <div class="mdui-valign mdui-p-a-2" style="min-height: 200px; background-color: #f0f0f0; text-align: center">
-                    <div class="mdui-center">
-                      <i id="new-paste-file-icon" class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
-                      <div id="new-paste-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
-                      <p id="new-paste-file-filename" class="mdui-m-a-0" style="color: #707070"></p>
-                    </div>
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-float-right">
+                  <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="paste-viewer-text" class="mdui-card card-collapse">
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
+        </div>
+        <div class="mdui-card-content">
+          <div class="mdui-container-fluid">
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div id="paste-viewer-text-content-wrapper" class="card-collapse card-collapse-open mdui-p-a-2"
+                  style="overflow-x: scroll">
+                  <div style="display: inline-block">此处是 Paste 内容 动态加载 Paste 中</div>
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row mdui-m-t-2">
+              <div class="mdui-col-xs-6">
+                <select id="paste-viewer-highlight-language" class="mdui-select" style="width: 100%"></select>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-float-left mdui-p-a-1">
+                  <label class="mdui-checkbox">
+                    启用代码高亮
+                    <input id="paste-viewer-enable-highlight-js" type="checkbox" />
+                    <i class="mdui-checkbox-icon"></i>
+                  </label>
+                </div>
+                <div class="mdui-float-right mdui-p-a-1">
+                  <label class="mdui-checkbox">
+                    启用 Markdown 渲染
+                    <input id="paste-viewer-enable-markdown-render" type="checkbox" />
+                    <i class="mdui-checkbox-icon"></i>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-float-right">
+                  <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
+                  <a class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-download-btn">下载</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="paste-viewer-file" class="mdui-card card-collapse">
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
+        </div>
+        <div class="mdui-card-content">
+          <div class="mdui-container-fluid">
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12" style="height: 100%">
+                <div class="mdui-valign mdui-p-a-2 mdui-m-y-1"
+                  style="min-height: 200px; background-color: #f0f0f0; text-align: center">
+                  <div class="mdui-center">
+                    <i id="paste-viewer-file-icon" class="mdui-icon material-icons"
+                      style="font-size: 48px; color: #707070; display: block">description</i>
+                    <div id="paste-viewer-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
+                    <p id="paste-viewer-file-filename" class="mdui-m-a-0" style="color: #707070">Cirno.bmp (9.00 MiB)
+                    </p>
                   </div>
-                  <div id="new-paste-file-progress">
-                    <div>
-                      <p id="new-paste-file-progress-text" style="background-color: #f0f0f0">0.00MiB / 0.00MiB - 0.00%</p>
-                      <div class="mdui-progress" style="border-radius: 0">
-                        <div id="new-paste-file-progress-bar" class="mdui-progress-determinate" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-float-right">
+                  <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
+                  <a class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-download-btn">下载</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{- if .IsLogin }}
+    <div id="paste-manage"> {{- if false -}}</div> {{- /* make html formatter happy */ -}} {{- end }}
+    {{- else }}
+    <div id="paste-manage" style="display: none">
+      {{- end}}
+      <div class="mdui-card mdui-m-t-2">
+        <div class="mdui-progress paste-manage-progress" style="display: block;">
+          <div class="mdui-progress-indeterminate"></div>
+        </div>
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title">Paste-Manage</div>
+        </div>
+        <div class="mdui-card-content">
+          <div class="mdui-container-fluid">
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12" id="paste-manage-pastes">
+                <div class="mdui-panel">
+                  <div class="mdui-panel-item">
+                    <div class="mdui-panel-item-header">
+                      <div class="mdui-panel-item-title paste-manage-uuid"></div>
+                      <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash"></span></div>
+                      <div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl"></span></div>
+                      <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
+                    </div>
+                    <div class="mdui-panel-item-body">
+                      <div class="raw-result"></div>
+                      <div class="mdui-panel-item-actions">
+                        <button class="mdui-btn mdui-ripple mdui-color-red">删除</button>
+                        <button class="mdui-btn mdui-ripple mdui-color-blue-accent">查看</button>
+                        <button class="mdui-btn mdui-ripple mdui-color-theme-accent">编辑</button>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="mdui-row">
-                <div class="mdui-col-md-4 mdui-col-xs-6">
-                  <div class="mdui-textfield">
-                    <label class="mdui-textfield-label">口令</label>
-                    <input id="new-paste-password" class="mdui-textfield-input" type="text" />
-                  </div>
-                </div>
-                <div class="mdui-col-md-4 mdui-col-xs-6">
-                  <div class="mdui-textfield" style="overflow: visible">
-                    <label class="mdui-textfield-label">过期时间</label>
-                    <select id="new-paste-expire" class="mdui-select" mdui-select style="width: 100%" width="100%">
-                      <option value="0"></option>
-                      <option value="3600">1 小时</option>
-                      <option value="21600">6 小时</option>
-                      <option value="43200">12 小时</option>
-                      <option value="86400">1 天</option>
-                      <option value="604800">7 天</option>
-                      <option value="2592000">30 天</option>
-                      <option value="7776000">90 天</option>
-                      <option value="15552000">180 天</option>
-                      <option value="31536000">365 天</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="mdui-col-md-4 mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <label class="mdui-textfield-label">最大访问次数</label>
-                    <input id="new-paste-max-access-count" class="mdui-textfield-input" type="text" />
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-md-6 mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <label class="mdui-textfield-label">UUID</label>
-                    <input id="new-paste-uuid" class="mdui-textfield-input mdui-text-lowercase" type="text" placeholder="00000000-0000-0000-0000-000000000000" />
-                    <div class="mdui-textfield-error">非法UUID</div>
-                    <div class="mdui-textfield-helper">填写需要更新的 Paste UUID</div>
-                  </div>
-                </div>
-                <div class="mdui-col-md-6 mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <label class="mdui-textfield-label">短链接</label>
-                    <input id="new-paste-short-url" class="mdui-textfield-input" type="text" placeholder="pastebin" />
-                    <div class="mdui-textfield-error" id="new-paste-short-url-error">仅可使用[A-Za-z0-9._-]</div>
-                    <div class="mdui-textfield-helper">仅可使用[A-Za-z0-9._-]</div>
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-float-right mdui-p-a-1">
-                    <label class="mdui-checkbox">
-                      不再可用后删除 Paste
-                      <input id="new-paste-delete-if-expired" type="checkbox" disabled />
-                      <i class="mdui-checkbox-icon"></i>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row mdui-p-y-1">
-                <div class="mdui-col-xs-12">
-                  <input type="file" id="new-paste-file-input" style="display: none" />
-                  <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple" id="new-paste-load-from-file">从文件中加载</button>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-md-4 mdui-col-xs-6 mdui-p-a-1">
-                  <button class="mdui-btn mdui-btn-block mdui-color-red mdui-ripple new-paste-action-button" id="new-paste-delete" disabled>删除 Paste</button>
-                </div>
-                <div class="mdui-col-md-4 mdui-col-xs-6 mdui-p-a-1">
-                  <button
-                    class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple new-paste-action-button"
-                    id="new-paste-update"
-                    disabled>
-                    更新 Paste
-                  </button>
-                </div>
-                <div class="mdui-col-md-4 mdui-col-xs-12 mdui-p-a-1">
-                  <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple new-paste-action-button" id="new-paste-submit">创建 Paste</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="paste-viewer">
-        <div id="paste-viewer-query" class="mdui-card card-collapse card-collapse-open">
-          <div class="mdui-progress paste-viewer-progress">
-            <div class="mdui-progress-indeterminate"></div>
-          </div>
-          <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title">Paste-Viewer</div>
-          </div>
-          <div class="mdui-card-content">
-            <div class="mdui-container-fluid">
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <i class="mdui-icon material-icons">search</i>
-                    <label class="mdui-textfield-label">Paste</label>
-                    <input id="paste-viewer-query-input" class="mdui-textfield-input paste-viewer-action" type="text" placeholder="输入需要查询的Paste Hash或短链接" />
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <button class="mdui-btn mdui-color-theme-accent mdui-ripple mdui-float-right paste-viewer-action" id="paste-viewer-query-btn">查询</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="paste-viewer-password" class="mdui-card card-collapse">
-          <div class="mdui-progress paste-viewer-progress">
-            <div class="mdui-progress-indeterminate"></div>
-          </div>
-          <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
-            <div class="mdui-card-primary-subtitle">此 Paste 要求输入访问口令</div>
-          </div>
-          <div class="mdui-card-content">
-            <div class="mdui-container-fluid">
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <i class="mdui-icon material-icons">lock</i>
-                    <label class="mdui-textfield-label">Paste 口令</label>
-                    <input id="paste-viewer-password-input" class="mdui-textfield-input paste-viewer-action" type="password" placeholder="输入 Paste 访问口令" />
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-float-right">
-                    <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query paste-viewer-action">返回</button>
-                    <button id="paste-viewer-confirm-password" class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-action">确定</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="paste-viewer-not-found" class="mdui-card card-collapse">
-          <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
-          </div>
-          <div class="mdui-card-content">
-            <div class="mdui-container-fluid">
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12" style="height: 100%">
-                  <div class="mdui-valign mdui-p-a-2 mdui-m-y-1" style="min-height: 200px; background-color: #f0f0f0; text-align: center">
-                    <div class="mdui-center">
-                      <i class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">sentiment_neutral</i>
-                      <p class="mdui-m-a-0" style="color: #707070">Paste 不存在或已不再可用</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-float-right">
-                    <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="paste-viewer-text" class="mdui-card card-collapse">
-          <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
-          </div>
-          <div class="mdui-card-content">
-            <div class="mdui-container-fluid">
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div id="paste-viewer-text-content-wrapper" class="card-collapse card-collapse-open mdui-p-a-2" style="overflow-x: scroll">
-                    <div style="display: inline-block">此处是 Paste 内容 动态加载 Paste 中</div>
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row mdui-m-t-2">
-                <div class="mdui-col-xs-6">
-                  <select id="paste-viewer-highlight-language" class="mdui-select" style="width: 100%"></select>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-float-left mdui-p-a-1">
-                    <label class="mdui-checkbox">
-                      启用代码高亮
-                      <input id="paste-viewer-enable-highlight-js" type="checkbox" />
-                      <i class="mdui-checkbox-icon"></i>
-                    </label>
-                  </div>
-                  <div class="mdui-float-right mdui-p-a-1">
-                    <label class="mdui-checkbox">
-                      启用 Markdown 渲染
-                      <input id="paste-viewer-enable-markdown-render" type="checkbox" />
-                      <i class="mdui-checkbox-icon"></i>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-float-right">
-                    <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
-                    <a class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-download-btn">下载</a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="paste-viewer-file" class="mdui-card card-collapse">
-          <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
-          </div>
-          <div class="mdui-card-content">
-            <div class="mdui-container-fluid">
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12" style="height: 100%">
-                  <div class="mdui-valign mdui-p-a-2 mdui-m-y-1" style="min-height: 200px; background-color: #f0f0f0; text-align: center">
-                    <div class="mdui-center">
-                      <i id="paste-viewer-file-icon" class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
-                      <div id="paste-viewer-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
-                      <p id="paste-viewer-file-filename" class="mdui-m-a-0" style="color: #707070">Cirno.bmp (9.00 MiB)</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-float-right">
-                    <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
-                    <a class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-download-btn">下载</a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="mdui-dialog" id="user-profile-dialog">
-        <div class="mdui-dialog-title user-profile-view">用户资料</div>
-        <div class="mdui-dialog-title user-profile-edit" style="display: none;">修改用户资料</div>
-        <div class="mdui-dialog-content">
-          <div class="mdui-container-fluid user-profile-view">
-            <div class="mdui-row">
-              <div class="mdui-col-xs-12">
-                <ul class="mdui-list">
-                  <li class="mdui-list-item mdui-ripple">
-                    <i class="mdui-list-item-icon mdui-icon material-icons">perm_identity</i>
-                    <div class="mdui-list-item-content">UID</div>
-                    <div class="mdui-list-item-content mdui-text-right" id="user-profile-uid-text">未登录</div>
-                  </li>
-                  <li class="mdui-divider"></li>
-                  <li class="mdui-list-item mdui-ripple">
-                    <i class="mdui-list-item-icon mdui-icon material-icons">account_circle</i>
-                    <div class="mdui-list-item-content">用户名</div>
-                    <div class="mdui-list-item-content mdui-text-right" id="user-profile-username-text"></div>
-                  </li>
-                  <li class="mdui-divider"></li>
-                  <li class="mdui-list-item mdui-ripple">
-                    <i class="mdui-list-item-icon mdui-icon material-icons">email</i>
-                    <div class="mdui-list-item-content">邮箱</div>
-                    <div class="mdui-list-item-content mdui-text-right" id="user-profile-email-text"></div>
-                  </li>
-                  <li class="mdui-divider"></li>
-                  <li class="mdui-list-item mdui-ripple">
-                    <i class="mdui-list-item-icon mdui-icon material-icons">supervisor_account</i>
-                    <div class="mdui-list-item-content">用户组</div>
-                    <div class="mdui-list-item-content mdui-text-right" id="user-profile-role-text"></div>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            <div class="mdui-row mdui-p-t-1">
-              <div class="mdui-col-xs-6">
-                <button class="mdui-btn-block mdui-btn mdui-color-blue-accent mdui-ripple" id="user-profile-edit-btn">修改个人信息</button>
-              </div>
-              <div class="mdui-col-xs-6">
-                <a class="mdui-btn-block mdui-btn mdui-color-red mdui-ripple" href="./api/logout">登出</a>
-              </div>
-            </div>
-          </div>
-          <div class="mdui-container-fluid user-profile-edit" style="display: none;">
-            <div class="mdui-row">
-              <div class="mdui-col-xs-12">
-                <div class="mdui-textfield">
-                  <label class="mdui-textfield-label">用户名</label>
-                  <input id="user-profile-edit-username" class="mdui-textfield-input" type="text" />
-                </div>
-              </div>
             </div>
             <div class="mdui-row">
-              <div class="mdui-col-xs-12">
-                <div class="mdui-textfield">
-                  <label class="mdui-textfield-label">邮箱</label>
-                  <input id="user-profile-edit-email" class="mdui-textfield-input" type="text" />
+              <div class="mdui-col-xs-12 mdui-m-t-1">
+                <div class="mdui-float-right">
+                <button id="paste-manage-prev" class="mdui-btn mdui-ripple mdui-color-light-blue-accent mdui-text-color-white">上一页</button>
+                <button id="paste-manage-next" class="mdui-btn mdui-ripple mdui-color-theme-accent">下一页</button>
                 </div>
-              </div>
-            </div>
-            <div class="mdui-row">
-              <div class="mdui-col-xs-12">
-                <div class="mdui-textfield">
-                  <label class="mdui-textfield-label">旧密码</label>
-                  <input id="user-profile-edit-oldpwd" class="mdui-textfield-input" type="password" placeholder="若不修改密码，无需填写" />
-                </div>
-              </div>
-            </div>
-            <div class="mdui-row">
-              <div class="mdui-col-xs-12">
-                <div class="mdui-textfield">
-                  <label class="mdui-textfield-label">新密码</label>
-                  <input id="user-profile-edit-newpwd" class="mdui-textfield-input" type="password" />
-                </div>
-              </div>
-            </div>
-            <div class="mdui-row mdui-p-t-1">
-              <div class="mdui-col-xs-6">
-                <button class="mdui-btn-block mdui-btn mdui-color-blue-accent mdui-ripple user-profile-edit-action" id="user-profile-edit-return">返回</button>
-              </div>
-              <div class="mdui-col-xs-6">
-                <button class="mdui-btn-block mdui-btn mdui-color-theme-accent mdui-ripple user-profile-edit-action" id="user-profile-edit-confirm">确认</button>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <div class="mdui-dialog" id="login-dialog">
-      <div class="mdui-dialog-title">登录</div>
+    <div class="mdui-dialog" id="user-profile-dialog">
+      <div class="mdui-dialog-title user-profile-view">用户资料</div>
+      <div class="mdui-dialog-title user-profile-edit" style="display: none">修改用户资料</div>
       <div class="mdui-dialog-content">
-        <div class="mdui-container-fluid">
+        <div class="mdui-container-fluid user-profile-view">
+          <div class="mdui-row">
+            <div class="mdui-col-xs-12">
+              <ul class="mdui-list">
+                <li class="mdui-list-item mdui-ripple">
+                  <i class="mdui-list-item-icon mdui-icon material-icons">perm_identity</i>
+                  <div class="mdui-list-item-content">UID</div>
+                  <div class="mdui-list-item-content mdui-text-right" id="user-profile-uid-text">未登录</div>
+                </li>
+                <li class="mdui-divider"></li>
+                <li class="mdui-list-item mdui-ripple">
+                  <i class="mdui-list-item-icon mdui-icon material-icons">account_circle</i>
+                  <div class="mdui-list-item-content">用户名</div>
+                  <div class="mdui-list-item-content mdui-text-right" id="user-profile-username-text"></div>
+                </li>
+                <li class="mdui-divider"></li>
+                <li class="mdui-list-item mdui-ripple">
+                  <i class="mdui-list-item-icon mdui-icon material-icons">email</i>
+                  <div class="mdui-list-item-content">邮箱</div>
+                  <div class="mdui-list-item-content mdui-text-right" id="user-profile-email-text"></div>
+                </li>
+                <li class="mdui-divider"></li>
+                <li class="mdui-list-item mdui-ripple">
+                  <i class="mdui-list-item-icon mdui-icon material-icons">supervisor_account</i>
+                  <div class="mdui-list-item-content">用户组</div>
+                  <div class="mdui-list-item-content mdui-text-right" id="user-profile-role-text"></div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="mdui-row mdui-p-t-1">
+            <div class="mdui-col-xs-6">
+              <button class="mdui-btn-block mdui-btn mdui-color-blue-accent mdui-ripple"
+                id="user-profile-edit-btn">修改个人信息</button>
+            </div>
+            <div class="mdui-col-xs-6">
+              <a class="mdui-btn-block mdui-btn mdui-color-red mdui-ripple" href="./api/logout">登出</a>
+            </div>
+          </div>
+        </div>
+        <div class="mdui-container-fluid user-profile-edit" style="display: none">
           <div class="mdui-row">
             <div class="mdui-col-xs-12">
               <div class="mdui-textfield">
-                <i class="mdui-icon material-icons">account_circle</i>
-                <input class="mdui-textfield-input" id="login-username" type="text" placeholder="User Name" />
+                <label class="mdui-textfield-label">用户名</label>
+                <input id="user-profile-edit-username" class="mdui-textfield-input" type="text" />
               </div>
             </div>
           </div>
           <div class="mdui-row">
             <div class="mdui-col-xs-12">
               <div class="mdui-textfield">
-                <i class="mdui-icon material-icons">vpn_key</i>
-                <input class="mdui-textfield-input" type="password" id="login-password" placeholder="Password" />
+                <label class="mdui-textfield-label">邮箱</label>
+                <input id="user-profile-edit-email" class="mdui-textfield-input" type="text" />
               </div>
+            </div>
+          </div>
+          <div class="mdui-row">
+            <div class="mdui-col-xs-12">
+              <div class="mdui-textfield">
+                <label class="mdui-textfield-label">旧密码</label>
+                <input id="user-profile-edit-oldpwd" class="mdui-textfield-input" type="password"
+                  placeholder="若不修改密码，无需填写" />
+              </div>
+            </div>
+          </div>
+          <div class="mdui-row">
+            <div class="mdui-col-xs-12">
+              <div class="mdui-textfield">
+                <label class="mdui-textfield-label">新密码</label>
+                <input id="user-profile-edit-newpwd" class="mdui-textfield-input" type="password" />
+              </div>
+            </div>
+          </div>
+          <div class="mdui-row mdui-p-t-1">
+            <div class="mdui-col-xs-6">
+              <button class="mdui-btn-block mdui-btn mdui-color-blue-accent mdui-ripple user-profile-edit-action"
+                id="user-profile-edit-return">返回</button>
+            </div>
+            <div class="mdui-col-xs-6">
+              <button class="mdui-btn-block mdui-btn mdui-color-theme-accent mdui-ripple user-profile-edit-action"
+                id="user-profile-edit-confirm">确认</button>
             </div>
           </div>
         </div>
       </div>
-      <div class="mdui-dialog-actions">
-        <button class="mdui-btn mdui-ripple login-dialog-action" mdui-dialog-close>取消</button>
-        <button class="mdui-btn mdui-ripple mdui-color-theme-accent login-dialog-action" id="login-button">登录</button>
+    </div>
+  </div>
+  <div class="mdui-dialog" id="login-dialog">
+    <div class="mdui-dialog-title">登录</div>
+    <div class="mdui-dialog-content">
+      <div class="mdui-container-fluid">
+        <div class="mdui-row">
+          <div class="mdui-col-xs-12">
+            <div class="mdui-textfield">
+              <i class="mdui-icon material-icons">account_circle</i>
+              <input class="mdui-textfield-input" id="login-username" type="text" placeholder="User Name" />
+            </div>
+          </div>
+        </div>
+        <div class="mdui-row">
+          <div class="mdui-col-xs-12">
+            <div class="mdui-textfield">
+              <i class="mdui-icon material-icons">lock_outline</i>
+              <input class="mdui-textfield-input" type="password" id="login-password" placeholder="Password" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-    <script src="static/mdui/js/mdui.min.js"></script>
-    <script src="static/lodash/js/lodash.min.js"></script>
-    <script src="static/purify/js/purify.min.js"></script>
-    <script src="static/marked/js/marked.min.js"></script>
-    <script src="static/qrcode/js/qrcode.min.js"></script>
-    <script src="static/highlight/highlight.min.js"></script>
-    <script src="static/highlight/highlightjs-line-numbers.min.js"></script>
-    <script src="static/js/pastebin.js"></script>
-  </body>
+    <div class="mdui-dialog-actions">
+      <button class="mdui-btn mdui-ripple login-dialog-action" mdui-dialog-close>取消</button>
+      <button class="mdui-btn mdui-ripple mdui-color-theme-accent login-dialog-action" id="login-button">登录</button>
+    </div>
+  </div>
+  <script src="static/mdui/js/mdui.min.js"></script>
+  <script src="static/lodash/js/lodash.min.js"></script>
+  <script src="static/purify/js/purify.min.js"></script>
+  <script src="static/marked/js/marked.min.js"></script>
+  <script src="static/qrcode/js/qrcode.min.js"></script>
+  <script src="static/highlight/highlight.min.js"></script>
+  <script src="static/highlight/highlightjs-line-numbers.min.js"></script>
+  <script src="static/js/pastebin.js"></script>
+</body>
+
 </html>

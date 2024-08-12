@@ -38,7 +38,14 @@ func UserLogin(c echo.Context) error {
 		c.JSON(200, map[string]any{"code": -1, "error": "用户名或密码错误"})
 		return nil
 	}
-	c.SetCookie(&http.Cookie{Name: "user_token", Value: u.Token(), HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: Config.UserCookieMaxAge})
+	c.SetCookie(&http.Cookie{
+		Name:     "user_token",
+		Value:    u.Token(),
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   Config.UserCookieMaxAge,
+		Path:     "/",
+	})
 	c.JSON(200, map[string]any{"code": 0, "info": u, "token": u.Token()})
 	return nil
 }
@@ -68,7 +75,7 @@ func EditUserProfile(c echo.Context) error {
 	}
 	if req.OldPassword != "" && req.NewPassword != "" {
 		if err := user.ChangePassword(req.OldPassword, req.NewPassword); err != nil {
-			c.JSON(200, map[string]any{"code": -1, "error": "密码错误"})
+			c.JSON(403, map[string]any{"code": -1, "error": "密码错误"})
 			return nil
 		}
 	}
@@ -83,7 +90,7 @@ func EditUserProfile(c echo.Context) error {
 func GetUser(c echo.Context) error {
 	user, ok := c.Get("user").(*database.User)
 	if !ok {
-		c.JSON(200, map[string]any{"code": -1, "error": "未登录"})
+		c.JSON(403, map[string]any{"code": -1, "error": "未登录"})
 		return nil
 	}
 	c.JSON(200, map[string]any{"code": 0, "info": user})
@@ -94,6 +101,7 @@ func UserLogout(c echo.Context) error {
 	c.SetCookie(&http.Cookie{
 		Name:   "user_token",
 		MaxAge: -1,
+		Path:   "/",
 	})
 	return c.Redirect(http.StatusFound, "/")
 }
@@ -101,25 +109,32 @@ func UserLogout(c echo.Context) error {
 func UserPasteList(c echo.Context) error {
 	user, ok := c.Get("user").(*database.User)
 	if !ok {
-		c.JSON(200, map[string]any{"code": -1, "error": "未登录"})
+		c.JSON(403, map[string]any{"code": -1, "error": "未登录"})
 		return nil
 	}
-	after_uuid := c.QueryParam("after_uuid")
-	limit_string := c.QueryParam("limit")
-	limit := int64(100)
-	if limit_string != "" {
-		parsed_limit, err := strconv.ParseInt(limit_string, 10, 0)
+	page_size_string := c.QueryParam("page_size")
+	page_size := int64(50)
+	if page_size_string != "" {
+		parsed_page_size, err := strconv.ParseInt(page_size_string, 10, 0)
 		if err == nil {
-			limit = parsed_limit
+			page_size = parsed_page_size
 		}
 	}
-	limit = max(min(1000, limit), 1)
-	pastes, err := database.QueryAllPasteByUser(user.Uid, after_uuid, limit)
+	page := int64(1)
+	page_string := c.QueryParam("page")
+	if page_string != "" {
+		parsed_page, err := strconv.ParseInt(page_string, 10, 0)
+		if err == nil {
+			page = parsed_page
+		}
+	}
+	page_size = max(min(1000, page_size), 1)
+	pastes, total, err := database.QueryAllPasteByUser(user.UID, page, page_size)
 	if err != nil {
 		c.JSON(200, map[string]any{"code": -1, "error": "查询失败"})
 		return nil
 	}
-	c.JSON(200, map[string]any{"code": 0, "info": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
+	c.JSON(200, map[string]any{"code": 0, "total": total, "pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
 		return pasteInfo(p)
 	})})
 	return nil

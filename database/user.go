@@ -70,7 +70,7 @@ func AddUID(uid int, username string, email string, role string, password string
 }
 
 type User struct {
-	Uid      int64       `json:"uid" db:"uid"`
+	UID      int64       `json:"uid" db:"uid"`
 	Username string      `json:"username" db:"username"`
 	Email    string      `json:"email" db:"email"`
 	Role     string      `json:"role" db:"role"`
@@ -106,7 +106,7 @@ func (e *User_Extra) Value() (driver.Value, error) {
 }
 
 func (user *User) IsAnonymous() bool {
-	return user.Uid == 1
+	return user.UID == 1
 }
 
 func (user *User) IsAdmin() bool {
@@ -114,7 +114,7 @@ func (user *User) IsAdmin() bool {
 }
 
 func (user *User) Update() error {
-	_, err := db.Exec("UPDATE users SET username = ?, email = ?, role = ?, password = ?, extra = ? WHERE uid = ?", user.Username, user.Email, user.Role, user.Password, user.Extra, user.Uid)
+	_, err := db.Exec("UPDATE users SET username = ?, email = ?, role = ?, password = ?, extra = ? WHERE uid = ?", user.Username, user.Email, user.Role, user.Password, user.Extra, user.UID)
 	return err
 }
 
@@ -123,8 +123,8 @@ func (user *User) Delete() error {
 	if err != nil {
 		return err
 	}
-	tx.Exec("DELETE FROM users WHERE uid = ?", user.Uid)
-	tx.Exec("DELETE FROM pastes WHERE uid = ?", user.Uid)
+	tx.Exec("DELETE FROM users WHERE uid = ?", user.UID)
+	tx.Exec("DELETE FROM pastes WHERE uid = ?", user.UID)
 	err = tx.Commit()
 	return err
 }
@@ -168,7 +168,7 @@ func Login(account string, password string) (*User, error) {
 func (u *User) Token() string {
 	hash := hmac.New(sha256.New, []byte(u.Password))
 	buf := [48]byte{}
-	binary.Write(bytes.NewBuffer(buf[:0]), binary.BigEndian, u.Uid)
+	binary.Write(bytes.NewBuffer(buf[:0]), binary.BigEndian, u.UID)
 	rand.Read(buf[8:16])
 	hash.Write(buf[:16])
 	copy(buf[16:], hash.Sum(nil))

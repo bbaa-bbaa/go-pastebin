@@ -37,18 +37,20 @@ var DefaultAttachmentExtensions = []string{"7z", "bz2", "gz", "rar", "tar", "xz"
 var HTML_MIME = []string{"text/html", "application/xhtml+xml"}
 
 type PasteInfo struct {
-	UUID           string    `json:"uuid"`
-	UID            int64     `json:"uid"`
-	Hash           string    `json:"hash"`
-	ExpireAfter    time.Time `json:"expire_after"`
-	AccessCount    int64     `json:"access_count"`
-	MaxAccessCount int64     `json:"max_access_count"`
-	DeleteIfExpire bool      `json:"delete_if_expire"`
-	CreatedAt      time.Time `json:"created_at"`
-	Short_url      string    `json:"short_url"`
-	MimeType       string    `json:"mime_type"`
-	FileName       string    `json:"filename"`
-	Size           uint64    `json:"size"`
+	UUID           string `json:"uuid"`
+	UID            int64  `json:"uid"`
+	Hash           string `json:"hash"`
+	Digest         string `json:"digest"`
+	ExpireAfter    string `json:"expire_after"`
+	AccessCount    int64  `json:"access_count"`
+	MaxAccessCount int64  `json:"max_access_count"`
+	DeleteIfExpire bool   `json:"delete_if_expire"`
+	CreatedAt      string `json:"created_at"`
+	Short_url      string `json:"short_url"`
+	MimeType       string `json:"mime_type"`
+	FileName       string `json:"filename"`
+	Size           uint64 `json:"size"`
+	HasPassword    bool   `json:"has_password"`
 }
 
 func pasteInfo(paste *database.Paste) *PasteInfo {
@@ -56,15 +58,17 @@ func pasteInfo(paste *database.Paste) *PasteInfo {
 		UUID:           paste.UUID,
 		UID:            paste.UID,
 		Hash:           paste.Base64Hash(),
-		ExpireAfter:    paste.ExpireAfter,
+		Digest:         paste.HexHash(),
+		ExpireAfter:    paste.ExpireAfter.Format(time.RFC3339Nano),
 		AccessCount:    paste.AccessCount,
 		MaxAccessCount: paste.MaxAccessCount,
 		DeleteIfExpire: paste.DeleteIfExpire,
-		CreatedAt:      paste.CreatedAt,
+		CreatedAt:      paste.CreatedAt.Format(time.RFC3339Nano),
 		Short_url:      paste.Short_url,
 		MimeType:       paste.Extra.MimeType,
 		FileName:       paste.Extra.FileName,
 		Size:           paste.Extra.Size,
+		HasPassword:    paste.Password != "",
 	}
 }
 
@@ -155,10 +159,10 @@ func NewPaste(c echo.Context) error {
 	}
 
 	if user, ok := c.Get("user").(*database.User); ok {
-		paste.UID = user.Uid
+		paste.UID = user.UID
 	}
 
-	if !Config.AllowAnonymous && (&database.User{Uid: paste.UID}).IsAnonymous() {
+	if !Config.AllowAnonymous && (&database.User{UID: paste.UID}).IsAnonymous() {
 		if response_is_json {
 			c.JSON(403, map[string]any{"code": -1, "error": "anonymous user not allowed, please login"})
 		} else {
@@ -344,7 +348,7 @@ func UpdatePaste(c echo.Context) error {
 	}
 
 	if user, ok := c.Get("user").(*database.User); ok {
-		paste.UID = user.Uid
+		paste.UID = user.UID
 	}
 
 	if query.Has("password") {
@@ -358,6 +362,11 @@ func UpdatePaste(c echo.Context) error {
 
 func DeletePaste(c echo.Context) error {
 	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
+	force := false
+	force_query := c.QueryParam("force")
+	if force_query != "" {
+		force, _ = strconv.ParseBool(force_query)
+	}
 	param_uuid := c.Param("uuid")
 	parsed_uuid, err := uuid.Parse(param_uuid)
 	if err != nil {
@@ -386,7 +395,11 @@ func DeletePaste(c echo.Context) error {
 		}
 		return err
 	}
-	err = paste.Delete()
+	if !force {
+		err = paste.Delete()
+	} else {
+		err = paste.ForceDelete()
+	}
 	if err != nil {
 		if errors.Is(err, database.ErrPasteHold) {
 			err = paste.FlagDelete()
@@ -618,5 +631,38 @@ func QueryPaste(c echo.Context) error {
 		return err
 	}
 	c.JSON(200, map[string]any{"code": 0, "info": pasteInfo(paste)})
+	return nil
+}
+
+func PasteAccess(c echo.Context) error {
+	/*
+		_, ok := c.Get("user").(*database.User)
+		if !ok {
+			c.JSON(403, map[string]any{"code": -1, "error": "未登录"})
+			return nil
+		}
+	*/
+	uuid := c.Param("uuid")
+	paste, err := database.QueryPasteByUUID(uuid)
+	if err != nil {
+		if errors.Is(err, database.ErrNotFound) {
+			c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
+		} else {
+			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
+		}
+		return err
+	}
+	/*
+		if paste.UID != user.UID {
+			c.JSON(403, map[string]any{"code": -1, "error": "无权限"})
+			return nil
+		}
+		// 有 uuid 就有权限
+	*/
+	available_before := time.Now().Add(time.Duration(Config.PasteAssessTokenAge) * time.Second)
+	access_token := paste.Token(available_before)
+	c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + paste.Base64Hash()})
+	c.Response().Header().Set("X-Access-Token", access_token)
+	c.JSON(200, map[string]any{"code": 0, "info": paste})
 	return nil
 }

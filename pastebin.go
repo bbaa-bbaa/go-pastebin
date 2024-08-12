@@ -15,6 +15,10 @@
 package pastebin
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	database "cgit.bbaa.fun/bbaa/go-pastebin/database"
 	"cgit.bbaa.fun/bbaa/go-pastebin/logger"
 )
@@ -22,6 +26,7 @@ import (
 var log logger.Logger = logger.Logger{Scope: "Pastebin"}
 
 func initDatabase() (err error) {
+	database.LoadConfig()
 	log.Info("初始化数据库连接")
 	err = database.Init()
 	if err != nil {
@@ -36,8 +41,11 @@ func Serve() (err error) {
 	if err != nil {
 		return err
 	}
-	database.LoadConfig()
-	httpServe()
+	go httpServe()
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	<-sig
+	database.Close()
 	return
 }
 

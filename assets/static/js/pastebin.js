@@ -27,6 +27,9 @@
 
   let user_info = null;
 
+  let paste_viewer_back_to_manage = false;
+  let paste_force_delete = false;
+
   $(function () {
     document.body.addEventListener("drop", function (e) {
       e.preventDefault();
@@ -40,8 +43,10 @@
     let config = {
       allow_anonymous: document.querySelector("meta[name='x-allow-anonymous']").content === "true"
     };
-    const paste_mdui_tab = new mdui.Tab("#paste-mdui-tab");
+    const paste_app_tab = new mdui.Tab("#paste-mdui-tab");
+    const paste_app_tab_element = $("#paste-mdui-tab");
     const new_paste_tab = $("#new-paste-tab");
+    const paste_manage_tab = $("#paste-manage-tab");
     function update_user_info() {
       return $.ajax({
         method: "GET",
@@ -59,10 +64,12 @@
         .catch(() => false)
         .then(is_login => {
           if (!is_login && !config.allow_anonymous) {
-            paste_mdui_tab.show(1);
+            paste_app_tab.show(1);
             new_paste_tab.attr("disabled", "disabled");
+            paste_manage_tab.hide();
           } else {
             new_paste_tab.removeAttr("disabled");
+            paste_manage_tab.show();
           }
           return is_login;
         });
@@ -430,7 +437,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () { });
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () {});
           new_paste_result_link.closest("div").show();
           new_paste_result_qr_code.show();
         } else {
@@ -531,7 +538,7 @@
         const query_string = $.param(query_params).trim();
         $.ajax({
           method: "POST",
-          url: "/" + query_string !== "" ? "?" + query_string : "",
+          url: "/" + query_string != "" ? "?" + query_string : "",
           data: data,
           headers: {
             Accept: "application/json"
@@ -599,7 +606,7 @@
         const query_string = $.param(query_params).trim();
         $.ajax({
           method: "PUT",
-          url: "/" + uuid + (query_string !== "" ? "?" + query_string : ""),
+          url: "/" + uuid + (query_string != "" ? "?" + query_string : ""),
           data: data,
           headers: {
             Accept: "application/json"
@@ -649,7 +656,7 @@
           });
       });
 
-      paste_delete.on("click", function () {
+      paste_delete.on("click", function (e) {
         let uuid = paste_uuid.val();
         if (!check_uuid(uuid) || uuid.length == 0) {
           mdui.snackbar("无效的 UUID");
@@ -657,9 +664,13 @@
         }
 
         action_button.attr("disabled", "disabled");
+        let force_delete = e.shiftKey || paste_force_delete;
+        if (paste_force_delete) {
+          paste_force_delete = false;
+        }
         $.ajax({
           method: "DELETE",
-          url: "/" + uuid,
+          url: "/" + uuid + (force_delete ? "?force=true" : ""),
           headers: {
             Accept: "application/json"
           },
@@ -794,9 +805,12 @@
             clearTimeout(timeout);
             let end = new Date().getTime();
             if (end - start < 300) {
-              setTimeout(() => {
-                show_preview();
-              }, 300 - (end - start));
+              setTimeout(
+                () => {
+                  show_preview();
+                },
+                300 - (end - start)
+              );
             } else {
               show_preview();
             }
@@ -903,7 +917,7 @@
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) { }
+        } catch (e) {}
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
@@ -953,7 +967,7 @@
               action_unlock();
             }
           }
-        }).catch(() => { });
+        }).catch(() => {});
       }
 
       paste_viewer_query_btn.on("click", function () {
@@ -973,6 +987,10 @@
           paste_viewer_text_content.html("");
           paste_viewer_highlight_language.val("");
           collapse_paste_viewer_text_content.open();
+          if (paste_viewer_back_to_manage) {
+            paste_viewer_back_to_manage = false;
+            paste_app_tab.show(2);
+          }
         });
       });
 
@@ -1004,7 +1022,7 @@
             paste_viewer_highlight_language_selector.handleUpdate();
           }
         }
-        paste_mdui_tab.show(1);
+        paste_app_tab.show(1);
         paste_viewer_query_input.val(query_hash);
         paste_viewer_query_input.get(0).dispatchEvent(new Event("input"));
         query_paste_metadata(query_hash);
@@ -1124,7 +1142,7 @@
           mdui.snackbar("邮箱不能为空");
           return;
         }
-        if ((data.old_password !== undefined && data.old_password.length != 0) && (data.new_password === undefined || data.new_password.length == 0)) {
+        if (data.old_password !== undefined && data.old_password.length != 0 && (data.new_password === undefined || data.new_password.length == 0)) {
           mdui.snackbar("请输入新密码");
           return;
         }
@@ -1155,6 +1173,186 @@
             }
           }
         });
+      });
+    })();
+    (function paste_manage() {
+      const new_paste_uuid = $("#new-paste-uuid");
+      const new_paste_delete = $("#new-paste-delete").get(0);
+
+      const paste_viewer_query_input = $("#paste-viewer-query-input");
+      const paste_viewer_progress = $(".paste-viewer-progress");
+      const paste_viewer_query_btn = $("#paste-viewer-query-btn");
+
+      const paste_manage_pastes = $("#paste-manage-pastes");
+      const paste_manage_progress = $(".paste-manage-progress");
+      const paste_manage_prev = $("#paste-manage-prev");
+      const paste_manage_next = $("#paste-manage-next");
+
+      let page = 1;
+      let max_page = 1;
+      let paste_total = 0;
+      const page_size = 50;
+      let mdui_panel;
+      function pager_check() {
+        if (page == 1) {
+          paste_manage_prev.attr("disabled", "disabled");
+        } else {
+          paste_manage_prev.removeAttr("disabled");
+        }
+        if (page == max_page) {
+          paste_manage_next.attr("disabled", "disabled");
+        } else {
+          paste_manage_next.removeAttr("disabled");
+        }
+      }
+
+      function register_action_button() {
+        const paste_manage_delete_btn = $(".paste-manage-delete-btn");
+        const paste_manage_view_btn = $(".paste-manage-view-btn");
+        const paste_manage_edit_btn = $(".paste-manage-edit-btn");
+
+        paste_manage_view_btn.on("click", function (e) {
+          let uuid = $(this).closest(".mdui-panel-item").find(".paste-manage-uuid").text();
+          let hash = $(this).closest(".mdui-panel-item").find(".paste-manage-hash").text();
+          paste_viewer_query_input.val(hash);
+          paste_viewer_query_input.get(0).dispatchEvent(new Event("input"));
+          paste_viewer_progress.show();
+          paste_viewer_query_btn.hide();
+          paste_app_tab.show(1);
+          if (paste_viewer_back_to_manage) {
+            paste_viewer_back_to_manage = false;
+            const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
+            paste_viewer_back_to_query.get(0).click();
+          }
+          $.ajax({
+            method: "GET",
+            url: "api/paste/" + uuid,
+            headers: {
+              Accept: "application/json"
+            },
+            complete: function (xhr) {
+              let response = JSON.parse(xhr.responseText);
+              if (xhr.status == 200 && response.code === 0) {
+                paste_viewer_back_to_manage = true;
+                paste_viewer_query_btn.get(0).click();
+              } else {
+                mdui.snackbar("加载失败: " + response.error);
+                paste_app_tab.show(2);
+              }
+              paste_viewer_progress.hide();
+              paste_viewer_query_btn.show();
+            }
+          });
+        });
+
+        paste_manage_delete_btn.on("click", function (e) {
+          let uuid = $(this).closest(".mdui-panel-item").find(".paste-manage-uuid").text();
+          new_paste_uuid.val(uuid);
+          new_paste_uuid.get(0).dispatchEvent(new Event("input"));
+          paste_app_tab.show(0);
+          setTimeout(() => {
+            paste_force_delete = true;
+            new_paste_delete.click();
+          }, 600);
+        });
+
+        paste_manage_edit_btn.on("click", function (e) {
+          let uuid = $(this).closest(".mdui-panel-item").find(".paste-manage-uuid").text();
+          new_paste_uuid.val(uuid);
+          new_paste_uuid.get(0).dispatchEvent(new Event("input"));
+          paste_app_tab.show(0);
+        });
+      }
+
+      function list_paste() {
+        paste_manage_progress.show();
+        $.ajax({
+          method: "GET",
+          url: "api/user/pastes",
+          headers: {
+            Accept: "application/json"
+          },
+          data: {
+            page: page,
+            page_size: page_size
+          },
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200 && response.code === 0) {
+              paste_total = response.total;
+              max_page = Math.ceil(paste_total / page_size);
+              pager_check();
+              let pastes_panel = `<div class="mdui-panel">`;
+              for (let paste of response.pastes) {
+                pastes_panel += `
+                  <div class="mdui-panel-item">
+                    <div class="mdui-panel-item-header">
+                      <div class="mdui-panel-item-title paste-manage-uuid">${paste.uuid}</div>
+                      <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash">${paste.hash}</span></div>
+                      <div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl">${paste.short_url}</span></div>
+                      <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
+                    </div>
+                    <div class="mdui-panel-item-body">
+                      <div class="raw-result">
+                        <p><strong>date:</strong> ${paste.created_at}</p>
+                `;
+                if (paste.expire_after != "0001-01-01T00:00:00Z") {
+                  pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after}</p>`;
+                }
+                pastes_panel += `
+                        <p><strong>digest:</strong> ${paste.digest}</p>
+                        <p><strong>long:</strong> ${paste.hash}</p>
+                        <p><strong>short:</strong> ${paste.short_url}</p>
+                        <p><strong>filename:</strong> ${paste.filename}</p>
+                        <p><strong>mime:</strong> ${paste.mime_type}</p>
+                        <p><strong>size:</strong> ${paste.size}</p>
+                        <p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count == 0 ? "nolimit" : paste.max_access_count})</p>
+                        <p><strong>password:</strong> ${paste.password ? "yes" : "no"}</p>
+                        <p><strong>uuid:</strong> ${paste.uuid}</p>
+                      </div>
+                      <div class="mdui-panel-item-actions">
+                        <button class="mdui-btn mdui-ripple mdui-color-red paste-manage-delete-btn">删除</button>
+                        <button class="mdui-btn mdui-ripple mdui-color-blue-accent paste-manage-view-btn">查看</button>
+                        <button class="mdui-btn mdui-ripple mdui-color-theme-accent paste-manage-edit-btn">编辑</button>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }
+              pastes_panel += `</div>`;
+              paste_manage_pastes.html(pastes_panel);
+              mdui_panel = new mdui.Panel("#paste-manage-pastes > .mdui-panel");
+              register_action_button();
+            }
+            paste_manage_progress.hide();
+          }
+        });
+      }
+
+      paste_manage_prev.on("click", function () {
+        if (paste_manage_progress.css("display") != "none") {
+          return;
+        }
+        if (page > 1) {
+          page--;
+          list_paste();
+        }
+      });
+
+      paste_manage_next.on("click", function () {
+        if (paste_manage_progress.css("display") != "none") {
+          return;
+        }
+        if (page < max_page) {
+          page++;
+          list_paste();
+        }
+      });
+
+      paste_app_tab_element.on("change.mdui.tab", function (e) {
+        if (e.detail.index == 2) {
+          list_paste();
+        }
       });
     })();
   });

@@ -45,8 +45,7 @@ func randStr(n int) string {
 }
 
 func Init() (err error) {
-	ensureDir("pastes")
-	log.Info("数据库路径: ", color.BlueString(Config.DataDir))
+	log.Info("数据库路径: ", color.BlueString(*Config.dataDir))
 	dbx, err := sqlx.Open("sqlite3", GetDBPath()+"?_fk=true&_journal_mode=WAL&_busy_timeout=5000")
 	dbx.SetMaxOpenConns(1)
 	if err != nil {
@@ -74,4 +73,8 @@ func Init() (err error) {
 	s.NewJob(gocron.CronJob("*/10 * * * *", false), gocron.NewTask(pasteCleaner))
 	s.Start()
 	return nil
+}
+
+func Close() {
+	db.Close()
 }

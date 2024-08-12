@@ -24,28 +24,28 @@ import (
 )
 
 func GetDBPath() string {
-	return filepath.Join(Config.DataDir, "go-pastebin.db")
+	return filepath.Join(*Config.dataDir, "go-pastebin.db")
 }
 
 func GetPastesDir() string {
-	return filepath.Join(Config.DataDir, "pastes")
+	return filepath.Join(*Config.dataDir, "pastes")
 }
 
 func GetConfigPath() string {
-	return filepath.Join(Config.DataDir, "config.yaml")
+	return filepath.Join(*Config.dataDir, "config.yaml")
 }
 
 func ensureDir(sub_path string) error {
-	err := os.MkdirAll(filepath.Join(Config.DataDir, sub_path), 0755)
+	err := os.MkdirAll(filepath.Join(*Config.dataDir, sub_path), 0755)
 	if err != nil && !errors.Is(err, os.ErrExist) {
-		if errors.Is(err, os.ErrPermission) && strings.HasPrefix(Config.DataDir, "/var") {
+		if errors.Is(err, os.ErrPermission) && strings.HasPrefix(*Config.dataDir, "/var") {
 			return fallbackBaseDir(sub_path)
 		}
 		return err
 	}
 	if errors.Is(err, os.ErrExist) {
-		tempfile, err := os.CreateTemp(filepath.Join(Config.DataDir, sub_path), "test")
-		if err != nil && strings.HasPrefix(Config.DataDir, "/var") {
+		tempfile, err := os.CreateTemp(filepath.Join(*Config.dataDir, sub_path), "test")
+		if err != nil && strings.HasPrefix(*Config.dataDir, "/var") {
 			return fallbackBaseDir(sub_path)
 		}
 		tempfile.Close()
@@ -55,11 +55,11 @@ func ensureDir(sub_path string) error {
 }
 
 func fallbackBaseDir(sub_path string) error {
-	log.Warning("数据库路径: ", color.BlueString(Config.DataDir), " 无权限访问")
+	log.Warning("数据库路径: ", color.BlueString(*Config.dataDir), " 无权限访问")
 	workdir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	Config.DataDir = filepath.Join(workdir, "data")
+	*Config.dataDir = filepath.Join(workdir, "data")
 	return ensureDir(sub_path)
 }

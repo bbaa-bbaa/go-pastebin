@@ -144,6 +144,8 @@ func (p *Paste) Save() (*Paste, error) {
 				continue
 			}
 			return nil, err
+		} else if err != nil {
+			return nil, err
 		}
 		break
 	}
@@ -616,11 +618,17 @@ func ResetHoldCount() error {
 	return err
 }
 
-func QueryAllPasteByUser(uid int64, after_uuid string, limit int64) (pastes []*Paste, err error) {
-	rows, err := db.Queryx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target WHERE uid = ? AND (uuid > ? OR ? = "") ORDER BY uuid ASC LIMIT ?`, uid, after_uuid, after_uuid, limit)
+func QueryAllPasteByUser(uid int64, page int64, page_size int64) (pastes []*Paste, total int, err error) {
+	err = db.Get(&total, `SELECT COUNT(*) FROM pastes WHERE uid = ?`, uid)
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return nil, 0, err
+	}
+	index := max(page-1, 1) * page_size
+	rows, err := db.Queryx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target WHERE uid = ? ORDER BY p.uuid ASC LIMIT ? OFFSET ?`, uid, page_size, index)
+	if err != nil {
+		log.Error(err)
+		return nil, 0, err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -632,7 +640,7 @@ func QueryAllPasteByUser(uid int64, after_uuid string, limit int64) (pastes []*P
 		}
 		pastes = append(pastes, paste)
 	}
-	return pastes, nil
+	return
 }
 
 func pasteCleaner() {

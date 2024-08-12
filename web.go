@@ -45,10 +45,7 @@ func httpServe() {
 	e.Use(controllers.UserMiddleware)
 	setupIndex()
 
-	e.GET("/api/paste/:uuid", func(c echo.Context) error {
-		fmt.Println(c.ParamValues())
-		return nil
-	})
+	e.GET("/api/paste/:uuid", controllers.PasteAccess)
 	e.GET("/api/paste/check_shorturl/:id", controllers.CheckURL)
 
 	e.POST("/api/login", controllers.UserLogin)
@@ -82,6 +79,7 @@ type DebugRender struct{}
 
 func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
 	tmpl, err := template.ParseGlob("assets/*.html")
+	fmt.Println(err)
 	if err != nil {
 		return err
 	}
@@ -97,10 +95,20 @@ func setupIndex() {
 		}
 	}
 	e.GET("/", func(c echo.Context) error {
-		return c.Render(200, "index.html", map[string]any{
+		is_login := false
+		if user, ok := c.Get("user").(*database.User); ok {
+			is_login = user != nil
+		}
+		err := c.Render(200, "index.html", map[string]any{
 			"SiteName":       database.Config.SiteName,
 			"AllowAnonymous": database.Config.AllowAnonymous,
+			"Referer":        c.Request().Referer(),
+			"IsLogin":        is_login,
 		})
+		if err != nil {
+			log.Error(err)
+		}
+		return err
 	})
 }
 
