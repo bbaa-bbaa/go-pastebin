@@ -41,6 +41,8 @@ import (
 	"github.com/mattn/go-sqlite3"
 )
 
+var ReservedURL = regexp.MustCompile(`^(sw\.js(\.map)?|workbox.*?\.js(\.map)?|manifest\.json|favicon\.ico|robots\.txt|index\.(x|s)?htm(l)?|admin\.(x|s)?htm(l)?)$`)
+
 type Paste_Hash int64
 
 func (ph Paste_Hash) hex() string {
@@ -448,17 +450,25 @@ func (p *Paste) mimeTypeDetector(fallback string) (w *io.PipeWriter, result chan
 
 var ShortURLRule = regexp.MustCompile(`^[a-zA-Z0-9_\.-]+$`)
 
-func (p *Paste) UpdateShortURL() error {
+func CheckShortURL(p *Paste) error {
 	if p.Short_url == "" {
-		return ErrShortURLAlreadyExist
+		return ErrInvalidShortURL
 	}
-
 	if !ShortURLRule.MatchString(p.Short_url) {
+		return ErrInvalidShortURL
+	}
+	if ReservedURL.MatchString(p.Short_url) {
 		return ErrShortURLAlreadyExist
 	}
-
 	if HashExist(p.Short_url) {
 		return ErrShortURLAlreadyExist
+	}
+	return nil
+}
+
+func (p *Paste) UpdateShortURL() error {
+	if err := CheckShortURL(p); err != nil {
+		return err
 	}
 
 	result, err := db.Exec(`UPDATE short_url SET name = ? WHERE target = ?`, p.Short_url, p.UUID)
@@ -479,16 +489,8 @@ func (p *Paste) UpdateShortURL() error {
 }
 
 func (p *Paste) CreateShortURL() error {
-	if p.Short_url == "" {
-		return ErrShortURLAlreadyExist
-	}
-
-	if !ShortURLRule.MatchString(p.Short_url) {
-		return ErrInvalidShortURL
-	}
-
-	if HashExist(p.Short_url) {
-		return ErrShortURLAlreadyExist
+	if err := CheckShortURL(p); err != nil {
+		return err
 	}
 
 	_, err := db.Exec(`INSERT INTO short_url (name,target) VALUES (?, ?)`, p.Short_url, p.UUID)
@@ -624,7 +626,7 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64) (pastes []*Past
 		log.Error(err)
 		return nil, 0, err
 	}
-	index := max(page-1, 1) * page_size
+	index := max(page-1, 0) * page_size
 	rows, err := db.Queryx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target WHERE uid = ? ORDER BY p.uuid ASC LIMIT ? OFFSET ?`, uid, page_size, index)
 	if err != nil {
 		log.Error(err)

@@ -33,8 +33,9 @@ import (
 	"github.com/matthewhartstonge/argon2"
 )
 
-var DefaultAttachmentExtensions = []string{"7z", "bz2", "gz", "rar", "tar", "xz", "zip", "iso", "img", "docx", "doc", "ppt", "pptx", "xls", "xlsx", "exe", "msixbundle", "apk"}
-var HTML_MIME = []string{"text/html", "application/xhtml+xml"}
+var DefaultAttachmentExtensions = [...]string{"7z", "bz2", "gz", "rar", "tar", "xz", "zip", "iso", "img", "docx", "doc", "ppt", "pptx", "xls", "xlsx", "exe", "msixbundle", "apk"}
+
+var HTML_MIME = [...]string{"text/html", "application/xhtml+xml"}
 
 type PasteInfo struct {
 	UUID           string `json:"uuid"`
@@ -594,7 +595,7 @@ func GetPaste(c echo.Context) error {
 		}
 	}
 	ext = strings.TrimLeft(strings.ToLower(ext), ".")
-	if download || !raw_response && (mime_type == "application/octet-stream" || slices.Contains(DefaultAttachmentExtensions, ext)) {
+	if download || !raw_response && (mime_type == "application/octet-stream" || slices.Contains(DefaultAttachmentExtensions[:], ext)) {
 		c.Attachment(paste.Path(), paste.Extra.FileName)
 	} else {
 		c.File(paste.Path())

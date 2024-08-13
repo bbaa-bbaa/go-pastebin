@@ -16,11 +16,11 @@ package pastebin
 
 import (
 	"embed"
-	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -43,10 +43,10 @@ func httpServe() {
 		Output: e.Logger.Output(),
 	}))
 	//e.Use(middleware.Recover())
-	tr := initTemplateRender()
 	e.Use(controllers.UserMiddleware)
-	setupIndex(tr)
-	setupAdmin(tr)
+	initTemplate()
+	setupIndex()
+	setupAdmin()
 
 	e.GET("/api/paste/:uuid", controllers.PasteAccess)
 	e.GET("/api/paste/check_shorturl/:id", controllers.CheckURL)
@@ -54,8 +54,8 @@ func httpServe() {
 	e.POST("/api/login", controllers.UserLogin)
 	e.GET("/api/logout", controllers.UserLogout)
 
-	e.POST("/api/adduser", controllers.AddUser)
 	e.GET("/api/user", controllers.GetUser)
+	e.POST("/api/user/add", controllers.AddUser)
 	e.POST("/api/user/edit", controllers.EditUserProfile)
 	e.GET("/api/user/pastes", controllers.UserPasteList)
 
@@ -73,23 +73,21 @@ func httpServe() {
 }
 
 type TemplateRender struct {
-	templates map[string]*template.Template
+	templates *template.Template
 }
 
 func (t *TemplateRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	if tmpl, ok := t.templates[name]; ok {
-		return tmpl.ExecuteTemplate(w, name, data)
-	}
-	return fmt.Errorf("template %s not found", name)
+	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-func (t *TemplateRender) AddTemplate(name string, tmpl *template.Template) {
-	t.templates[name] = tmpl
-}
-
-func initTemplateRender() *TemplateRender {
-	return &TemplateRender{
-		templates: make(map[string]*template.Template),
+func initTemplate() {
+	if database.Config.Mode == "debug" {
+		e.Renderer = &DebugRender{}
+	} else {
+		tmpl := template.Must(template.ParseFS(embed_assets, "assets/*.html"))
+		e.Renderer = &TemplateRender{
+			templates: tmpl,
+		}
 	}
 }
 
@@ -97,23 +95,14 @@ type DebugRender struct{}
 
 func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
 	tmpl, err := template.ParseGlob("assets/*.html")
-	fmt.Println(err)
 	if err != nil {
 		return err
 	}
 	return tmpl.ExecuteTemplate(w, name, data)
 }
 
-func setupAdmin(tr *TemplateRender) {
-	if database.Config.Mode == "debug" {
-		e.Renderer = &DebugRender{}
-	} else {
-		tmpl := template.Must(template.ParseFS(embed_assets, "assets/admin.html"))
-		tr.AddTemplate("admin.html", tmpl)
-		e.Renderer = tr
-	}
-
-	e.GET("/admin", func(c echo.Context) error {
+func setupAdmin() {
+	e.GET("/admin/", func(c echo.Context) error {
 		user, ok := c.Get("user").(*database.User)
 		if !ok || user.Role != "admin" {
 			c.Redirect(http.StatusFound, "/")
@@ -128,16 +117,15 @@ func setupAdmin(tr *TemplateRender) {
 		}
 		return err
 	})
+	e.GET("/admin", func(c echo.Context) error {
+		return c.Redirect(http.StatusFound, "/admin/")
+	})
+	e.GET("/admin.html", func(c echo.Context) error {
+		return c.Redirect(http.StatusFound, "/admin/")
+	})
 }
 
-func setupIndex(tr *TemplateRender) {
-	if database.Config.Mode == "debug" {
-		e.Renderer = &DebugRender{}
-	} else {
-		tmpl := template.Must(template.ParseFS(embed_assets, "assets/index.html"))
-		tr.AddTemplate("index.html", tmpl)
-		e.Renderer = tr
-	}
+func setupIndex() {
 	e.GET("/", func(c echo.Context) error {
 		is_login := false
 		if user, ok := c.Get("user").(*database.User); ok {
@@ -154,31 +142,28 @@ func setupIndex(tr *TemplateRender) {
 		}
 		return err
 	})
+	e.GET("/index.html", func(c echo.Context) error {
+		return c.Redirect(http.StatusFound, "/")
+	})
 }
 
 type WarpPaste struct {
 	echo.Context
+	id      string
+	variant string
 }
 
 func (c *WarpPaste) Param(name string) string {
-	param := c.Context.Param("*")
-	id := ""
-	variant := ""
-	param_frag := strings.Split(param, "/")
-	if len(param_frag) >= 1 {
-		id = param_frag[0]
-	}
-	if len(param_frag) == 2 {
-		variant = param_frag[1]
-	}
 	if name == "id" {
-		return id
+		return c.id
 	}
 	if name == "variant" {
-		return variant
+		return c.variant
 	}
 	return ""
 }
+
+var IgnoreFiles = [...]string{"workbox-config.js"}
 
 func Static(c echo.Context) error {
 	var assets fs.FS
@@ -187,10 +172,22 @@ func Static(c echo.Context) error {
 	} else {
 		assets = echo.MustSubFS(embed_assets, "assets")
 	}
-	static_hanlder := echo.StaticDirectoryHandler(assets, false)
-	err := static_hanlder(c)
-	if err == nil {
-		return nil
+	p := c.Param("*")
+	if !slices.Contains(IgnoreFiles[:], p) {
+		static_hanlder := echo.StaticDirectoryHandler(assets, false)
+		err := static_hanlder(c)
+		if err == nil {
+			return nil
+		}
 	}
-	return controllers.GetPaste(&WarpPaste{c})
+	id := ""
+	variant := ""
+	param_frag := strings.Split(p, "/")
+	if len(param_frag) >= 1 {
+		id = param_frag[0]
+	}
+	if len(param_frag) == 2 {
+		variant = param_frag[1]
+	}
+	return controllers.GetPaste(&WarpPaste{c, id, variant})
 }

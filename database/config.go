@@ -16,7 +16,6 @@ package database
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -53,7 +52,6 @@ func SaveConfig() {
 
 func LoadConfig() {
 	flag.Parse()
-	fmt.Println(Config.dataDir)
 	if runtime.GOOS == "windows" {
 		workdir, err := os.Getwd()
 		if err != nil {

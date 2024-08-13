@@ -1032,24 +1032,26 @@
       const account_dialog_btn = $("#account-dialog-btn");
       const user_profile_view = $(".user-profile-view");
       const user_profile_edit = $(".user-profile-edit");
+      const user_profile_dialog = new mdui.Dialog("#user-profile-dialog", { history: false });
 
       const user_profile_uid_text = $("#user-profile-uid-text");
       const user_profile_username_text = $("#user-profile-username-text");
       const user_profile_role_text = $("#user-profile-role-text");
       const user_profile_email_text = $("#user-profile-email-text");
-      const user_profile_dialog = new mdui.Dialog("#user-profile-dialog", { history: false });
-      const user_profile_edit_return = $("#user-profile-edit-return");
+      const user_profile_manage_panel = $("#user-profile-manage-panel");
+      const user_profile_edit_btn = $("#user-profile-edit-btn");
 
       const user_profile_edit_username = $("#user-profile-edit-username");
       const user_profile_edit_email = $("#user-profile-edit-email");
       const user_profile_edit_oldpwd = $("#user-profile-edit-oldpwd");
       const user_profile_edit_newpwd = $("#user-profile-edit-newpwd");
-      const user_profile_edit_btn = $("#user-profile-edit-btn");
-      const user_profile_edit_confirm = $("#user-profile-edit-confirm");
       const user_profile_edit_action = $(".user-profile-edit-action");
+      const user_profile_edit_confirm = $("#user-profile-edit-confirm");
+      const user_profile_edit_return = $("#user-profile-edit-return");
 
       const login_dialog = new mdui.Dialog("#login-dialog", { history: false });
       const login_button = $("#login-button");
+      const login_form = $("#login-form");
       const login_username = $("#login-username");
       const login_password = $("#login-password");
       const login_dialog_action = $(".login-dialog-action");
@@ -1060,6 +1062,11 @@
           user_profile_username_text.text(user_info.username);
           user_profile_role_text.text(user_info.role);
           user_profile_email_text.text(user_info.email);
+          if (user_info.role == "admin") {
+            user_profile_manage_panel.show();
+          } else {
+            user_profile_manage_panel.hide();
+          }
         }
         user_profile_view.show();
         user_profile_edit.hide();
@@ -1093,7 +1100,8 @@
         }
       });
 
-      login_button.on("click", function () {
+      login_form.on("submit", function (e) {
+        e.preventDefault();
         login_dialog_action.attr("disabled", "disabled");
         $.ajax({
           method: "POST",
