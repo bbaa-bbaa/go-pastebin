@@ -97,6 +97,33 @@ func GetUser(c echo.Context) error {
 	return nil
 }
 
+func AddUser(c echo.Context) error {
+	type AddUserReq struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		Role     string `json:"group"`
+		Password string `json:"password"`
+	}
+	user, ok := c.Get("user").(*database.User)
+
+	if !ok || user.Role != "admin" {
+		c.JSON(403, map[string]any{"code": -1, "error": "权限不足,请返回主页登陆"})
+		return nil
+	}
+	var req AddUserReq
+
+	if err := c.Bind(&req); err != nil {
+		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
+		return nil
+	}
+
+	if err := database.AddUser(req.Username, req.Email, req.Role, req.Password); err != nil {
+		c.JSON(200, map[string]any{"code": -3, "error": "添加失败"})
+		return nil
+	}
+	c.JSON(200, map[string]any{"code": 0, "info": "添加成功"})
+	return nil
+}
 func UserLogout(c echo.Context) error {
 	c.SetCookie(&http.Cookie{
 		Name:   "user_token",

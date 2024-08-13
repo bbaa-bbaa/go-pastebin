@@ -54,7 +54,6 @@ func SaveConfig() {
 func LoadConfig() {
 	flag.Parse()
 	fmt.Println(Config.dataDir)
-	ensureDir("pastes")
 	if runtime.GOOS == "windows" {
 		workdir, err := os.Getwd()
 		if err != nil {
@@ -62,6 +61,7 @@ func LoadConfig() {
 		}
 		*Config.dataDir = filepath.Join(workdir, "data")
 	}
+	ensureDir("pastes")
 	config_file, err := os.ReadFile(GetConfigPath())
 	if err != nil {
 		SaveConfig()

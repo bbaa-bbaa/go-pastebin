@@ -20,6 +20,7 @@ import (
 	"html/template"
 	"io"
 	"io/fs"
+	"net/http"
 	"strings"
 	"time"
 
@@ -42,14 +43,18 @@ func httpServe() {
 		Output: e.Logger.Output(),
 	}))
 	//e.Use(middleware.Recover())
+	tr := initTemplateRender()
 	e.Use(controllers.UserMiddleware)
-	setupIndex()
+	setupIndex(tr)
+	setupAdmin(tr)
 
 	e.GET("/api/paste/:uuid", controllers.PasteAccess)
 	e.GET("/api/paste/check_shorturl/:id", controllers.CheckURL)
 
 	e.POST("/api/login", controllers.UserLogin)
 	e.GET("/api/logout", controllers.UserLogout)
+
+	e.POST("/api/adduser", controllers.AddUser)
 	e.GET("/api/user", controllers.GetUser)
 	e.POST("/api/user/edit", controllers.EditUserProfile)
 	e.GET("/api/user/pastes", controllers.UserPasteList)
@@ -68,11 +73,24 @@ func httpServe() {
 }
 
 type TemplateRender struct {
-	templates *template.Template
+	templates map[string]*template.Template
 }
 
 func (t *TemplateRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	return t.templates.ExecuteTemplate(w, name, data)
+	if tmpl, ok := t.templates[name]; ok {
+		return tmpl.ExecuteTemplate(w, name, data)
+	}
+	return fmt.Errorf("template %s not found", name)
+}
+
+func (t *TemplateRender) AddTemplate(name string, tmpl *template.Template) {
+	t.templates[name] = tmpl
+}
+
+func initTemplateRender() *TemplateRender {
+	return &TemplateRender{
+		templates: make(map[string]*template.Template),
+	}
 }
 
 type DebugRender struct{}
@@ -86,13 +104,39 @@ func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.
 	return tmpl.ExecuteTemplate(w, name, data)
 }
 
-func setupIndex() {
+func setupAdmin(tr *TemplateRender) {
 	if database.Config.Mode == "debug" {
 		e.Renderer = &DebugRender{}
 	} else {
-		e.Renderer = &TemplateRender{
-			templates: template.Must(template.ParseFS(embed_assets, "assets/index.html")),
+		tmpl := template.Must(template.ParseFS(embed_assets, "assets/admin.html"))
+		tr.AddTemplate("admin.html", tmpl)
+		e.Renderer = tr
+	}
+
+	e.GET("/admin", func(c echo.Context) error {
+		user, ok := c.Get("user").(*database.User)
+		if !ok || user.Role != "admin" {
+			c.Redirect(http.StatusFound, "/")
+			return nil
 		}
+
+		err := c.Render(200, "admin.html", map[string]any{
+			"SiteName": database.Config.SiteName,
+		})
+		if err != nil {
+			log.Error(err)
+		}
+		return err
+	})
+}
+
+func setupIndex(tr *TemplateRender) {
+	if database.Config.Mode == "debug" {
+		e.Renderer = &DebugRender{}
+	} else {
+		tmpl := template.Must(template.ParseFS(embed_assets, "assets/index.html"))
+		tr.AddTemplate("index.html", tmpl)
+		e.Renderer = tr
 	}
 	e.GET("/", func(c echo.Context) error {
 		is_login := false
