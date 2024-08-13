@@ -84,7 +84,7 @@ func initTemplate() {
 	if database.Config.Mode == "debug" {
 		e.Renderer = &DebugRender{}
 	} else {
-		tmpl := template.Must(template.ParseFS(embed_assets, "assets/*.html"))
+		tmpl := template.Must(template.ParseFS(embed_assets, "assets/*.html", "assets/manifest.json"))
 		e.Renderer = &TemplateRender{
 			templates: tmpl,
 		}
@@ -94,7 +94,7 @@ func initTemplate() {
 type DebugRender struct{}
 
 func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	tmpl, err := template.ParseGlob("assets/*.html")
+	tmpl, err := template.ParseFiles("assets/" + name)
 	if err != nil {
 		return err
 	}
@@ -141,6 +141,12 @@ func setupIndex() {
 			log.Error(err)
 		}
 		return err
+	})
+	e.GET("/manifest.json", func(c echo.Context) error {
+		c.Response().Header().Set("Content-Type", "application/json; charset=utf-8")
+		return c.Render(200, "manifest.json", map[string]any{
+			"SiteName": database.Config.SiteName,
+		})
 	})
 	e.GET("/index.html", func(c echo.Context) error {
 		return c.Redirect(http.StatusFound, "/")

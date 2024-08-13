@@ -73,6 +73,7 @@
             }
             paste_manage_tab.hide();
             paste_app_tab.show(paste_app_tab.activeIndex);
+            user_info = null;
           }
           return is_login;
         });
