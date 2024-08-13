@@ -49,14 +49,14 @@
                 <div class="mdui-row">
                   <div class="mdui-col-xs-12">
                     <div class="mdui-textfield">
-                      <input id="admin-email-text" class="mdui-textfield-input" type="text" placeholder="Email" />
+                      <input id="admin-username-text" class="mdui-textfield-input" type="text" placeholder="User Name" />
                     </div>
                   </div>
                 </div>
                 <div class="mdui-row">
                   <div class="mdui-col-xs-12">
                     <div class="mdui-textfield">
-                      <input id="admin-username-text" class="mdui-textfield-input" type="text" placeholder="User Name" />
+                      <input id="admin-email-text" class="mdui-textfield-input" type="text" placeholder="Email" />
                     </div>
                   </div>
                 </div>
@@ -96,7 +96,7 @@
         return;
       }
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(email)) {
         mdui.alert("请输入有效的电子邮件地址");
         return;

@@ -28,46 +28,9 @@ import (
 	"slices"
 
 	"github.com/fatih/color"
+	"github.com/jmoiron/sqlx"
 	"github.com/matthewhartstonge/argon2"
 )
-
-func AddUser(username string, email string, role string, password string) (err error) {
-	argon := argon2.DefaultConfig()
-	encoded := []byte{}
-	if len(password) != 0 {
-		encoded, err = argon.HashEncoded([]byte(password))
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-	_, err = db.Exec(`INSERT INTO users (username, email, role, password, extra) VALUES (?, ?, ?, ?, "{}")`, username, email, role, encoded)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	log.Info(color.YellowString(`用户 `), color.CyanString(username), color.BlueString("["+email+"]"), color.YellowString(" 添加成功"))
-	return
-}
-
-func AddUID(uid int, username string, email string, role string, password string) (err error) {
-	argon := argon2.DefaultConfig()
-	encoded := []byte{}
-	if len(password) != 0 {
-		encoded, err = argon.HashEncoded([]byte(password))
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-	}
-	_, err = db.Exec(`INSERT INTO users (uid, username, email, role, password, extra) VALUES (? ,?, ?, ?, ?, "{}")`, uid, username, email, role, encoded)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	log.Info(color.YellowString(`用户`), color.MagentaString("[%d] ", uid), color.CyanString(username), color.BlueString("[%s]", email), color.YellowString(" 添加成功"))
-	return
-}
 
 type User struct {
 	UID      int64       `json:"uid" db:"uid"`
@@ -111,6 +74,22 @@ func (user *User) IsAnonymous() bool {
 
 func (user *User) IsAdmin() bool {
 	return user.Role == "admin"
+}
+
+func (user *User) Create(setuid bool) (err error) {
+	var result *sqlx.Row
+	if setuid {
+		result = db.QueryRowx(`INSERT INTO users (uid, username, email, role, password, extra) VALUES (? ,?, ?, ?, ?, "{}") RETURNING *`, user.UID, user.Username, user.Email, user.Role, user.Password)
+	} else {
+		result = db.QueryRowx(`INSERT INTO users (username, email, role, password, extra) VALUES (?, ?, ?, ?, "{}") RETURNING *`, user.Username, user.Email, user.Role, user.Password)
+	}
+	err = result.StructScan(user)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Info(color.YellowString(`用户`), color.MagentaString("[%d] ", user.UID), color.CyanString(user.Username), color.BlueString("[%s]", user.Email), color.YellowString(" 添加成功"))
+	return nil
 }
 
 func (user *User) Update() error {
@@ -175,7 +154,7 @@ func (u *User) Token() string {
 	return base64.URLEncoding.EncodeToString(buf[:])
 }
 
-func GetUser(token string) (*User, error) {
+func GetUserByToken(token string) (*User, error) {
 	buf, err := base64.URLEncoding.DecodeString(token)
 	if err != nil {
 		return nil, err
@@ -185,18 +164,26 @@ func GetUser(token string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := db.QueryRowx("SELECT uid, username, email, role, password, extra FROM users WHERE uid = ?", uid)
-	user := &User{}
-	err = result.StructScan(user)
+	user, err := GetUser(uid)
 	if err != nil {
-		return nil, ErrNotFoundOrPasswordWrong
-	}
-	if user.Password == "" {
-		return nil, ErrNotFoundOrPasswordWrong
+		return nil, err
 	}
 	hash := hmac.New(sha256.New, []byte(user.Password))
 	hash.Write(buf[:16])
 	if !slices.Equal(buf[16:], hash.Sum(nil)) {
+		return nil, ErrNotFoundOrPasswordWrong
+	}
+	return user, nil
+}
+
+func GetUser(uid int64) (*User, error) {
+	result := db.QueryRowx("SELECT * FROM users WHERE uid = ?", uid)
+	user := &User{}
+	err := result.StructScan(user)
+	if err != nil {
+		return nil, ErrNotFoundOrPasswordWrong
+	}
+	if user.Password == "" {
 		return nil, ErrNotFoundOrPasswordWrong
 	}
 	return user, nil

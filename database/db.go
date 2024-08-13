@@ -16,7 +16,9 @@ package database
 
 import (
 	_ "embed"
+	"flag"
 	"math/rand"
+	"os"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/logger"
 	"github.com/fatih/color"
@@ -44,10 +46,39 @@ func randStr(n int) string {
 	return string(b)
 }
 
+var ResetAdminFlag = flag.Bool("resetadmin", false, "reset admin password")
+
+func ResetAdmin() {
+	adminPassword := randStr(8)
+	admin, err := GetUser(0)
+	if err != nil {
+		log.Error("获取管理员账号失败: ", err)
+		os.Exit(1)
+	}
+	admin.SetPassword(adminPassword)
+	err = admin.Update()
+	if err != nil {
+		log.Error("重置管理员账号失败: ", err)
+		os.Exit(1)
+	}
+	log.Info("重置管理员账号: ", color.YellowString(admin.Username), "[", color.BlueString(admin.Email), "]", " 密码: ", color.YellowString(adminPassword))
+	os.Exit(0)
+}
+
+func PostInit() {
+	ResetHoldCount()
+	if *ResetAdminFlag {
+		ResetAdmin()
+	}
+	s, _ := gocron.NewScheduler()
+	s.NewJob(gocron.CronJob("*/10 * * * *", false), gocron.NewTask(pasteCleaner))
+	s.Start()
+}
+
 func Init() (err error) {
 	log.Info("数据库路径: ", color.BlueString(*Config.dataDir))
 	dbx, err := sqlx.Open("sqlite3", GetDBPath()+"?_fk=true&_journal_mode=WAL&_busy_timeout=5000")
-	dbx.SetMaxOpenConns(1)
+	//dbx.SetMaxOpenConns(1)
 	if err != nil {
 		return err
 	}
@@ -64,14 +95,16 @@ func Init() (err error) {
 			return err
 		}
 		adminPassword := randStr(8)
-		AddUID(0, "admin", "admin@go-pastebin.app", "admin", adminPassword)
-		AddUser("anonymous", "anonymous@go-pastebin.app", "user", "")
+		admin := &User{UID: 0, Username: "admin", Email: "admin@go-pastebin.app", Role: "admin", Password: ""}
+		admin.SetPassword(adminPassword)
+		admin.Create(true)
+
+		anonymous := &User{Username: "anonymous", Email: "anonymous@go-pastebin.app", Role: "anonymous"}
+		anonymous.Create(false)
+
 		log.Info("管理员账号: ", color.YellowString("admin"), " 密码: ", color.YellowString(adminPassword))
 	}
-	ResetHoldCount()
-	s, _ := gocron.NewScheduler()
-	s.NewJob(gocron.CronJob("*/10 * * * *", false), gocron.NewTask(pasteCleaner))
-	s.Start()
+	PostInit()
 	return nil
 }
 

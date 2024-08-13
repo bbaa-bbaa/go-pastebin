@@ -16,6 +16,7 @@ package controllers
 
 import (
 	"net/http"
+	"net/mail"
 	"strconv"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/database"
@@ -35,7 +36,7 @@ func UserLogin(c echo.Context) error {
 	}
 	u, err := database.Login(user.Account, user.Password)
 	if err != nil {
-		c.JSON(200, map[string]any{"code": -1, "error": "用户名或密码错误"})
+		c.JSON(200, map[string]any{"code": -1, "error": "username or password wrong"})
 		return nil
 	}
 	c.SetCookie(&http.Cookie{
@@ -53,7 +54,7 @@ func UserLogin(c echo.Context) error {
 func EditUserProfile(c echo.Context) error {
 	user, ok := c.Get("user").(*database.User)
 	if !ok {
-		c.JSON(200, map[string]any{"code": -1, "error": "未登录"})
+		c.JSON(200, map[string]any{"code": -1, "error": "not login"})
 		return nil
 	}
 	type EditUserProfileReq struct {
@@ -71,16 +72,21 @@ func EditUserProfile(c echo.Context) error {
 		user.Username = req.Username
 	}
 	if req.Email != "" {
+		_, err := mail.ParseAddress(req.Email)
+		if err != nil {
+			c.JSON(400, map[string]any{"code": -2, "error": "invalid email"})
+			return nil
+		}
 		user.Email = req.Email
 	}
 	if req.OldPassword != "" && req.NewPassword != "" {
 		if err := user.ChangePassword(req.OldPassword, req.NewPassword); err != nil {
-			c.JSON(403, map[string]any{"code": -1, "error": "密码错误"})
+			c.JSON(403, map[string]any{"code": -1, "error": "password wrong"})
 			return nil
 		}
 	}
 	if err := user.Update(); err != nil {
-		c.JSON(200, map[string]any{"code": -1, "error": "更新失败"})
+		c.JSON(200, map[string]any{"code": -1, "error": "fail to update"})
 		return nil
 	}
 	c.JSON(200, map[string]any{"code": 0, "info": user})
@@ -90,7 +96,7 @@ func EditUserProfile(c echo.Context) error {
 func GetUser(c echo.Context) error {
 	user, ok := c.Get("user").(*database.User)
 	if !ok {
-		c.JSON(403, map[string]any{"code": -1, "error": "未登录"})
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
 		return nil
 	}
 	c.JSON(200, map[string]any{"code": 0, "info": user})
@@ -107,21 +113,28 @@ func AddUser(c echo.Context) error {
 	user, ok := c.Get("user").(*database.User)
 
 	if !ok || user.Role != "admin" {
-		c.JSON(403, map[string]any{"code": -1, "error": "权限不足,请返回主页登陆"})
+		c.JSON(403, map[string]any{"code": -1, "error": "no permission"})
 		return nil
 	}
 	var req AddUserReq
 
-	if err := c.Bind(&req); err != nil {
+	if err := c.Bind(&req); err != nil || req.Username == "" || req.Email == "" || req.Role == "" || req.Password == "" {
 		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
 		return nil
 	}
 
-	if err := database.AddUser(req.Username, req.Email, req.Role, req.Password); err != nil {
-		c.JSON(200, map[string]any{"code": -3, "error": "添加失败"})
+	_, err := mail.ParseAddress(req.Email)
+	if err != nil {
+		c.JSON(400, map[string]any{"code": -2, "error": "invalid email"})
 		return nil
 	}
-	c.JSON(200, map[string]any{"code": 0, "info": "添加成功"})
+
+	if err := (&database.User{Username: req.Username, Email: req.Email, Role: req.Role, Password: req.Password}).Create(false); err != nil {
+		c.JSON(200, map[string]any{"code": -3, "error": "can not create user"})
+		return nil
+	}
+
+	c.JSON(200, map[string]any{"code": 0, "info": "user created"})
 	return nil
 }
 func UserLogout(c echo.Context) error {
@@ -136,7 +149,7 @@ func UserLogout(c echo.Context) error {
 func UserPasteList(c echo.Context) error {
 	user, ok := c.Get("user").(*database.User)
 	if !ok {
-		c.JSON(403, map[string]any{"code": -1, "error": "未登录"})
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
 		return nil
 	}
 	page_size_string := c.QueryParam("page_size")
@@ -158,7 +171,7 @@ func UserPasteList(c echo.Context) error {
 	page_size = max(min(1000, page_size), 1)
 	pastes, total, err := database.QueryAllPasteByUser(user.UID, page, page_size)
 	if err != nil {
-		c.JSON(200, map[string]any{"code": -1, "error": "查询失败"})
+		c.JSON(200, map[string]any{"code": -1, "error": "query failed"})
 		return nil
 	}
 	c.JSON(200, map[string]any{"code": 0, "total": total, "pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
@@ -187,7 +200,7 @@ func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 				return next(c)
 			}
 		}
-		user, err := database.GetUser(token)
+		user, err := database.GetUserByToken(token)
 		if err != nil {
 			return next(c)
 		}
