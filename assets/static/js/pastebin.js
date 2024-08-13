@@ -63,13 +63,16 @@
         })
         .catch(() => false)
         .then(is_login => {
-          if (!is_login && !config.allow_anonymous) {
-            paste_app_tab.show(1);
-            new_paste_tab.attr("disabled", "disabled");
-            paste_manage_tab.hide();
-          } else {
+          if (is_login) {
             new_paste_tab.removeAttr("disabled");
-            paste_manage_tab.show();
+            paste_manage_tab.show()
+            paste_app_tab.show(paste_app_tab.activeIndex);
+          } else {
+            if (!config.allow_anonymous) {
+              new_paste_tab.attr("disabled", "disabled");
+            }
+            paste_manage_tab.hide();
+            paste_app_tab.show(paste_app_tab.activeIndex);
           }
           return is_login;
         });

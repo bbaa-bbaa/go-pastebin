@@ -15,17 +15,20 @@ module.exports = {
 		/^utm_/,
 		/^fbclid$/,
 	],
+  mode: "production",
   runtimeCaching: [
     {
-      urlPattern: /\.(?:js|css)$/,
+      urlPattern: function(options){
+        const url = options.url;
+        return url.pathname.startsWith('/static/') && (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
+      },
       handler: 'StaleWhileRevalidate'
     },
     {
-      urlPattern: /\//,
-      handler: 'NetworkFirst',
-    },
-    {
-      urlPattern: /\/admin/,
+      urlPattern: function(options){
+        const url = options.url;
+        return url.pathname === '/' || url.pathname === '/admin/';
+      },
       handler: 'NetworkFirst',
     }
   ],
