@@ -1,12 +1,12 @@
 module.exports = {
 	globDirectory: '.',
 	globPatterns: [
-		'**/*.{html,otf,woff2,txt,woff,md,js,css,png,jpg,ico,ijmap}'
+		'**/*.{html,otf,woff2,txt,woff,md,js,css,png,jpg,ico,ijmap}',
+                'manifest.json'
 	],
   globIgnores:[
     'index.html',
-    'admin.html',
-    '/'
+    'admin.html'
   ],
   skipWaiting: true,
   clientsClaim: true,
