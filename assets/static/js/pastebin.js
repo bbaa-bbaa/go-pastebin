@@ -113,8 +113,12 @@
           return;
         }
         this.transition_counter--;
-        if (!heightBox && this.set_auto && this.transition_counter == 0) {
-          this.$.css("height", "auto");
+        if (this.set_auto && this.transition_counter == 0) {
+          if (heightBox) {
+            this.$.css("height", this.height_element.scrollHeight + "px");
+          } else {
+            this.$.css("height", "auto");
+          }
         }
         if (this.callback) {
           this.callback();
@@ -150,7 +154,11 @@
     Collapse.prototype.open = function () {
       this.set_auto = true;
       this.expand = true;
-      this.$.css("height", Math.min(this.height_element.scrollHeight, this.max_height || Infinity) + "px");
+      if (this.max_height != 0) {
+        this.$.css("height", Math.min(this.height_element.scrollHeight, (this.$.innerHeight()+this.max_height)) + "px");
+      } else {
+        this.$.css("height", this.height_element.scrollHeight + "px");
+      }
       if (this.margin !== undefined) {
         this.$.css("margin", this.margin + "px 0");
       }
@@ -837,7 +845,7 @@
           paste_viewer_file_icon.show();
         }
       }
-      let collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0, 0);
+      let collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0);
       function paste_preview_text_render(init) {
         if (!paste_viewer_enable_highlight_js.prop("checked")) {
           paste_viewer_highlight_language.closest(".mdui-row").hide();
@@ -1071,10 +1079,12 @@
           } else {
             user_profile_manage_panel.hide();
           }
+          user_profile_view.show();
+          user_profile_edit.hide();
+          user_profile_dialog.handleUpdate();
+        } else {
+          user_profile_dialog.close();
         }
-        user_profile_view.show();
-        user_profile_edit.hide();
-        user_profile_dialog.handleUpdate();
       }
 
       function show_user_profile_edit() {
@@ -1147,12 +1157,10 @@
           new_password: user_profile_edit_newpwd.val()
         };
         if (data.username.length == 0) {
-          mdui.snackbar("用户名不能为空");
-          return;
+          delete data.username;
         }
-        if (data.email.length == 0 && /^\w+[-+.\w]*@\w+[-.\w]*\.\w+[-.\w]*$/im.test(data.email)) {
-          mdui.snackbar("邮箱不能为空");
-          return;
+        if (data.email.length == 0) {
+          delete data.email;
         }
         if (data.old_password !== undefined && data.old_password.length != 0 && (data.new_password === undefined || data.new_password.length == 0)) {
           mdui.snackbar("请输入新密码");
@@ -1212,7 +1220,7 @@
         } else {
           paste_manage_prev.removeAttr("disabled");
         }
-        if (page == max_page) {
+        if (page >= max_page) {
           paste_manage_next.attr("disabled", "disabled");
         } else {
           paste_manage_next.removeAttr("disabled");
@@ -1321,7 +1329,6 @@
             if (xhr.status == 200 && response.code === 0) {
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
-              pager_check();
               let pastes_panel = `<div class="mdui-panel">`;
               for (let paste of response.pastes) {
                 pastes_panel += `
@@ -1377,7 +1384,7 @@
               register_action_button();
             }
             paste_manage_progress.hide();
-            paste_manage_pager.removeAttr("disabled");
+            pager_check();
           }
         });
       }
