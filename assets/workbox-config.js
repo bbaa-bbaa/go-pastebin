@@ -27,7 +27,7 @@ module.exports = {
     {
       urlPattern: function(options){
         const url = options.url;
-        return url.pathname === '/' || url.pathname === '/admin/';
+        return url.pathname === '/' || url.pathname === '/api/user' || url.pathname === '/admin/';
       },
       handler: 'NetworkFirst',
     }

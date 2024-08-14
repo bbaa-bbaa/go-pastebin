@@ -66,15 +66,17 @@
           if (is_login) {
             new_paste_tab.removeAttr("disabled");
             paste_manage_tab.show()
-            paste_app_tab.show(paste_app_tab.activeIndex);
           } else {
+            user_info = null;
+            paste_manage_tab.hide();
             if (!config.allow_anonymous) {
               new_paste_tab.attr("disabled", "disabled");
+              if(paste_app_tab.activeIndex == 0) {
+                paste_app_tab.activeIndex = 1;
+              }
             }
-            paste_manage_tab.hide();
-            paste_app_tab.show(paste_app_tab.activeIndex);
-            user_info = null;
           }
+          paste_app_tab.show(paste_app_tab.activeIndex);
           return is_login;
         });
     }
@@ -1347,6 +1349,9 @@
                     </div>
                     <div class="mdui-panel-item-body">
                       <div class="raw-result">
+                        <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn mdui-float-right">
+                          <i class="mdui-icon material-icons">content_copy</i>
+                        </button>
                         <p><strong>date:</strong> ${paste.created_at}</p>
                 `;
                 if (paste.expire_after != "0001-01-01T00:00:00Z") {
@@ -1365,14 +1370,22 @@
                       </div>
                       <div>
                         <p class="paste-link">url: <a href="${paste.url}" target="${isDesktop ? "_blank" : "_self"}">${paste.url}</a></p>
-                        <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn">
-                          <i class="mdui-icon material-icons">content_copy</i>
-                        </button>
                       </div>
                       <div class="mdui-panel-item-actions">
-                        <button class="mdui-btn mdui-ripple mdui-color-red paste-manage-delete-btn">删除</button>
-                        <button class="mdui-btn mdui-ripple mdui-color-blue-accent paste-manage-view-btn">查看</button>
-                        <button class="mdui-btn mdui-ripple mdui-color-theme-accent paste-manage-edit-btn">编辑</button>
+                        <div class="mdui-container-fluid">
+                          <div class="mdui-row">
+                            <div class="mdui-col-sm-3 mdui-col-md-6 mdui-col-lg-9 mdui-hidden-xs"></div>
+                            <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
+                              <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-red paste-manage-delete-btn" style="min-width: 0;">删除</button>
+                            </div>
+                            <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
+                              <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-blue-accent paste-manage-view-btn" style="min-width: 0;">查看</button>
+                            </div>
+                            <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
+                              <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-theme-accent paste-manage-edit-btn" style="min-width: 0;">编辑</button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

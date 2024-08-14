@@ -1,4 +1,4 @@
-{{- $show_new_paste := or .AllowAnonymous .IsLogin -}}
+{{- $allow_create_paste := or .AllowAnonymous .IsLogin -}}
 <!doctype html>
 <html lang="zh-cn">
   <head>
@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" sizes="256x256" href="static/img/icon256.png" />
     <link rel="apple-touch-icon" sizes="128x128" href="static/img/icon128.png" />
     <link rel="apple-touch-icon" sizes="64x64" href="static/img/icon64.png" />
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="static/mdui/css/mdui.min.css" />
     <link rel="stylesheet" href="static/highlight/styles/github.min.css" />
     <title>{{.SiteName}}</title>
@@ -123,6 +123,10 @@
       .paste-manage-progress {
         border-radius: 0;
       }
+      
+      #new-paste-result-copy, .paste-manage-copy-url-btn {
+        z-index: 1;
+      }
 
       .hljs-ln-numbers {
         -webkit-touch-callout: none;
@@ -176,11 +180,11 @@
         </button>
       </div>
       <div class="mdui-tab mdui-color-theme" id="paste-mdui-tab">
-        {{- if $show_new_paste }}
+        {{- if $allow_create_paste }}
         <a href="#new-paste" class="mdui-ripple mdui-ripple-white mdui-tab-active" id="new-paste-tab">New Paste</a>
         <a href="#paste-viewer" class="mdui-ripple mdui-ripple-white" id="paste-viewer-tab">Paste Viewer</a>
         {{- else }}
-        <a href="#new-paste" class="mdui-ripple mdui-ripple-white" id="new-paste-tab">New Paste</a>
+        <a href="#new-paste" class="mdui-ripple mdui-ripple-white" id="new-paste-tab" disabled>New Paste</a>
         <a href="#paste-viewer" class="mdui-ripple mdui-ripple-white mdui-tab-active" id="paste-viewer-tab">Paste Viewer</a>
         {{- end }} {{- if .IsLogin }}
         <a href="#paste-manage" class="mdui-ripple mdui-ripple-white" id="paste-manage-tab">Paste Manage</a>
@@ -190,29 +194,29 @@
       </div>
     </div>
     <div class="mdui-container mdui-p-a-1">
-      {{- if $show_new_paste }}
+      {{- if $allow_create_paste }}
       <div id="new-paste">{{- if false -}}</div>
       {{- /* make html formatter happy */ -}} {{- end -}} {{- else }}
       <div id="new-paste" style="display: none">
         {{- end}}
         <div id="new-paste-result" class="mdui-card card-collapse">
           <div class="mdui-card-primary">
+            <button class="mdui-btn mdui-btn-icon mdui-ripple mdui-float-right result-copy-btn" id="new-paste-result-copy">
+              <i class="mdui-icon material-icons">content_copy</i>
+            </button>
             <div class="mdui-card-primary-title" id="new-paste-result-title"></div>
-            <div class="mdui-card-content">
-              <div class="mdui-container-fluid">
-                <div class="mdui-row">
-                  <div class="mdui-col-xs-12 mdui-col-sm-8">
-                    <div id="new-paste-result-raw" class="raw-result"></div>
-                    <div>
-                      <p class="paste-link">url: <a id="new-paste-result-link"></a></p>
-                      <button class="mdui-btn mdui-btn-icon mdui-ripple" id="new-paste-result-copy">
-                        <i class="mdui-icon material-icons">content_copy</i>
-                      </button>
-                    </div>
+          </div>
+          <div class="mdui-card-content mdui-p-a-3">
+            <div class="mdui-container-fluid">
+              <div class="mdui-row">
+                <div class="mdui-col-xs-12 mdui-col-sm-8">
+                  <div id="new-paste-result-raw" class="raw-result"></div>
+                  <div>
+                    <p class="paste-link">url: <a id="new-paste-result-link"></a></p>
                   </div>
-                  <div class="mdui-col-xs-12 mdui-col-sm-4" style="text-align: center">
-                    <canvas id="new-paste-result-qrcode" height="168" width="168"></canvas>
-                  </div>
+                </div>
+                <div class="mdui-col-xs-12 mdui-col-sm-4" style="text-align: center">
+                  <canvas id="new-paste-result-qrcode" height="168" width="168"></canvas>
                 </div>
               </div>
             </div>
@@ -349,7 +353,7 @@
           </div>
         </div>
       </div>
-      {{- if $show_new_paste }}
+      {{- if $allow_create_paste }}
       <div id="paste-viewer" style="display: none">{{- if false -}}</div>
       {{- /* make html formatter happy */ -}} {{- end -}} {{- else}}
       <div id="paste-viewer">
@@ -535,26 +539,7 @@
           <div class="mdui-card-content">
             <div class="mdui-container-fluid">
               <div class="mdui-row">
-                <div class="mdui-col-xs-12" id="paste-manage-pastes">
-                  <div class="mdui-panel">
-                    <div class="mdui-panel-item">
-                      <div class="mdui-panel-item-header">
-                        <div class="mdui-panel-item-title paste-manage-uuid"></div>
-                        <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash"></span></div>
-                        <div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl"></span></div>
-                        <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
-                      </div>
-                      <div class="mdui-panel-item-body">
-                        <div class="raw-result"></div>
-                        <div class="mdui-panel-item-actions">
-                          <button class="mdui-btn mdui-ripple mdui-color-red">删除</button>
-                          <button class="mdui-btn mdui-ripple mdui-color-blue-accent">查看</button>
-                          <button class="mdui-btn mdui-ripple mdui-color-theme-accent">编辑</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <div class="mdui-col-xs-12" id="paste-manage-pastes">无 Paste</div>
               </div>
               <div class="mdui-row">
                 <div class="mdui-col-xs-12 mdui-m-t-1">
