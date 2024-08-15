@@ -29,7 +29,7 @@
 
   let paste_viewer_back_to_manage = false;
   let paste_force_delete = false;
-
+  
   $(function () {
     document.body.addEventListener("drop", function (e) {
       e.preventDefault();
