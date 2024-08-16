@@ -403,7 +403,7 @@ func (p *Paste) save(paste_file *os.File) error {
 		mime_detect_complete_flag = false
 		mime_detector, mime_result = p.mimeTypeDetector(p.Extra.MimeType)
 	}
-
+	p.Extra.Size = 0
 	for {
 		n, err := reader.Read(buf)
 		if err != nil {
