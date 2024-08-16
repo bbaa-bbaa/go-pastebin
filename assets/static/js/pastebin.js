@@ -29,7 +29,7 @@
 
   let paste_viewer_back_to_manage = false;
   let paste_force_delete = false;
-  
+
   $(function () {
     document.body.addEventListener("drop", function (e) {
       e.preventDefault();
@@ -65,13 +65,13 @@
         .then(is_login => {
           if (is_login) {
             new_paste_tab.removeAttr("disabled");
-            paste_manage_tab.show()
+            paste_manage_tab.show();
           } else {
             user_info = null;
             paste_manage_tab.hide();
             if (!config.allow_anonymous) {
               new_paste_tab.attr("disabled", "disabled");
-              if(paste_app_tab.activeIndex == 0) {
+              if (paste_app_tab.activeIndex == 0) {
                 paste_app_tab.activeIndex = 1;
               }
             }
@@ -157,7 +157,7 @@
       this.set_auto = true;
       this.expand = true;
       if (this.max_height != 0) {
-        this.$.css("height", Math.min(this.height_element.scrollHeight, (this.$.innerHeight()+this.max_height)) + "px");
+        this.$.css("height", Math.min(this.height_element.scrollHeight, this.$.innerHeight() + this.max_height) + "px");
       } else {
         this.$.css("height", this.height_element.scrollHeight + "px");
       }
@@ -452,10 +452,10 @@
             new_paste_result_link.attr("target", "_blank");
           }
           QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () {});
-          new_paste_result_link.closest("div").show();
+          new_paste_result_link.closest(".mdui-card").find(".paste-link").show();
           new_paste_result_qr_code.show();
         } else {
-          new_paste_result_link.closest("div").hide();
+          new_paste_result_link.closest(".mdui-card").find(".paste-link").hide();
           new_paste_result_qr_code.hide();
         }
         if (response.uuid) {
@@ -565,41 +565,28 @@
               xhr.upload.addEventListener("progress", upload_progress);
               collapse_file_paste_progress.open();
             }
-          }
-        })
-          .then(res => {
-            let response = JSON.parse(res);
-            if (response.code != 0) {
+          },
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText || "{}");
+            if (xhr.responseText == "" || !response || response.code != 0) {
               paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
               setTimeout(() => {
                 paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
               }, 600);
+              mdui.snackbar("创建失败: " + (response.error || "网络错误"));
             } else {
               paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
               setTimeout(() => {
                 paste_submit.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
               }, 600);
+              show_result("创建结果", response, false);
             }
-            return show_result("创建结果", response, false);
-          })
-          .catch(res => {
-            let error = "";
-            if (res instanceof Error) {
-              error = res.message;
-            } else {
-              let response = JSON.parse(res);
-              error = response.error;
-            }
-            paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
-            setTimeout(() => {
-              paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-            }, 600);
-            mdui.snackbar("创建失败: " + error);
-          })
-          .finally(() => {
             action_button.removeAttr("disabled");
-            collapse_file_paste_progress.close();
-          });
+            if (paste_file) {
+              collapse_file_paste_progress.close();
+            }
+          }
+        });
       });
 
       paste_update.on("click", function () {
@@ -633,44 +620,31 @@
               xhr.upload.addEventListener("progress", upload_progress);
               file_paste_progress.css("height", "18px");
             }
-          }
-        })
-          .then(res => {
-            let response = JSON.parse(res);
-            if (response.code != 0) {
+          },
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText || "{}");
+            if (xhr.responseText == "" || !response || response.code != 0) {
               paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
               setTimeout(() => {
                 paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
               }, 600);
+              mdui.snackbar("更新失败: " + (response.error || "网络错误"));
             } else {
               paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-600");
               setTimeout(() => {
                 paste_update.removeClass("mdui-color-green-600").addClass("mdui-color-blue-accent");
               }, 600);
+              show_result("更新结果", response, false);
             }
-            return show_result("更新结果", response, false);
-          })
-          .catch(res => {
-            let error = "";
-            if (res instanceof Error) {
-              error = res.message;
-            } else {
-              let response = JSON.parse(res);
-              error = response.error;
-            }
-            paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
-            setTimeout(() => {
-              paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
-            }, 600);
-            mdui.snackbar("更新失败: " + error);
-          })
-          .finally(() => {
             action_button.removeAttr("disabled");
-            file_paste_progress.css("height", "0px");
-          });
+            if (file_paste) {
+              file_paste_progress.css("height", "0px");
+            }
+          }
+        });
       });
 
-      paste_delete.on("click", function (e) {
+      function delete_paste(force) {
         let uuid = paste_uuid.val();
         if (!check_uuid(uuid) || uuid.length == 0) {
           mdui.snackbar("无效的 UUID");
@@ -678,52 +652,58 @@
         }
 
         action_button.attr("disabled", "disabled");
-        let force_delete = e.shiftKey || paste_force_delete;
-        if (paste_force_delete) {
-          paste_force_delete = false;
-        }
+        hide_result();
         $.ajax({
           method: "DELETE",
-          url: "/" + uuid + (force_delete ? "?force=true" : ""),
+          url: "/" + uuid + (force ? "?force=true" : ""),
           headers: {
             Accept: "application/json"
           },
           contentType: false,
-          processData: false
-        })
-          .then(res => {
-            let response = JSON.parse(res);
-            if (response.code != 0) {
+          processData: false,
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText || "{}");
+            if (xhr.responseText == "" || !response || response.code != 0) {
               paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
               setTimeout(() => {
                 paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
               }, 600);
+              mdui.snackbar("删除失败: " + (response.error || "网络错误"));
             } else {
               paste_delete.removeClass("mdui-color-red").addClass("mdui-color-green-600");
               setTimeout(() => {
                 paste_delete.removeClass("mdui-color-green-600").addClass("mdui-color-red");
               }, 600);
+              show_result("删除结果" + (force ? "：强制删除" : ""), response, true);
             }
-            return show_result("删除结果", response, true);
-          })
-          .catch(res => {
-            let error = "";
-            if (res instanceof Error) {
-              error = res.message;
-            } else {
-              let response = JSON.parse(res);
-              error = response.error;
-            }
-            paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
-            setTimeout(() => {
-              paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
-            }, 600);
-            mdui.snackbar("删除失败: " + error);
-          })
-          .finally(() => {
             action_button.removeAttr("disabled");
-            file_paste_progress.css("height", "0px");
-          });
+          }
+        });
+      }
+
+      paste_delete.on("click", function (e) {
+        let force_delete = e.shiftKey || paste_force_delete;
+        if (paste_force_delete) {
+          paste_force_delete = false;
+        }
+        delete_paste(force_delete);
+      });
+
+      let delete_torch_start = 0;
+      const delete_torch_long_press_threshold = 1000;
+      paste_delete.on("touchstart", function (e) {
+        e.preventDefault();
+        delete_torch_start = new Date().getTime();
+      });
+
+      paste_delete.on("touchend", function (e) {
+        e.preventDefault();
+        let duration = new Date().getTime() - delete_torch_start;
+        if (duration >= delete_torch_long_press_threshold) {
+          delete_paste(true);
+        } else {
+          delete_paste(false);
+        }
       });
 
       new_paste_result_copy.on("click", function () {
