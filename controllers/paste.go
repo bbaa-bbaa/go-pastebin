@@ -606,15 +606,12 @@ func GetPaste(c echo.Context) error {
 
 func CheckURL(c echo.Context) error {
 	id := c.Param("id")
-	_, err := database.QueryPasteByShortURLOrHash(id)
-	if err != nil {
-		if errors.Is(err, database.ErrNotFound) {
-			c.JSON(200, map[string]any{"available": true})
-			return nil
-		}
+	if err := database.CheckShortURL(&database.Paste{Short_url: id}); err != nil {
+		c.JSON(200, map[string]any{"available": false})
+		return nil
 	}
-	c.JSON(200, map[string]any{"available": false})
-	return err
+	c.JSON(200, map[string]any{"available": true})
+	return nil
 }
 
 func QueryPaste(c echo.Context) error {
