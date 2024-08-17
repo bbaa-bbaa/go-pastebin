@@ -129,7 +129,14 @@ func AddUser(c echo.Context) error {
 		return nil
 	}
 
-	if err := (&database.User{Username: req.Username, Email: req.Email, Role: req.Role, Password: req.Password}).Create(false); err != nil {
+	new_user := &database.User{Username: req.Username, Email: req.Email, Role: req.Role}
+	err = new_user.SetPassword(req.Password)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -3, "error": "can not set password:" + err.Error()})
+		return nil
+	}
+
+	if err := new_user.Create(false); err != nil {
 		c.JSON(200, map[string]any{"code": -3, "error": "can not create user"})
 		return nil
 	}

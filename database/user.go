@@ -151,11 +151,11 @@ func (u *User) Token() string {
 	rand.Read(buf[8:16])
 	hash.Write(buf[:16])
 	copy(buf[16:], hash.Sum(nil))
-	return base64.URLEncoding.EncodeToString(buf[:])
+	return base64.StdEncoding.EncodeToString(buf[:])
 }
 
 func GetUserByToken(token string) (*User, error) {
-	buf, err := base64.URLEncoding.DecodeString(token)
+	buf, err := base64.StdEncoding.DecodeString(token)
 	if err != nil {
 		return nil, err
 	}
