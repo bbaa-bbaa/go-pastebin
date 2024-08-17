@@ -1,5 +1,5 @@
+var $ = mdui.$
 function changeNightMode(buttonElement) {
-    var $ = mdui.$
     function changeVisible(elementList) {
         elementList.each(function() {
             if ($(this).hasClass('mdui-hidden')) {
@@ -18,3 +18,8 @@ function changeNightMode(buttonElement) {
     $("body").addClass('mdui-theme-layout-dark');
     return;
 }
+
+const global_nightmode_btn = $("#global-nightmode-btn");
+global_nightmode_btn.on("click", function() {
+  changeNightMode(global_nightmode_btn);
+});

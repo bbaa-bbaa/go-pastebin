@@ -47,6 +47,7 @@
     const paste_app_tab_element = $("#paste-mdui-tab");
     const new_paste_tab = $("#new-paste-tab");
     const paste_manage_tab = $("#paste-manage-tab");
+
     function update_user_info() {
       return $.ajax({
         method: "GET",
@@ -86,6 +87,8 @@
         mdui.snackbar("此 Pastebin 仅允许登录用户创建 Paste");
       }
     });
+
+
     update_user_info();
 
     function Collapse(jq, heightBox, margin, max_height) {

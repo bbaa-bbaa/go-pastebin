@@ -37,7 +37,7 @@
         <a href="/" class="mdui-btn mdui-btn-icon" id="account-dialog-btn" mdui-tooltip="{content: '返回主页'}">
           <i class="mdui-icon material-icons">exit_to_app</i>
         </a>
-        <button class="mdui-btn mdui-btn-icon" id="account-nightmode-btn" mdui-tooltip="{content: '夜间模式'}">
+        <button class="mdui-btn mdui-btn-icon" id="global-nightmode-btn" mdui-tooltip="{content: '夜间模式'}">
           <i class="mdui-icon material-icons mdui-hidden">brightness_high</i>
           <i class="mdui-icon material-icons">brightness_2</i>
         </button>
@@ -91,10 +91,6 @@
   <script>
     var $ = mdui.$;
 
-    const account_nightmode_btn = $("#account-nightmode-btn");
-    account_nightmode_btn.on("click", function() {
-      changeNightMode(account_nightmode_btn);
-    });
 
     function adduser() {
       const email = $("#admin-email-text")[0].value;
