@@ -64,20 +64,20 @@ func (ph Paste_Hash) base64WithoutPadding() string {
 }
 
 type Paste struct {
-	UUID           string       `db:"uuid"`
-	UID            int64        `db:"uid"`
-	Content        io.Reader    `db:"-"`
-	Hash           Paste_Hash   `db:"hash"`
-	Password       string       `db:"password"`
-	ExpireAfter    time.Time    `db:"expire_after"`
-	AccessCount    int64        `db:"access_count"`
-	MaxAccessCount int64        `db:"max_access_count"`
-	DeleteIfExpire bool         `db:"delete_if_expire"`
-	HoldCount      int64        `db:"hold_count"`
-	HoldBefore     time.Time    `db:"hold_before"`
-	Extra          *Paste_Extra `db:"extra"`
-	CreatedAt      time.Time    `db:"created_at"`
-	Short_url      string       `db:"short_url"`
+	UUID                 string       `db:"uuid"`
+	UID                  int64        `db:"uid"`
+	Content              io.Reader    `db:"-"`
+	Hash                 Paste_Hash   `db:"hash"`
+	Password             string       `db:"password"`
+	ExpireAfter          time.Time    `db:"expire_after"`
+	AccessCount          int64        `db:"access_count"`
+	MaxAccessCount       int64        `db:"max_access_count"`
+	DeleteIfNotAvailable bool         `db:"delete_if_not_available"`
+	HoldCount            int64        `db:"hold_count"`
+	HoldBefore           time.Time    `db:"hold_before"`
+	Extra                *Paste_Extra `db:"extra"`
+	CreatedAt            time.Time    `db:"created_at"`
+	Short_url            string       `db:"short_url"`
 }
 
 func (p *Paste) Base64Hash() string {
@@ -158,14 +158,14 @@ func (p *Paste) Save() (*Paste, error) {
 	}
 	p.CreatedAt = time.Now()
 	p.Extra.HashPadding = ShortURLExist(p.Hash.base64())
-	_, err = db.Exec(`INSERT INTO pastes (uuid, hash, password, expire_after, access_count, max_access_count, delete_if_expire, hold_count, hold_before, extra, uid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	_, err = db.Exec(`INSERT INTO pastes (uuid, hash, password, expire_after, access_count, max_access_count, delete_if_not_available, hold_count, hold_before, extra, uid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.UUID,
 		p.Hash,
 		p.Password,
 		p.ExpireAfter,
 		p.AccessCount,
 		p.MaxAccessCount,
-		p.DeleteIfExpire,
+		p.DeleteIfNotAvailable,
 		p.HoldCount,
 		p.HoldBefore,
 		p.Extra,
@@ -303,13 +303,13 @@ func (p *Paste) Path() string {
 
 func (p *Paste) UpdateMetadata() error {
 	p.CreatedAt = time.Now()
-	_, err := db.Exec(`UPDATE pastes SET hash = ?, password = ?, expire_after = ?, access_count = ?, max_access_count = ?, delete_if_expire = ?, hold_count = ?, hold_before = ?, extra = ?, created_at = ? WHERE uuid = ?`,
+	_, err := db.Exec(`UPDATE pastes SET hash = ?, password = ?, expire_after = ?, access_count = ?, max_access_count = ?, delete_if_not_available = ?, hold_count = ?, hold_before = ?, extra = ?, created_at = ? WHERE uuid = ?`,
 		p.Hash,
 		p.Password,
 		p.ExpireAfter,
 		p.AccessCount,
 		p.MaxAccessCount,
-		p.DeleteIfExpire,
+		p.DeleteIfNotAvailable,
 		p.HoldCount,
 		p.HoldBefore,
 		p.Extra,
@@ -384,7 +384,7 @@ func (p *Paste) ForceDelete() error {
 }
 
 func (p *Paste) FlagDelete() error {
-	_, err := db.Exec(`UPDATE pastes SET expire_after = datetime("now"), max_access_count = -1, delete_if_expire = 1 WHERE uuid = ?`, p.UUID)
+	_, err := db.Exec(`UPDATE pastes SET expire_after = datetime("now"), max_access_count = -1, delete_if_not_available = 1 WHERE uuid = ?`, p.UUID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -562,7 +562,7 @@ func parsePaste(row *sqlx.Row) (*Paste, error) {
 		log.Error(err)
 		return nil, err
 	}
-	if !paste.Valid() && paste.DeleteIfExpire {
+	if !paste.Valid() && paste.DeleteIfNotAvailable {
 		err := paste.Delete()
 		if err == nil {
 			return nil, ErrNotFound
@@ -646,7 +646,7 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64) (pastes []*Past
 }
 
 func pasteCleaner() {
-	rows, err := db.Queryx(`DELETE FROM pastes WHERE (expire_after < datetime("now") AND delete_if_expire = 1 OR max_access_count > 0 AND access_count >= max_access_count) AND hold_count = 0 AND hold_before < datetime("now") RETURNING uuid`)
+	rows, err := db.Queryx(`DELETE FROM pastes WHERE (expire_after < datetime("now") AND delete_if_not_available = 1 OR max_access_count > 0 AND access_count >= max_access_count) AND hold_count = 0 AND hold_before < datetime("now") RETURNING uuid`)
 	if err != nil {
 		log.Error(err)
 		return

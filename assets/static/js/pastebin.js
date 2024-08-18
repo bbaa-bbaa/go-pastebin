@@ -216,7 +216,7 @@
       const paste_max_access_count = $("#new-paste-max-access-count");
       const paste_uuid = $("#new-paste-uuid");
       const paste_short_url = $("#new-paste-short-url");
-      const paste_delete_if_expired = $("#new-paste-delete-if-expired");
+      const paste_delete_if_not_available = $("#new-paste-delete-if-not-available");
       const paste_delete = $("#new-paste-delete");
       const paste_update = $("#new-paste-update");
       const paste_submit = $("#new-paste-submit");
@@ -417,17 +417,17 @@
         }
       });
 
-      function check_allow_delete_if_expired() {
+      function check_allow_delete_if_not_available() {
         if (paste_expire.val() != "0" || parseInt(paste_max_access_count.val()) > 0) {
-          paste_delete_if_expired.removeAttr("disabled");
+          paste_delete_if_not_available.removeAttr("disabled");
         } else {
-          paste_delete_if_expired.attr("disabled", "disabled");
-          paste_delete_if_expired.prop("checked", false);
+          paste_delete_if_not_available.attr("disabled", "disabled");
+          paste_delete_if_not_available.prop("checked", false);
         }
       }
 
-      paste_expire.on("change", check_allow_delete_if_expired);
-      paste_max_access_count.on("input", check_allow_delete_if_expired);
+      paste_expire.on("change", check_allow_delete_if_not_available);
+      paste_max_access_count.on("input", check_allow_delete_if_not_available);
 
       const result_collapse = new Collapse(new_paste_result);
 
@@ -506,7 +506,7 @@
         let expire = paste_expire.val();
         let max_access_count = paste_max_access_count.val();
         let short_url = paste_short_url.val();
-        let delete_if_expired = paste_delete_if_expired.prop("checked");
+        let delete_if_not_available = paste_delete_if_not_available.prop("checked");
         let data = new FormData();
         let query_params = {};
         if (password.length != 0) {
@@ -533,8 +533,8 @@
           query_params.short_url = short_url;
         }
 
-        if (delete_if_expired) {
-          query_params.delete_if_expired = "true";
+        if (delete_if_not_available) {
+          query_params.delete_if_not_available = "true";
         }
 
         if (paste_file) {
@@ -1314,6 +1314,8 @@
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
               let pastes_panel = `<div class="mdui-panel">`;
+              let now = new Date().getTime();
+              let expired = new Date(paste.expire_after).getTime();
               if (response.pastes.length != 0) {
                 for (let paste of response.pastes) {
                   pastes_panel += `
@@ -1338,7 +1340,26 @@
                           <p><strong>date:</strong> ${paste.created_at}</p>
                   `;
                   if (paste.expire_after != "0001-01-01T00:00:00Z") {
-                    pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after}</p>`;
+                    if (!paste.delete_if_not_available) {
+                      if (expired > now) {
+                        pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after}</p>`;
+                      } else {
+                        pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after} <span class="mdui-text-color-red">(expired)</span></p>`;
+                      }
+                    } else {
+                      if (expired > now) {
+                        pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after} (auto delete)</p>`;
+                      } else {
+                        pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after} <span class="mdui-text-color-red">(expired, delete flagged)</span></p>`;
+                      }
+                    }
+                  } else {
+                    pastes_panel += ` <p><strong>expire:</strong> never</p>`;
+                  }
+                  if (paste.delete_if_not_available) {
+                    if ((paste.expire_after != "0001-01-01T00:00:00Z" && now >= expired) || (paste.max_access_count != 0 && paste.access_count >= paste.max_access_count)) {
+                      pastes_panel += ` <p><strong>hold_before:</strong> ${paste.hold_before} (count: ${paste.hold_count})</p>`;
+                    }
                   }
                   pastes_panel += `
                           <p><strong>digest:</strong> ${paste.digest}</p>
@@ -1347,8 +1368,26 @@
                           <p><strong>filename:</strong> ${paste.filename}</p>
                           <p><strong>mime:</strong> ${paste.mime_type}</p>
                           <p><strong>size:</strong> ${paste.size}</p>
-                          <p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count == 0 ? "nolimit" : paste.max_access_count})</p>
-                          <p><strong>password:</strong> ${paste.password ? "yes" : "no"}</p>
+                  `;
+                  if (paste.max_access_count == 0) {
+                    pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: nolimit)</p>`;
+                  } else {
+                    if (!paste.delete_if_not_available) {
+                      if (paste.access_count < paste.max_access_count) {
+                        pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count})</p>`;
+                      } else {
+                        pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count}) <span class="mdui-text-color-red">(limit reached)</span></p>`;
+                      }
+                    } else {
+                      if (paste.access_count < paste.max_access_count) {
+                        pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count}) (auto delete)</p>`;
+                      } else {
+                        pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count}) <span class="mdui-text-color-red">(limit reached, delete flagged)</span></p>`;
+                      }
+                    }
+                  }
+                  pastes_panel += `
+                          <p><strong>password:</strong> ${paste.has_password ? "yes" : "no"}</p>
                           <p><strong>uuid:</strong> ${paste.uuid}</p>
                         </div>
                         <div>

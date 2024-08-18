@@ -65,7 +65,12 @@ func ResetAdmin() {
 	os.Exit(0)
 }
 
+func RenameOldDatabaseColumn() {
+	db.Exec("ALTER TABLE pastes RENAME COLUMN `delete_if_expire` TO `delete_if_not_available`")
+}
+
 func PostInit() {
+	RenameOldDatabaseColumn()
 	ResetHoldCount()
 	if *ResetAdminFlag {
 		ResetAdmin()

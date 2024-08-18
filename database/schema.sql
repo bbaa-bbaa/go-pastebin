@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS "pastes" (
   "expire_after" DATETIME NOT NULL,
   "access_count" INTEGER NOT NULL,
   "max_access_count" INTEGER NOT NULL,
-  "delete_if_expire" INTEGER NOT NULL,
+  "delete_if_not_available" INTEGER NOT NULL,
   "hold_count" INTEGER NOT NULL,
   "hold_before" DATETIME NOT NULL,
 	"extra"	TEXT NOT NULL,

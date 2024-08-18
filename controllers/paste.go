@@ -38,43 +38,47 @@ var DefaultAttachmentExtensions = [...]string{"7z", "bz2", "gz", "rar", "tar", "
 var HTML_MIME = [...]string{"text/html", "application/xhtml+xml"}
 
 type PasteInfo struct {
-	UUID           string `json:"uuid"`
-	UID            int64  `json:"uid"`
-	Hash           string `json:"hash"`
-	Digest         string `json:"digest"`
-	ExpireAfter    string `json:"expire_after"`
-	AccessCount    int64  `json:"access_count"`
-	MaxAccessCount int64  `json:"max_access_count"`
-	DeleteIfExpire bool   `json:"delete_if_expire"`
-	CreatedAt      string `json:"created_at"`
-	Short_url      string `json:"short_url"`
-	MimeType       string `json:"mime_type"`
-	FileName       string `json:"filename"`
-	Size           uint64 `json:"size"`
-	HasPassword    bool   `json:"has_password"`
-	URL            string `json:"url"`
+	UUID                 string `json:"uuid"`
+	UID                  int64  `json:"uid"`
+	Hash                 string `json:"hash"`
+	Digest               string `json:"digest"`
+	ExpireAfter          string `json:"expire_after"`
+	AccessCount          int64  `json:"access_count"`
+	MaxAccessCount       int64  `json:"max_access_count"`
+	DeleteIfNotAvailable bool   `json:"delete_if_not_available"`
+	CreatedAt            string `json:"created_at"`
+	Short_url            string `json:"short_url"`
+	MimeType             string `json:"mime_type"`
+	FileName             string `json:"filename"`
+	Size                 uint64 `json:"size"`
+	HasPassword          bool   `json:"has_password"`
+	HoldCount            int64  `json:"hold_count"`
+	HoleBefore           string `json:"hold_before"`
+	URL                  string `json:"url"`
 }
 
 func pasteInfo(paste *database.Paste) *PasteInfo {
 	return &PasteInfo{
-		UUID:           paste.UUID,
-		UID:            paste.UID,
-		Hash:           paste.Base64Hash(),
-		Digest:         paste.HexHash(),
-		ExpireAfter:    paste.ExpireAfter.Format(time.RFC3339Nano),
-		AccessCount:    paste.AccessCount,
-		MaxAccessCount: paste.MaxAccessCount,
-		DeleteIfExpire: paste.DeleteIfExpire,
-		CreatedAt:      paste.CreatedAt.Format(time.RFC3339Nano),
-		Short_url:      paste.Short_url,
-		MimeType:       paste.Extra.MimeType,
-		FileName:       paste.Extra.FileName,
-		Size:           paste.Extra.Size,
-		HasPassword:    paste.Password != "",
+		UUID:                 paste.UUID,
+		UID:                  paste.UID,
+		Hash:                 paste.Base64Hash(),
+		Digest:               paste.HexHash(),
+		ExpireAfter:          paste.ExpireAfter.Format(time.RFC3339Nano),
+		AccessCount:          paste.AccessCount,
+		MaxAccessCount:       paste.MaxAccessCount,
+		DeleteIfNotAvailable: paste.DeleteIfNotAvailable,
+		CreatedAt:            paste.CreatedAt.Format(time.RFC3339Nano),
+		Short_url:            paste.Short_url,
+		MimeType:             paste.Extra.MimeType,
+		FileName:             paste.Extra.FileName,
+		Size:                 paste.Extra.Size,
+		HoldCount:            paste.HoldCount,
+		HoleBefore:           paste.HoldBefore.Format(time.RFC3339Nano),
+		HasPassword:          paste.Password != "",
 	}
 }
 
-func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extra, expire_after time.Time, max_access_count int64, delete_if_expire bool, password string, short_url string, err error) {
+func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extra, expire_after time.Time, max_access_count int64, delete_if_not_available bool, password string, short_url string, err error) {
 	short_url = c.QueryParam("short_url")
 	password = c.QueryParam("password")
 	query_expire_after := c.QueryParam("expire_after")
@@ -96,11 +100,11 @@ func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extr
 			return
 		}
 	}
-	query_delete_if_expire := c.QueryParam("delete_if_expire")
-	if query_delete_if_expire != "" {
-		delete_if_expire, err = strconv.ParseBool(query_delete_if_expire)
+	query_delete_if_not_available := c.QueryParam("delete_if_not_available")
+	if query_delete_if_not_available != "" {
+		delete_if_not_available, err = strconv.ParseBool(query_delete_if_not_available)
 		if err != nil {
-			err = fmt.Errorf("bad request: delete_if_expire")
+			err = fmt.Errorf("bad request: delete_if_not_available")
 		}
 		return
 	}
@@ -138,7 +142,7 @@ func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extr
 
 func NewPaste(c echo.Context) error {
 	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
-	reader, extra, expire_after, max_access_count, delete_if_expire, password, short_url, err := parseParseArg(c)
+	reader, extra, expire_after, max_access_count, delete_if_not_available, password, short_url, err := parseParseArg(c)
 	if err != nil {
 		if response_is_json {
 			c.JSON(400, map[string]any{"code": -2, "error": err.Error()})
@@ -151,13 +155,13 @@ func NewPaste(c echo.Context) error {
 		c.JSON(400, map[string]any{"code": -2, "error": "bad request: file"})
 	}
 	paste := &database.Paste{
-		Content:        reader,
-		DeleteIfExpire: delete_if_expire,
-		MaxAccessCount: max_access_count,
-		ExpireAfter:    expire_after,
-		Extra:          extra,
-		Short_url:      short_url,
-		UID:            1,
+		Content:              reader,
+		DeleteIfNotAvailable: delete_if_not_available,
+		MaxAccessCount:       max_access_count,
+		ExpireAfter:          expire_after,
+		Extra:                extra,
+		Short_url:            short_url,
+		UID:                  1,
 	}
 
 	if user, ok := c.Get("user").(*database.User); ok {
@@ -301,7 +305,7 @@ func UpdatePaste(c echo.Context) error {
 		}
 		return err
 	}
-	reader, extra, expire_after, max_access_count, delete_if_expire, password, short_url, err := parseParseArg(c)
+	reader, extra, expire_after, max_access_count, delete_if_not_available, password, short_url, err := parseParseArg(c)
 	if err != nil {
 		if response_is_json {
 			c.JSON(400, map[string]any{"code": -2, "error": err.Error()})
@@ -336,8 +340,8 @@ func UpdatePaste(c echo.Context) error {
 		paste.Extra.MimeType = extra.MimeType
 		paste.Extra.FileName = extra.FileName
 	}
-	if query.Has("delete_if_expire") {
-		paste.DeleteIfExpire = delete_if_expire
+	if query.Has("delete_if_not_available") {
+		paste.DeleteIfNotAvailable = delete_if_not_available
 	}
 	if query.Has("max_access_count") {
 		paste.MaxAccessCount = max_access_count
