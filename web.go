@@ -16,12 +16,12 @@ package pastebin
 
 import (
 	"embed"
-	"html/template"
 	"io"
 	"io/fs"
 	"net/http"
 	"slices"
 	"strings"
+	"text/template"
 	"time"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/controllers"
