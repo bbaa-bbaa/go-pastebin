@@ -33,7 +33,7 @@
       .new-paste-action-button,
       .new-paste-viewer-action,
       .login-dialog-action {
-        transition: all 0.6s ease;
+        transition: background-color 0.6s ease;
       }
 
       .new-paste-file-drop-overlay * {
@@ -90,8 +90,11 @@
         text-decoration: underline;
       }
 
-      .card-collapse {
-        transition: all 0.6s ease-out;
+      .mdui-card.card-collapse {
+        transition:
+          color 0.6s ease-out,
+          background-color 0.6s ease-out,
+          height 0.6s ease-out;
         height: 0px;
         overflow: hidden;
       }
@@ -102,7 +105,7 @@
       }
 
       #new-paste-file-progress {
-        transition: all 0.6s ease-out;
+        transition: height 0.6s ease-out;
         height: 0px;
         overflow: hidden;
       }
@@ -123,9 +126,13 @@
       .paste-manage-progress {
         border-radius: 0;
       }
-      
-      #new-paste-result-copy, .paste-manage-copy-url-btn {
+
+      #new-paste-result-copy,
+      .paste-manage-copy-url-btn {
         z-index: 1;
+        transition:
+          color 0.3s ease-out,
+          background-color 0.6s ease-out;
       }
 
       .hljs-ln-numbers {
@@ -135,7 +142,6 @@
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
-
         text-align: center;
         color: #ccc;
         border-right: 1px solid #ccc;
@@ -145,6 +151,29 @@
 
       td.hljs-ln-code {
         padding-left: 8px !important;
+      }
+
+      .mdui-appbar .mdui-toolbar,
+      .mdui-appbar .mdui-tab,
+      .mdui-card,
+      .mdui-panel-item,
+      .mdui-panel-item .mdui-panel-item-summary,
+      body.nightmode-transition.mdui-loaded {
+        transition:
+          color 0.3s ease-out,
+          background-color 0.6s ease-out;
+      }
+
+      .mdui-panel-item .mdui-panel-item-header {
+        transition: all .3s cubic-bezier(.4,0,.2,1), color 0.3s ease-out;
+      }
+
+      canvas#new-paste-result-qrcode {
+        transition: filter 0.6s ease;
+      }
+
+      body.mdui-theme-layout-dark canvas#new-paste-result-qrcode {
+        filter: invert(1);
       }
     </style>
     <script>
@@ -170,7 +199,7 @@
     </script>
   </head>
 
-  <body class="mdui-theme-primary-indigo mdui-theme-accent-pink">
+  <body class="mdui-theme-primary-indigo mdui-theme-accent-pink nightmode-transition">
     <div class="mdui-appbar">
       <div class="mdui-toolbar mdui-color-theme">
         <a href="javascript:;" class="mdui-typo-title">{{.SiteName}}</a>

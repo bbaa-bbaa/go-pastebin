@@ -105,8 +105,8 @@ func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extr
 		delete_if_not_available, err = strconv.ParseBool(query_delete_if_not_available)
 		if err != nil {
 			err = fmt.Errorf("bad request: delete_if_not_available")
+			return
 		}
-		return
 	}
 	extra = &database.Paste_Extra{
 		MimeType: "text/plain; charset=utf-8",

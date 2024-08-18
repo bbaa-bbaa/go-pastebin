@@ -51,7 +51,7 @@
     function update_user_info() {
       return $.ajax({
         method: "GET",
-        url: "./api/user",
+        url: "api/user",
         contentType: "application/json"
       })
         .then(res => {
@@ -453,7 +453,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6 }, function () {});
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () {});
           new_paste_result_link.closest(".mdui-card").find(".paste-link").show();
           new_paste_result_qr_code.show();
         } else {
@@ -554,7 +554,7 @@
         const query_string = $.param(query_params).trim();
         $.ajax({
           method: "POST",
-          url: "/" + query_string != "" ? "?" + query_string : "",
+          url: query_string != "" ? "?" + query_string : "",
           data: data,
           headers: {
             Accept: "application/json"
@@ -609,7 +609,7 @@
         const query_string = $.param(query_params).trim();
         $.ajax({
           method: "PUT",
-          url: "/" + uuid + (query_string != "" ? "?" + query_string : ""),
+          url: uuid + (query_string != "" ? "?" + query_string : ""),
           data: data,
           headers: {
             Accept: "application/json"
@@ -657,7 +657,7 @@
         hide_result();
         $.ajax({
           method: "DELETE",
-          url: "/" + uuid + (force ? "?force=true" : ""),
+          url: uuid + (force ? "?force=true" : ""),
           headers: {
             Accept: "application/json"
           },
@@ -880,7 +880,7 @@
       function paste_preview_text() {
         $.ajax({
           method: "GET",
-          url: "/" + paste_metadata.id //+ "?access_token=" + paste_metadata.access_token,
+          url: paste_metadata.id //+ "?access_token=" + paste_metadata.access_token,
         })
           .then(res => {
             paste_metadata.content = res;
@@ -931,7 +931,7 @@
         query_id = id;
         $.ajax({
           method: "HEAD",
-          url: "/" + id + (password ? "?pwd=" + password : ""),
+          url: id + (password ? "?pwd=" + password : ""),
           complete: function (xhr) {
             if (xhr.status == 200) {
               paste_metadata = {
@@ -941,7 +941,7 @@
                 type: xhr.getResponseHeader("Content-Type"),
                 filename: parse_filename(xhr),
                 access_token: xhr.getResponseHeader("X-Access-Token"),
-                url: "/" + id + "?access_token=" + xhr.getResponseHeader("X-Access-Token")
+                url: id + "?access_token=" + xhr.getResponseHeader("X-Access-Token")
               };
               paste_viewer_download_btn.attr("download", paste_metadata.filename).attr("href", paste_metadata.url);
               paste_preview();
@@ -1103,7 +1103,7 @@
         login_dialog_action.attr("disabled", "disabled");
         $.ajax({
           method: "POST",
-          url: "./api/login",
+          url: "api/login",
           data: JSON.stringify({
             account: login_username.val(),
             password: login_password.val()
@@ -1315,9 +1315,9 @@
               max_page = Math.ceil(paste_total / page_size);
               let pastes_panel = `<div class="mdui-panel">`;
               let now = new Date().getTime();
-              let expired = new Date(paste.expire_after).getTime();
               if (response.pastes.length != 0) {
                 for (let paste of response.pastes) {
+                  let expired = new Date(paste.expire_after).getTime();
                   pastes_panel += `
                     <div class="mdui-panel-item">
                       <div class="mdui-panel-item-header">
