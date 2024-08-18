@@ -90,8 +90,9 @@ func initTemplate() {
 				templates: template.Must(template.ParseFS(embed_assets, "assets/*.html", "assets/manifest.json")),
 			}
 		} else {
+			assets := os.DirFS(database.Config.CustomTemplateDir)
 			e.Renderer = &TemplateRender{
-				templates: template.Must(template.ParseGlob(database.Config.CustomTemplateDir + "/*{.html,.json}")),
+				templates: template.Must(template.ParseFS(assets, "*.html", "manifest.json")),
 			}
 		}
 	}
