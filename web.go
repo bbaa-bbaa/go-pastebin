@@ -19,6 +19,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 	"text/template"
@@ -84,9 +85,14 @@ func initTemplate() {
 	if database.Config.Mode == "debug" {
 		e.Renderer = &DebugRender{}
 	} else {
-		tmpl := template.Must(template.ParseFS(embed_assets, "assets/*.html", "assets/manifest.json"))
-		e.Renderer = &TemplateRender{
-			templates: tmpl,
+		if database.Config.CustomTemplateDir == "" {
+			e.Renderer = &TemplateRender{
+				templates: template.Must(template.ParseFS(embed_assets, "assets/*.html", "assets/manifest.json")),
+			}
+		} else {
+			e.Renderer = &TemplateRender{
+				templates: template.Must(template.ParseGlob(database.Config.CustomTemplateDir + "/*{.html,.json}")),
+			}
 		}
 	}
 }
@@ -176,7 +182,11 @@ func Static(c echo.Context) error {
 	if database.Config.Mode == "debug" {
 		assets = echo.MustSubFS(e.Filesystem, "assets")
 	} else {
-		assets = echo.MustSubFS(embed_assets, "assets")
+		if database.Config.CustomTemplateDir == "" {
+			assets = echo.MustSubFS(embed_assets, "assets")
+		} else {
+			assets = os.DirFS(database.Config.CustomTemplateDir)
+		}
 	}
 	p := c.Param("*")
 	if !slices.Contains(IgnoreFiles[:], p) {
