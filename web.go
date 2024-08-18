@@ -139,8 +139,8 @@ func setupIndex() {
 		}
 		err := c.Render(200, "index.html", map[string]any{
 			"SiteName":       database.Config.SiteName,
+			"SiteTitle":      database.Config.SiteTitle,
 			"AllowAnonymous": database.Config.AllowAnonymous,
-			"Referer":        c.Request().Referer(),
 			"IsLogin":        is_login,
 		})
 		if err != nil {
@@ -151,7 +151,7 @@ func setupIndex() {
 	e.GET("/manifest.json", func(c echo.Context) error {
 		c.Response().Header().Set("Content-Type", "application/json; charset=utf-8")
 		return c.Render(200, "manifest.json", map[string]any{
-			"SiteName": database.Config.SiteName,
+			"SiteTitle": database.Config.SiteTitle,
 		})
 	})
 	e.GET("/index.html", func(c echo.Context) error {

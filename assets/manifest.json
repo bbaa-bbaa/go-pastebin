@@ -1,11 +1,12 @@
 {
-  "name": "{{.SiteName}}",
-  "short_name": "{{.SiteName}}",
+  "name": "{{.SiteTitle}}",
+  "short_name": "{{.SiteTitle}}",
   "start_url": "/",
+  "id":"/",
   "display": "standalone",
   "background_color": "#fff",
   "theme_color": "#3F51B5",
-  "description": "{{.SiteName}}",
+  "description": "{{.SiteTitle}} pastebin service",
   "icons": [
     {
       "src": "/static/img/icon512.png",
@@ -33,9 +34,23 @@
       "type": "image/png"
     },
     {
-      "sizes": "128x128 64x64 32x32 16x16",
       "src": "/favicon.ico",
+      "sizes": "128x128",
       "type": "image/x-icon"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/img/screenshot_desktop.png",
+      "sizes": "2560x1440",
+      "form_factor": "wide",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/img/screenshot_mobile.png",
+      "sizes": "1170x2532",
+      "form_factor": "narrow",
+      "type": "image/png"
     }
   ],
   "orientation": "natural"

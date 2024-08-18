@@ -1314,7 +1314,7 @@
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
               let pastes_panel = `<div class="mdui-panel">`;
-              if (response.page.length != 0) {
+              if (response.pastes.length != 0) {
                 for (let paste of response.pastes) {
                   pastes_panel += `
                     <div class="mdui-panel-item">

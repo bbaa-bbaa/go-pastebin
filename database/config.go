@@ -18,25 +18,28 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Pastebin_Config struct {
-	SiteName            string `yaml:"site_name"`
-	SupportNoFilename   bool   `yaml:"support_no_filename"`
-	Mode                string `yaml:"mode"`
-	AllowHTML           bool   `yaml:"allow_html"`
-	AllowAnonymous      bool   `yaml:"allow_anonymous"`
-	UserCookieMaxAge    int    `yaml:"user_cookie_max_age"`
-	PasteAssessTokenAge int    `yaml:"paste_assess_token_age"`
-	CustomTemplateDir   string `yaml:"custom_template_dir"`
-	dataDir             *string
+	SiteName            string  `yaml:"site_name"`
+	SiteTitle           string  `yaml:"site_title"`
+	SupportNoFilename   bool    `yaml:"support_no_filename"`
+	Mode                string  `yaml:"mode"`
+	AllowHTML           bool    `yaml:"allow_html"`
+	AllowAnonymous      bool    `yaml:"allow_anonymous"`
+	UserCookieMaxAge    int     `yaml:"user_cookie_max_age"`
+	PasteAssessTokenAge int     `yaml:"paste_assess_token_age"`
+	CustomTemplateDir   string  `yaml:"custom_template_dir"`
+	dataDir             *string `yaml:"-"`
 }
 
 var Config *Pastebin_Config = &Pastebin_Config{
 	SiteName:            "Pastebin",
+	SiteTitle:           "",
 	SupportNoFilename:   true,
 	Mode:                "release",
 	AllowHTML:           false,
@@ -46,6 +49,8 @@ var Config *Pastebin_Config = &Pastebin_Config{
 	CustomTemplateDir:   "",
 	dataDir:             flag.String("data", "/var/lib/go-pastebin", "Data directory"),
 }
+
+var HTMLTAGRegex = regexp.MustCompile(`(?i)<[^>]*>`)
 
 func SaveConfig() {
 	config, _ := yaml.Marshal(Config)
@@ -67,9 +72,9 @@ func LoadConfig() {
 		SaveConfig()
 		return
 	}
-	err = yaml.Unmarshal(config_file, &Config)
-	if err != nil {
-		SaveConfig()
-		return
+	yaml.Unmarshal(config_file, &Config)
+	if Config.SiteTitle == "" {
+		Config.SiteTitle = Config.SiteName
 	}
+	SaveConfig()
 }
