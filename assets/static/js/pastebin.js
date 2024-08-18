@@ -88,7 +88,6 @@
       }
     });
 
-
     update_user_info();
 
     function Collapse(jq, heightBox, margin, max_height) {
@@ -1315,64 +1314,68 @@
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
               let pastes_panel = `<div class="mdui-panel">`;
-              for (let paste of response.pastes) {
-                pastes_panel += `
-                  <div class="mdui-panel-item">
-                    <div class="mdui-panel-item-header">
-                      <div class="mdui-panel-item-title paste-manage-uuid">${paste.uuid}</div>
-                      <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash">${paste.hash}</span></div>
-                `;
-                if (paste.filename != "" && paste.filename != "-") {
-                  pastes_panel += `<div class="mdui-panel-item-summary">Filename: <span class="paste-manage-filename">${paste.filename}</span></div>`;
-                } else {
-                  pastes_panel += `<div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl">${paste.short_url}</span></div>`;
-                }
-                pastes_panel += `
-                      <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
-                    </div>
-                    <div class="mdui-panel-item-body">
-                      <div class="raw-result">
-                        <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn mdui-float-right">
-                          <i class="mdui-icon material-icons">content_copy</i>
-                        </button>
-                        <p><strong>date:</strong> ${paste.created_at}</p>
-                `;
-                if (paste.expire_after != "0001-01-01T00:00:00Z") {
-                  pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after}</p>`;
-                }
-                pastes_panel += `
-                        <p><strong>digest:</strong> ${paste.digest}</p>
-                        <p><strong>long:</strong> ${paste.hash}</p>
-                        <p><strong>short:</strong> ${paste.short_url}</p>
-                        <p><strong>filename:</strong> ${paste.filename}</p>
-                        <p><strong>mime:</strong> ${paste.mime_type}</p>
-                        <p><strong>size:</strong> ${paste.size}</p>
-                        <p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count == 0 ? "nolimit" : paste.max_access_count})</p>
-                        <p><strong>password:</strong> ${paste.password ? "yes" : "no"}</p>
-                        <p><strong>uuid:</strong> ${paste.uuid}</p>
+              if (response.page.length != 0) {
+                for (let paste of response.pastes) {
+                  pastes_panel += `
+                    <div class="mdui-panel-item">
+                      <div class="mdui-panel-item-header">
+                        <div class="mdui-panel-item-title paste-manage-uuid">${paste.uuid}</div>
+                        <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash">${paste.hash}</span></div>
+                  `;
+                  if (paste.filename != "" && paste.filename != "-") {
+                    pastes_panel += `<div class="mdui-panel-item-summary">Filename: <span class="paste-manage-filename">${paste.filename}</span></div>`;
+                  } else {
+                    pastes_panel += `<div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl">${paste.short_url}</span></div>`;
+                  }
+                  pastes_panel += `
+                        <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
                       </div>
-                      <div>
-                        <p class="paste-link">url: <a href="${paste.url}" target="${isDesktop ? "_blank" : "_self"}">${paste.url}</a></p>
-                      </div>
-                      <div class="mdui-panel-item-actions">
-                        <div class="mdui-container-fluid">
-                          <div class="mdui-row">
-                            <div class="mdui-col-sm-3 mdui-col-md-6 mdui-col-lg-9 mdui-hidden-xs"></div>
-                            <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
-                              <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-red paste-manage-delete-btn" style="min-width: 0;">删除</button>
-                            </div>
-                            <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
-                              <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-blue-accent paste-manage-view-btn" style="min-width: 0;">查看</button>
-                            </div>
-                            <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
-                              <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-theme-accent paste-manage-edit-btn" style="min-width: 0;">编辑</button>
+                      <div class="mdui-panel-item-body">
+                        <div class="raw-result">
+                          <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn mdui-float-right">
+                            <i class="mdui-icon material-icons">content_copy</i>
+                          </button>
+                          <p><strong>date:</strong> ${paste.created_at}</p>
+                  `;
+                  if (paste.expire_after != "0001-01-01T00:00:00Z") {
+                    pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after}</p>`;
+                  }
+                  pastes_panel += `
+                          <p><strong>digest:</strong> ${paste.digest}</p>
+                          <p><strong>long:</strong> ${paste.hash}</p>
+                          <p><strong>short:</strong> ${paste.short_url}</p>
+                          <p><strong>filename:</strong> ${paste.filename}</p>
+                          <p><strong>mime:</strong> ${paste.mime_type}</p>
+                          <p><strong>size:</strong> ${paste.size}</p>
+                          <p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count == 0 ? "nolimit" : paste.max_access_count})</p>
+                          <p><strong>password:</strong> ${paste.password ? "yes" : "no"}</p>
+                          <p><strong>uuid:</strong> ${paste.uuid}</p>
+                        </div>
+                        <div>
+                          <p class="paste-link">url: <a href="${paste.url}" target="${isDesktop ? "_blank" : "_self"}">${paste.url}</a></p>
+                        </div>
+                        <div class="mdui-panel-item-actions">
+                          <div class="mdui-container-fluid">
+                            <div class="mdui-row">
+                              <div class="mdui-col-sm-3 mdui-col-md-6 mdui-col-lg-9 mdui-hidden-xs"></div>
+                              <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
+                                <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-red paste-manage-delete-btn" style="min-width: 0;">删除</button>
+                              </div>
+                              <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
+                                <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-blue-accent paste-manage-view-btn" style="min-width: 0;">查看</button>
+                              </div>
+                              <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
+                                <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-theme-accent paste-manage-edit-btn" style="min-width: 0;">编辑</button>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                `;
+                  `;
+                }
+              } else {
+                pastes_panel += `无 Paste`;
               }
               pastes_panel += `</div>`;
               paste_manage_pastes.html(pastes_panel);
