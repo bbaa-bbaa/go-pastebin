@@ -514,7 +514,7 @@
         }
 
         if (expire != "0") {
-          query_params.expire = new Date().getTime() + parseInt(expire);
+          query_params.expire_after = new Date().getTime() + parseInt(expire) * 1000;
         }
 
         if (max_access_count.length != 0) {
@@ -1356,11 +1356,6 @@
                   } else {
                     pastes_panel += ` <p><strong>expire:</strong> never</p>`;
                   }
-                  if (paste.delete_if_not_available) {
-                    if ((paste.expire_after != "0001-01-01T00:00:00Z" && now >= expired) || (paste.max_access_count != 0 && paste.access_count >= paste.max_access_count)) {
-                      pastes_panel += ` <p><strong>hold_before:</strong> ${paste.hold_before} (count: ${paste.hold_count})</p>`;
-                    }
-                  }
                   pastes_panel += `
                           <p><strong>digest:</strong> ${paste.digest}</p>
                           <p><strong>long:</strong> ${paste.hash}</p>
@@ -1389,6 +1384,13 @@
                   pastes_panel += `
                           <p><strong>password:</strong> ${paste.has_password ? "yes" : "no"}</p>
                           <p><strong>uuid:</strong> ${paste.uuid}</p>
+                  `;
+                  if (paste.delete_if_not_available) {
+                    if ((paste.expire_after != "0001-01-01T00:00:00Z" && now >= expired) || (paste.max_access_count != 0 && paste.access_count >= paste.max_access_count)) {
+                      pastes_panel += ` <p class="mdui-text-color-red"><strong>hold_before:</strong> ${paste.hold_before} (count: ${paste.hold_count})</p>`;
+                    }
+                  }
+                  pastes_panel += `
                         </div>
                         <div>
                           <p class="paste-link">url: <a href="${paste.url}" target="${isDesktop ? "_blank" : "_self"}">${paste.url}</a></p>
