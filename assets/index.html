@@ -19,7 +19,23 @@
     <link rel="stylesheet" href="static/highlight/styles/github.min.css" />
     <title>{{.SiteTitle}}</title>
     <style>
-      
+      @font-face {
+        font-family: "Hack";
+        src:
+          url("static/font/Hack/hack-regular.woff2") format("woff2"),
+          url("font/Hack/hack-regular.woff") format("woff");
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      @font-face {
+        font-family: "Bender";
+        src:
+          url("static/font/Bender/Bender-Bold.woff2") format("woff2"),
+          url("static/font/Bender/Bender-Bold.otf") format("otf");
+        font-weight: bold;
+      }
+
       .mdui-tab a {
         pointer-events: none;
       }
@@ -58,29 +74,12 @@
         background-color: #ffffff !important;
       }
 
-      @font-face {
-        font-family: "Hack";
-        src:
-          url("static/font/Hack/hack-regular.woff2") format("woff2"),
-          url("font/Hack/hack-regular.woff") format("woff");
-        font-weight: 400;
-        font-style: normal;
-      }
-
       .raw-result {
         font-family: Consolas, Hack, monospace;
       }
 
       .raw-result p {
         margin: 1px 0;
-      }
-
-      @font-face {
-        font-family: "Bender";
-        src:
-          url("static/font/Bender/Bender-Bold.woff2") format("woff2"),
-          url("static/font/Bender/Bender-Bold.otf") format("otf");
-        font-weight: bold;
       }
 
       p.paste-link {
@@ -174,7 +173,6 @@
       .file-paste-bg {
         background-color: #f0f0f0;
       }
-
     </style>
     <script>
       if ("serviceWorker" in navigator) {
