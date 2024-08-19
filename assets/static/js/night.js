@@ -1,6 +1,6 @@
 (function nightMode() {
   let nightMode = localStorage.getItem('isNightMode') === 'true';
-  function setNightMode() {
+  function setMode() {
     if (nightMode) {
       document.body.classList.add("mdui-theme-layout-dark");
     } else {
@@ -14,7 +14,7 @@
     nightModeSwitchBtn.addEventListener('click', function () {
       nightMode = !nightMode;
       localStorage.setItem('isNightMode', nightMode);
-      setNightMode();
+      setMode();
       if (nightMode) {
         iconSwitchToDayMode.classList.remove('mdui-hidden');
         iconSwitchToNightMode.classList.add('mdui-hidden');
@@ -23,12 +23,12 @@
         iconSwitchToNightMode.classList.remove('mdui-hidden');
       }
     });
-    setNightMode(); // best effort
+    setMode(); // best effort
   }
   if (document.readyState === "loading") {
     document.addEventListener('DOMContentLoaded', registerNightModeSwitchBtn);
   } else {
     registerNightModeSwitchBtn();
   }
-  setNightMode();
+  setMode();
 })();

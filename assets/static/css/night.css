@@ -1,6 +1,16 @@
+body.nightmode-transition.mdui-loaded {
+  transition:
+    background-color 0.6s ease-out,
+    color 0.6s ease-out;
+}
+
 .mdui-appbar .mdui-toolbar,
 .mdui-appbar .mdui-tab,
-.mdui-card,
+.mdui-card {
+  transition:
+    color 0.6s ease-out;
+}
+
 .mdui-panel-item,
 .mdui-panel-item .mdui-panel-item-summary,
 .mdui-panel-item .mdui-panel-item-header {
@@ -9,8 +19,3 @@
     color 0.3s ease-out;
 }
 
-body.nightmode-transition.mdui-loaded {
-  transition:
-    color 0.3s ease-out,
-    background-color 0.6s ease-out;
-}
