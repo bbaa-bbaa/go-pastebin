@@ -186,11 +186,14 @@ func NewPaste(c echo.Context) error {
 
 func pasteActionStatus(action string, paste *database.Paste, err error, c echo.Context) {
 	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
-	url := c.Scheme() + "://" + c.Request().Host + "/"
-	if paste.Short_url != "" {
-		url += paste.Short_url
-	} else {
-		url += paste.Base64Hash()
+	url := "not available"
+	if paste != nil {
+		url = c.Scheme() + "://" + c.Request().Host + "/"
+		if paste.Short_url != "" {
+			url += paste.Short_url
+		} else {
+			url += paste.Base64Hash()
+		}
 	}
 	if err == nil {
 		if response_is_json {

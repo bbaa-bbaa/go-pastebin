@@ -76,7 +76,7 @@ func PostInit() {
 		ResetAdmin()
 	}
 	s, _ := gocron.NewScheduler()
-	s.NewJob(gocron.CronJob("*/10 * * * *", false), gocron.NewTask(pasteCleaner))
+	s.NewJob(gocron.CronJob("*/5 * * * *", false), gocron.NewTask(pasteCleaner))
 	s.Start()
 }
 

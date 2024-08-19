@@ -158,6 +158,8 @@ func (p *Paste) Save() (*Paste, error) {
 	}
 	p.CreatedAt = time.Now()
 	p.Extra.HashPadding = ShortURLExist(p.Hash.base64())
+	retry_flag := false
+retry_if_exist_paste_expired:
 	_, err = db.Exec(`INSERT INTO pastes (uuid, hash, password, expire_after, access_count, max_access_count, delete_if_not_available, hold_count, hold_before, extra, uid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.UUID,
 		p.Hash,
@@ -175,12 +177,18 @@ func (p *Paste) Save() (*Paste, error) {
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok {
 			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-				os.Remove(paste_file.Name())
 				paste, err := QueryPasteByHash(p.Hash)
 				if err != nil {
-					fmt.Printf("QueryPasteByHash error: %v\n", err)
-					return nil, err
+					if errors.Is(err, ErrNotFound) && !retry_flag {
+						retry_flag = true
+						goto retry_if_exist_paste_expired
+					} else {
+						fmt.Printf("QueryPasteByHash error: %v\n", err)
+						os.Remove(paste_file.Name())
+						return nil, err
+					}
 				}
+				os.Remove(paste_file.Name())
 				return paste, ErrAlreadyExist
 			}
 		}
@@ -384,7 +392,7 @@ func (p *Paste) ForceDelete() error {
 }
 
 func (p *Paste) FlagDelete() error {
-	_, err := db.Exec(`UPDATE pastes SET expire_after = datetime("now"), max_access_count = -1, delete_if_not_available = 1 WHERE uuid = ?`, p.UUID)
+	_, err := db.Exec(`UPDATE pastes SET expire_after = datetime('now'), max_access_count = -1, delete_if_not_available = 1 WHERE uuid = ?`, p.UUID)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -646,7 +654,7 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64) (pastes []*Past
 }
 
 func pasteCleaner() {
-	rows, err := db.Queryx(`DELETE FROM pastes WHERE (expire_after < datetime("now") AND delete_if_not_available = 1 OR max_access_count > 0 AND access_count >= max_access_count) AND hold_count = 0 AND hold_before < datetime("now") RETURNING uuid`)
+	rows, err := db.Queryx(`DELETE FROM pastes WHERE (expire_after < CURRENT_TIMESTAMP AND delete_if_not_available = 1 OR max_access_count > 0 AND access_count >= max_access_count) AND hold_count = 0 AND hold_before < datetime("now") RETURNING uuid`)
 	if err != nil {
 		log.Error(err)
 		return
