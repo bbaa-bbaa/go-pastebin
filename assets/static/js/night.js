@@ -1,40 +1,34 @@
-var $ = mdui.$
-function changeNightMode(buttonElement,isInitial) {
-
-    function changeVisible(elementList) {
-        elementList.each(function() {
-            if ($(this).hasClass('mdui-hidden')) {
-                $(this).removeClass('mdui-hidden');
-            } else {
-                $(this).addClass('mdui-hidden');
-            }
-        });
+(function nightMode() {
+  let nightMode = localStorage.getItem('isNightMode') === 'true';
+  function setNightMode() {
+    if (nightMode) {
+      document.body.classList.add("mdui-theme-layout-dark");
+    } else {
+      document.body.classList.remove("mdui-theme-layout-dark");
     }
-
-    function toggleNightMode() {
-        if ($("body").hasClass('mdui-theme-layout-dark')) {
-            $("body").removeClass('mdui-theme-layout-dark');
-            localStorage.setItem('isNightMode', false);
-        } else {
-            $("body").addClass('mdui-theme-layout-dark');
-            localStorage.setItem('isNightMode', true);
-        }
-    }
-    if (isInitial){
-        const isNightMode = localStorage.getItem('isNightMode') === 'true';
-        if (!isNightMode) {
-           return;
-        }
-    }
-    
-    toggleNightMode();
-    
-    changeVisible(buttonElement.children());
-}
-
-const global_nightmode_btn = $("#global-nightmode-btn");
-global_nightmode_btn.on("click", function() {
-  changeNightMode(global_nightmode_btn,false);
-});
-
-changeNightMode(global_nightmode_btn,true);
+  }
+  function registerNightModeSwitchBtn() {
+    const nightModeSwitchBtn = document.getElementById('switch-nightmode-btn');
+    const iconSwitchToDayMode = nightModeSwitchBtn.children[0];
+    const iconSwitchToNightMode = nightModeSwitchBtn.children[1];
+    nightModeSwitchBtn.addEventListener('click', function () {
+      nightMode = !nightMode;
+      localStorage.setItem('isNightMode', nightMode);
+      setNightMode();
+      if (nightMode) {
+        iconSwitchToDayMode.classList.remove('mdui-hidden');
+        iconSwitchToNightMode.classList.add('mdui-hidden');
+      } else {
+        iconSwitchToDayMode.classList.add('mdui-hidden');
+        iconSwitchToNightMode.classList.remove('mdui-hidden');
+      }
+    });
+    setNightMode(); // best effort
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener('DOMContentLoaded', registerNightModeSwitchBtn);
+  } else {
+    registerNightModeSwitchBtn();
+  }
+  setNightMode();
+})();

@@ -141,7 +141,9 @@
       }
 
       .paste-manage-progress {
+        position: absolute;
         border-radius: 0;
+        bottom: 0;
       }
 
       #new-paste-result-copy,
@@ -187,6 +189,11 @@
         background-color: #303030;
         color: #b0b0b0;
       }
+
+      body.mdui-theme-layout-dark .mdui-select[mdui-select] {
+        color: inherit;
+        background-color: inherit;
+      }
     </style>
     <script>
       if ("serviceWorker" in navigator) {
@@ -219,7 +226,7 @@
         <button href="javascript:;" class="mdui-btn mdui-btn-icon" id="account-dialog-btn">
           <i class="mdui-icon material-icons">account_circle</i>
         </button>
-        <button class="mdui-btn mdui-btn-icon" id="global-nightmode-btn" mdui-tooltip="{content: '夜间模式'}">
+        <button class="mdui-btn mdui-btn-icon" id="switch-nightmode-btn">
           <i class="mdui-icon material-icons mdui-hidden">brightness_high</i>
           <i class="mdui-icon material-icons">brightness_2</i>
         </button>
@@ -326,7 +333,7 @@
                   <div class="mdui-col-md-4 mdui-col-xs-6">
                     <div class="mdui-textfield" style="overflow: visible">
                       <label class="mdui-textfield-label">过期时间</label>
-                      <select id="new-paste-expire" class="mdui-select" mdui-select style="width: 100%" width="100%">
+                      <select id="new-paste-expire" class="mdui-select" mdui-select style="width: 100%;">
                         <option value="0"></option>
                         <option value="3600">1 小时</option>
                         <option value="21600">6 小时</option>
@@ -722,6 +729,7 @@
         </form>
       </div>
     </div>
+    <script src="static/js/night.js"></script>
     <script src="static/mdui/js/mdui.min.js"></script>
     <script src="static/lodash/js/lodash.min.js"></script>
     <script src="static/purify/js/purify.min.js"></script>
@@ -729,7 +737,6 @@
     <script src="static/qrcode/js/qrcode.min.js"></script>
     <script src="static/highlight/highlight.min.js"></script>
     <script src="static/highlight/highlightjs-line-numbers.min.js"></script>
-    <script src="static/js/night.js"></script>
     <script src="static/js/pastebin.js"></script>
   </body>
 </html>
