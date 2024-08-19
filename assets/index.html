@@ -170,6 +170,11 @@
       body.mdui-theme-layout-dark canvas#new-paste-result-qrcode {
         filter: invert(1);
       }
+
+      .file-paste-bg {
+        background-color: #f0f0f0;
+      }
+
     </style>
     <script>
       if ("serviceWorker" in navigator) {
@@ -282,7 +287,7 @@
                         <p class="mdui-m-a-0" style="color: #707070">松开鼠标加载文件</p>
                       </div>
                     </div>
-                    <div class="mdui-valign mdui-p-a-2" style="min-height: 200px; background-color: #f0f0f0; text-align: center">
+                    <div class="mdui-valign mdui-p-a-2 file-paste-bg" style="min-height: 200px; text-align: center">
                       <div class="mdui-center">
                         <i id="new-paste-file-icon" class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
                         <div id="new-paste-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
@@ -291,7 +296,7 @@
                     </div>
                     <div id="new-paste-file-progress">
                       <div>
-                        <p id="new-paste-file-progress-text" style="background-color: #f0f0f0">0.00MiB / 0.00MiB - 0.00%</p>
+                        <p id="new-paste-file-progress-text" class="file-paste-bg">0.00MiB / 0.00MiB - 0.00%</p>
                         <div class="mdui-progress" style="border-radius: 0">
                           <div id="new-paste-file-progress-bar" class="mdui-progress-determinate" style="width: 0%"></div>
                         </div>
@@ -459,7 +464,7 @@
             <div class="mdui-container-fluid">
               <div class="mdui-row">
                 <div class="mdui-col-xs-12" style="height: 100%">
-                  <div class="mdui-valign mdui-p-a-2 mdui-m-y-1" style="min-height: 200px; background-color: #f0f0f0; text-align: center">
+                  <div class="mdui-valign mdui-p-a-2 mdui-m-y-1 file-paste-bg" style="min-height: 200px; text-align: center">
                     <div class="mdui-center">
                       <i class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">sentiment_neutral</i>
                       <p class="mdui-m-a-0" style="color: #707070">Paste 不存在或已不再可用</p>
@@ -534,7 +539,7 @@
             <div class="mdui-container-fluid">
               <div class="mdui-row">
                 <div class="mdui-col-xs-12" style="height: 100%">
-                  <div class="mdui-valign mdui-p-a-2 mdui-m-y-1" style="min-height: 200px; background-color: #f0f0f0; text-align: center">
+                  <div class="mdui-valign mdui-p-a-2 mdui-m-y-1 file-paste-bg" style="min-height: 200px; text-align: center">
                     <div class="mdui-center">
                       <i id="paste-viewer-file-icon" class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
                       <div id="paste-viewer-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
