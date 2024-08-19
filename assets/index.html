@@ -43,7 +43,7 @@
       .mdui-loaded .mdui-tab a {
         pointer-events: auto;
       }
-      
+
       .mdui-card {
         overflow: visible;
       }
@@ -100,17 +100,19 @@
       }
 
       body.mdui-theme-layout-dark .paste-link a {
-        color: rgb(238,0,0);
+        color: rgb(238, 0, 0);
       }
 
-      body.mdui-theme-layout-dark .paste-link a:hover {
-        color: rgb(255,192,203);
+      body.mdui-theme-layout-dark .paste-link a:hover,
+      body.mdui-theme-layout-dark .paste-link a:visited {
+        color: rgb(255, 192, 203);
+        transition: color 0.3s ease-out;
       }
 
       .mdui-card.card-collapse {
         transition:
-          color 0.6s ease-out,
-          background-color 0.6s ease-out,
+          color 0.3s ease-out,
+          background-color 0.3s ease-out,
           height 0.6s ease-out;
         height: 0px;
         overflow: hidden;
@@ -180,12 +182,14 @@
         filter: invert(1);
       }
 
-      .file-paste-bg, .paste-file-drop-overlay {
+      .file-paste-bg,
+      .paste-file-drop-overlay {
         background-color: #f0f0f0;
         color: #707070;
       }
 
-      body.mdui-theme-layout-dark .file-paste-bg, body.mdui-theme-layout-dark .paste-file-drop-overlay {
+      body.mdui-theme-layout-dark .file-paste-bg,
+      body.mdui-theme-layout-dark .paste-file-drop-overlay {
         background-color: #303030;
         color: #b0b0b0;
       }
@@ -283,9 +287,7 @@
               <div class="mdui-container-fluid">
                 <div class="mdui-row" id="new-paste-text-paste">
                   <div class="mdui-col-xs-12" style="height: 100%">
-                    <div
-                      class="mdui-valign paste-file-drop-overlay mdui-hidden"
-                      style="position: absolute; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
+                    <div class="mdui-valign paste-file-drop-overlay mdui-hidden" style="position: absolute; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
                       <div class="mdui-center mdui-p-a-2">
                         <i class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
                         <p class="mdui-m-a-0">松开鼠标加载文件</p>
@@ -298,9 +300,7 @@
                 </div>
                 <div class="mdui-row" id="new-paste-file" style="display: none">
                   <div class="mdui-col-xs-12" style="height: 100%">
-                    <div
-                      class="mdui-valign paste-file-drop-overlay mdui-hidden"
-                      style="position: absolute; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
+                    <div class="mdui-valign paste-file-drop-overlay mdui-hidden" style="position: absolute; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
                       <div class="mdui-center mdui-p-a-2" style="max-height: 320px; overflow: hidden">
                         <i class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
                         <p class="mdui-m-a-0">松开鼠标加载文件</p>
@@ -333,7 +333,7 @@
                   <div class="mdui-col-md-4 mdui-col-xs-6">
                     <div class="mdui-textfield" style="overflow: visible">
                       <label class="mdui-textfield-label">过期时间</label>
-                      <select id="new-paste-expire" class="mdui-select" mdui-select style="width: 100%;">
+                      <select id="new-paste-expire" class="mdui-select" mdui-select style="width: 100%">
                         <option value="0"></option>
                         <option value="3600">1 小时</option>
                         <option value="21600">6 小时</option>
