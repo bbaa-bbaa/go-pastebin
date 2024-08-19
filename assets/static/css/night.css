@@ -1,0 +1,14 @@
+.mdui-appbar .mdui-toolbar,
+.mdui-appbar .mdui-tab,
+.mdui-card,
+.mdui-panel-item,
+.mdui-panel-item .mdui-panel-item-summary,
+.mdui-panel-item .mdui-panel-item-header {
+    transition: all .3s cubic-bezier(.4, 0, .2, 1), color 0.3s ease-out;
+}
+
+body.nightmode-transition.mdui-loaded {
+    transition:
+        color 0.3s ease-out,
+        background-color 0.6s ease-out;
+}

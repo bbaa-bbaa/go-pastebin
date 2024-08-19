@@ -15,6 +15,7 @@
     <link rel="apple-touch-icon" sizes="64x64" href="static/img/icon64.png" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="static/mdui/css/mdui.min.css" />
+    <link rel="stylesheet" href="static/css/night.css" />
     <link rel="stylesheet" href="static/highlight/styles/github.min.css" />
     <title>{{.SiteTitle}}</title>
     <style>
@@ -151,21 +152,6 @@
 
       td.hljs-ln-code {
         padding-left: 8px !important;
-      }
-
-      .mdui-appbar .mdui-toolbar,
-      .mdui-appbar .mdui-tab,
-      .mdui-card,
-      .mdui-panel-item,
-      .mdui-panel-item .mdui-panel-item-summary,
-      body.nightmode-transition.mdui-loaded {
-        transition:
-          color 0.3s ease-out,
-          background-color 0.6s ease-out;
-      }
-
-      .mdui-panel-item .mdui-panel-item-header {
-        transition: all .3s cubic-bezier(.4,0,.2,1), color 0.3s ease-out;
       }
 
       canvas#new-paste-result-qrcode {
