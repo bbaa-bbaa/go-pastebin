@@ -62,11 +62,11 @@
         transition: background-color 0.6s ease;
       }
 
-      .new-paste-file-drop-overlay * {
+      .paste-file-drop-overlay * {
         pointer-events: none;
       }
 
-      .new-paste-file-drop-overlay.mdui-hidden {
+      .paste-file-drop-overlay.mdui-hidden {
         display: none !important;
       }
 
@@ -170,8 +170,14 @@
         filter: invert(1);
       }
 
-      .file-paste-bg {
+      .file-paste-bg, .paste-file-drop-overlay {
         background-color: #f0f0f0;
+        color: #707070;
+      }
+
+      body.mdui-theme-layout-dark .file-paste-bg, body.mdui-theme-layout-dark .paste-file-drop-overlay {
+        background-color: #303030;
+        color: #b0b0b0;
       }
     </style>
     <script>
@@ -264,10 +270,10 @@
                   <div class="mdui-col-xs-12" style="height: 100%">
                     <div
                       class="mdui-valign paste-file-drop-overlay mdui-hidden"
-                      style="position: absolute; background-color: #f0f0f0; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
+                      style="position: absolute; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
                       <div class="mdui-center mdui-p-a-2">
-                        <i class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
-                        <p class="mdui-m-a-0" style="color: #707070">松开鼠标加载文件</p>
+                        <i class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
+                        <p class="mdui-m-a-0">松开鼠标加载文件</p>
                       </div>
                     </div>
                     <div class="mdui-textfield">
@@ -279,17 +285,17 @@
                   <div class="mdui-col-xs-12" style="height: 100%">
                     <div
                       class="mdui-valign paste-file-drop-overlay mdui-hidden"
-                      style="position: absolute; background-color: #f0f0f0; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
+                      style="position: absolute; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
                       <div class="mdui-center mdui-p-a-2" style="max-height: 320px; overflow: hidden">
-                        <i class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
-                        <p class="mdui-m-a-0" style="color: #707070">松开鼠标加载文件</p>
+                        <i class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
+                        <p class="mdui-m-a-0">松开鼠标加载文件</p>
                       </div>
                     </div>
                     <div class="mdui-valign mdui-p-a-2 file-paste-bg" style="min-height: 200px; text-align: center">
                       <div class="mdui-center">
-                        <i id="new-paste-file-icon" class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
+                        <i id="new-paste-file-icon" class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
                         <div id="new-paste-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
-                        <p id="new-paste-file-filename" class="mdui-m-a-0" style="color: #707070"></p>
+                        <p id="new-paste-file-filename" class="mdui-m-a-0"></p>
                       </div>
                     </div>
                     <div id="new-paste-file-progress">
@@ -464,8 +470,8 @@
                 <div class="mdui-col-xs-12" style="height: 100%">
                   <div class="mdui-valign mdui-p-a-2 mdui-m-y-1 file-paste-bg" style="min-height: 200px; text-align: center">
                     <div class="mdui-center">
-                      <i class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">sentiment_neutral</i>
-                      <p class="mdui-m-a-0" style="color: #707070">Paste 不存在或已不再可用</p>
+                      <i class="mdui-icon material-icons" style="font-size: 48px; display: block">sentiment_neutral</i>
+                      <p class="mdui-m-a-0">Paste 不存在或已不再可用</p>
                     </div>
                   </div>
                 </div>
@@ -539,9 +545,9 @@
                 <div class="mdui-col-xs-12" style="height: 100%">
                   <div class="mdui-valign mdui-p-a-2 mdui-m-y-1 file-paste-bg" style="min-height: 200px; text-align: center">
                     <div class="mdui-center">
-                      <i id="paste-viewer-file-icon" class="mdui-icon material-icons" style="font-size: 48px; color: #707070; display: block">description</i>
+                      <i id="paste-viewer-file-icon" class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
                       <div id="paste-viewer-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
-                      <p id="paste-viewer-file-filename" class="mdui-m-a-0" style="color: #707070">Cirno.bmp (9.00 MiB)</p>
+                      <p id="paste-viewer-file-filename" class="mdui-m-a-0">Cirno.bmp (9.00 MiB)</p>
                     </div>
                   </div>
                 </div>
