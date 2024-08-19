@@ -19,6 +19,15 @@
     <link rel="stylesheet" href="static/highlight/styles/github.min.css" />
     <title>{{.SiteTitle}}</title>
     <style>
+      
+      .mdui-tab a {
+        pointer-events: none;
+      }
+
+      .mdui-loaded .mdui-tab a {
+        pointer-events: auto;
+      }
+      
       .mdui-card {
         overflow: visible;
       }
