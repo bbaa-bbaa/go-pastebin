@@ -40,7 +40,7 @@
         pointer-events: none;
       }
 
-      .mdui-loaded .mdui-tab a {
+      .paste-tab-loaded.mdui-tab a {
         pointer-events: auto;
       }
 
@@ -301,7 +301,7 @@
                 <div class="mdui-row" id="new-paste-file" style="display: none">
                   <div class="mdui-col-xs-12" style="height: 100%">
                     <div class="mdui-valign paste-file-drop-overlay mdui-hidden" style="position: absolute; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
-                      <div class="mdui-center mdui-p-a-2" style="max-height: 320px; overflow: hidden">
+                      <div class="mdui-center mdui-p-a-2">
                         <i class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
                         <p class="mdui-m-a-0">松开鼠标加载文件</p>
                       </div>
@@ -309,7 +309,7 @@
                     <div class="mdui-valign mdui-p-a-2 file-paste-bg" style="min-height: 200px; text-align: center">
                       <div class="mdui-center">
                         <i id="new-paste-file-icon" class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
-                        <div id="new-paste-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
+                        <div id="new-paste-file-preview" style="margin: 0 auto; max-height: 720px; display: none"></div>
                         <p id="new-paste-file-filename" class="mdui-m-a-0"></p>
                       </div>
                     </div>
@@ -561,7 +561,7 @@
                   <div class="mdui-valign mdui-p-a-2 mdui-m-y-1 file-paste-bg" style="min-height: 200px; text-align: center">
                     <div class="mdui-center">
                       <i id="paste-viewer-file-icon" class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
-                      <div id="paste-viewer-file-preview" style="margin: 0 auto; max-height: 320px; display: none"></div>
+                      <div id="paste-viewer-file-preview" style="margin: 0 auto; max-height: 720px; display: none"></div>
                       <p id="paste-viewer-file-filename" class="mdui-m-a-0">Cirno.bmp (9.00 MiB)</p>
                     </div>
                   </div>
@@ -586,8 +586,17 @@
           </div>
           <div class="mdui-card-content">
             <div class="mdui-container-fluid">
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12" id="paste-manage-pastes">加载中......</div>
+              <div class="mdui-row" id="paste-manage-null">
+                <div class="mdui-col-xs-12">
+                  无 Paste
+                </div>
+              </div>
+              <div class="mdui-row" id="paste-manage-pastes" style="display: none;">
+                <div class="mdui-col-xs-12">
+                  <div class="mdui-panel">
+
+                  </div>
+                </div>
               </div>
               <div class="mdui-row">
                 <div class="mdui-col-xs-12 mdui-m-t-1">
@@ -701,7 +710,6 @@
     </div>
     <div class="mdui-dialog" id="login-dialog">
       <div class="mdui-dialog-title">登录</div>
-
       <div class="mdui-dialog-content">
         <form id="login-form">
           <div class="mdui-container-fluid">

@@ -45,6 +45,7 @@
     };
     const paste_app_tab = new mdui.Tab("#paste-mdui-tab");
     const paste_app_tab_element = $("#paste-mdui-tab");
+    paste_app_tab_element.addClass("paste-tab-loaded");
     const new_paste_tab = $("#new-paste-tab");
     const paste_manage_tab = $("#paste-manage-tab");
 
@@ -894,17 +895,18 @@
               paste_viewer_enable_markdown_render.prop("checked", true);
             }
             paste_preview_text_render(true);
+            action_unlock();
           })
           .catch(() => {
             paste_viewer_text_content.text("无法加载 Paste");
             collapse_paste_viewer_text_content.open();
+            action_unlock();
           });
       }
 
       function paste_preview() {
         if (paste_metadata.type.startsWith("text/") && paste_metadata.size <= 1024 * 1024) {
           paste_preview_text();
-          action_unlock();
         } else {
           paste_preview_file();
         }
@@ -1189,21 +1191,28 @@
       const new_paste_uuid = $("#new-paste-uuid");
       const new_paste_delete = $("#new-paste-delete").get(0);
 
+      const paste_viewer_query = $("#paste-viewer-query");
       const paste_viewer_query_input = $("#paste-viewer-query-input");
       const paste_viewer_progress = $(".paste-viewer-progress");
       const paste_viewer_query_btn = $("#paste-viewer-query-btn");
 
       const paste_manage_pastes = $("#paste-manage-pastes");
+      const paste_manage_null = $("#paste-manage-null");
+
       const paste_manage_progress = $(".paste-manage-progress");
       const paste_manage_prev = $("#paste-manage-prev");
       const paste_manage_next = $("#paste-manage-next");
       const paste_manage_pager = $(".paste-manage-pager");
 
+      const paste_manage_mdui_panel = new mdui.Panel("#paste-manage-pastes .mdui-panel");
+      const paste_manage_panel = $("#paste-manage-pastes .mdui-panel");
       let page = 1;
       let max_page = 1;
       let paste_total = 0;
       const page_size = 50;
-      let mdui_panel;
+
+      let paste_manager_list = [];
+
       function pager_check() {
         if (page == 1) {
           paste_manage_prev.attr("disabled", "disabled");
@@ -1217,25 +1226,22 @@
         }
       }
 
-      function register_action_button() {
-        const paste_manage_delete_btn = $(".paste-manage-delete-btn");
-        const paste_manage_view_btn = $(".paste-manage-view-btn");
-        const paste_manage_edit_btn = $(".paste-manage-edit-btn");
-        const paste_manage_copy_url_btn = $(".paste-manage-copy-url-btn");
+      function register_action_button(panel) {
+        const paste_manage_delete_btn = panel.find(".paste-manage-delete-btn");
+        const paste_manage_view_btn = panel.find(".paste-manage-view-btn");
+        const paste_manage_edit_btn = panel.find(".paste-manage-edit-btn");
+        const paste_manage_copy_url_btn = panel.find(".paste-manage-copy-url-btn");
 
         paste_manage_view_btn.on("click", function (e) {
-          let uuid = $(this).closest(".mdui-panel-item").find(".paste-manage-uuid").text();
-          let hash = $(this).closest(".mdui-panel-item").find(".paste-manage-hash").text();
+          let uuid = panel.find(".paste-manage-uuid").text();
+          let hash = panel.find(".paste-manage-hash").text();
           paste_viewer_query_input.val(hash);
           paste_viewer_query_input.get(0).dispatchEvent(new Event("input"));
           paste_viewer_progress.show();
-          paste_viewer_query_btn.hide();
+          paste_viewer_query_btn.attr("disabled", "disabled");
           paste_app_tab.show(1);
-          if (paste_viewer_back_to_manage) {
-            paste_viewer_back_to_manage = false;
-            const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
-            paste_viewer_back_to_query.get(0).click();
-          }
+          const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
+          paste_viewer_back_to_query.get(0).click();
           $.ajax({
             method: "GET",
             url: "api/paste/" + uuid,
@@ -1246,19 +1252,18 @@
               let response = JSON.parse(xhr.responseText);
               if (xhr.status == 200 && response.code === 0) {
                 paste_viewer_back_to_manage = true;
+                paste_viewer_query_btn.removeAttr("disabled");
                 paste_viewer_query_btn.get(0).click();
               } else {
                 mdui.snackbar("加载失败: " + response.error);
                 paste_app_tab.show(2);
               }
-              paste_viewer_progress.hide();
-              paste_viewer_query_btn.show();
             }
           });
         });
 
         paste_manage_copy_url_btn.on("click", function () {
-          let element = $(this).closest(".mdui-panel-item").find(".paste-link > a");
+          let element = panel.find(".paste-link > a");
           let url = element.attr("href");
           function selectAndHint() {
             let selection = window.getSelection();
@@ -1283,7 +1288,7 @@
         });
 
         paste_manage_delete_btn.on("click", function (e) {
-          let uuid = $(this).closest(".mdui-panel-item").find(".paste-manage-uuid").text();
+          let uuid = panel.find(".paste-manage-uuid").text();
           new_paste_uuid.val(uuid);
           new_paste_uuid.get(0).dispatchEvent(new Event("input"));
           paste_app_tab.show(0);
@@ -1294,11 +1299,113 @@
         });
 
         paste_manage_edit_btn.on("click", function (e) {
-          let uuid = $(this).closest(".mdui-panel-item").find(".paste-manage-uuid").text();
+          let uuid = panel.find(".paste-manage-uuid").text();
           new_paste_uuid.val(uuid);
           new_paste_uuid.get(0).dispatchEvent(new Event("input"));
           paste_app_tab.show(0);
         });
+      }
+
+      function generate_paste_panel_html(paste) {
+        let now = new Date().getTime();
+        let expired = new Date(paste.expire_after).getTime();
+        let pastes_panel = `
+          <div class="mdui-panel-item">
+            <div class="mdui-panel-item-header">
+              <div class="mdui-panel-item-title paste-manage-uuid">${paste.uuid}</div>
+              <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash">${paste.hash}</span></div>
+        `;
+        if (paste.filename != "" && paste.filename != "-") {
+          pastes_panel += `<div class="mdui-panel-item-summary">Filename: <span class="paste-manage-filename">${paste.filename}</span></div>`;
+        } else {
+          pastes_panel += `<div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl">${paste.short_url}</span></div>`;
+        }
+        pastes_panel += `
+              <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
+            </div>
+            <div class="mdui-panel-item-body">
+              <div class="raw-result">
+                <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn mdui-float-right">
+                  <i class="mdui-icon material-icons">content_copy</i>
+                </button>
+                <p><strong>date:</strong> ${paste.created_at}</p>
+        `;
+        if (paste.expire_after != "0001-01-01T00:00:00Z") {
+          if (!paste.delete_if_not_available) {
+            if (expired > now) {
+              pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after}</p>`;
+            } else {
+              pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after} <span class="mdui-text-color-red">(expired)</span></p>`;
+            }
+          } else {
+            if (expired > now) {
+              pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after} (auto delete)</p>`;
+            } else {
+              pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after} <span class="mdui-text-color-red">(expired, delete flagged)</span></p>`;
+            }
+          }
+        } else {
+          pastes_panel += ` <p><strong>expire:</strong> never</p>`;
+        }
+        pastes_panel += `
+                <p><strong>digest:</strong> ${paste.digest}</p>
+                <p><strong>long:</strong> ${paste.hash}</p>
+                <p><strong>short:</strong> ${paste.short_url}</p>
+                <p><strong>filename:</strong> ${paste.filename}</p>
+                <p><strong>mime:</strong> ${paste.mime_type}</p>
+                <p><strong>size:</strong> ${paste.size}</p>
+        `;
+        if (paste.max_access_count == 0) {
+          pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: nolimit)</p>`;
+        } else {
+          if (!paste.delete_if_not_available) {
+            if (paste.access_count < paste.max_access_count) {
+              pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count})</p>`;
+            } else {
+              pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count}) <span class="mdui-text-color-red">(limit reached)</span></p>`;
+            }
+          } else {
+            if (paste.access_count < paste.max_access_count) {
+              pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count}) (auto delete)</p>`;
+            } else {
+              pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count}) <span class="mdui-text-color-red">(limit reached, delete flagged)</span></p>`;
+            }
+          }
+        }
+        pastes_panel += `
+                <p><strong>password:</strong> ${paste.has_password ? "yes" : "no"}</p>
+                <p><strong>uuid:</strong> ${paste.uuid}</p>
+        `;
+        if (paste.delete_if_not_available) {
+          if ((paste.expire_after != "0001-01-01T00:00:00Z" && now >= expired) || (paste.max_access_count != 0 && paste.access_count >= paste.max_access_count)) {
+            pastes_panel += ` <p class="mdui-text-color-red"><strong>hold_before:</strong> ${paste.hold_before} (count: ${paste.hold_count})</p>`;
+          }
+        }
+        pastes_panel += `
+              </div>
+              <div>
+                <p class="paste-link">url: <a href="${paste.url}" target="${isDesktop() ? "_blank" : "_self"}">${paste.url}</a></p>
+              </div>
+              <div class="mdui-panel-item-actions">
+                <div class="mdui-container-fluid">
+                  <div class="mdui-row">
+                    <div class="mdui-col-sm-3 mdui-col-md-6 mdui-col-lg-9 mdui-hidden-xs"></div>
+                    <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
+                      <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-red paste-manage-delete-btn" style="min-width: 0;">删除</button>
+                    </div>
+                    <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
+                      <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-blue-accent paste-manage-view-btn" style="min-width: 0;">查看</button>
+                    </div>
+                    <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
+                      <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-theme-accent paste-manage-edit-btn" style="min-width: 0;">编辑</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        return pastes_panel;
       }
 
       function list_paste() {
@@ -1319,115 +1426,32 @@
             if (xhr.status == 200 && response.code === 0) {
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
-              let pastes_panel = `<div class="mdui-panel">`;
-              let now = new Date().getTime();
               if (response.pastes.length != 0) {
+                // remove gone pastes
+                paste_manager_list
+                  .filter(item => !response.pastes.some(p => p.uuid == item.paste.uuid))
+                  .forEach(item => {
+                    item.panel.remove();
+                    item.panel = null;
+                  });
+                paste_manager_list = paste_manager_list.filter(item => item.panel != null); // remove gone pastes from list
+                // add new pastes
                 for (let paste of response.pastes) {
-                  let expired = new Date(paste.expire_after).getTime();
-                  pastes_panel += `
-                    <div class="mdui-panel-item">
-                      <div class="mdui-panel-item-header">
-                        <div class="mdui-panel-item-title paste-manage-uuid">${paste.uuid}</div>
-                        <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash">${paste.hash}</span></div>
-                  `;
-                  if (paste.filename != "" && paste.filename != "-") {
-                    pastes_panel += `<div class="mdui-panel-item-summary">Filename: <span class="paste-manage-filename">${paste.filename}</span></div>`;
-                  } else {
-                    pastes_panel += `<div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl">${paste.short_url}</span></div>`;
+                  if (!paste_manager_list.some(item => item.paste.uuid == paste.uuid)) {
+                    let panel = $(generate_paste_panel_html(paste));
+                    paste_manager_list.push({ paste, panel });
+                    paste_manage_panel.append(panel);
+                    register_action_button(panel);
                   }
-                  pastes_panel += `
-                        <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
-                      </div>
-                      <div class="mdui-panel-item-body">
-                        <div class="raw-result">
-                          <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn mdui-float-right">
-                            <i class="mdui-icon material-icons">content_copy</i>
-                          </button>
-                          <p><strong>date:</strong> ${paste.created_at}</p>
-                  `;
-                  if (paste.expire_after != "0001-01-01T00:00:00Z") {
-                    if (!paste.delete_if_not_available) {
-                      if (expired > now) {
-                        pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after}</p>`;
-                      } else {
-                        pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after} <span class="mdui-text-color-red">(expired)</span></p>`;
-                      }
-                    } else {
-                      if (expired > now) {
-                        pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after} (auto delete)</p>`;
-                      } else {
-                        pastes_panel += ` <p><strong>expire:</strong> ${paste.expire_after} <span class="mdui-text-color-red">(expired, delete flagged)</span></p>`;
-                      }
-                    }
-                  } else {
-                    pastes_panel += ` <p><strong>expire:</strong> never</p>`;
-                  }
-                  pastes_panel += `
-                          <p><strong>digest:</strong> ${paste.digest}</p>
-                          <p><strong>long:</strong> ${paste.hash}</p>
-                          <p><strong>short:</strong> ${paste.short_url}</p>
-                          <p><strong>filename:</strong> ${paste.filename}</p>
-                          <p><strong>mime:</strong> ${paste.mime_type}</p>
-                          <p><strong>size:</strong> ${paste.size}</p>
-                  `;
-                  if (paste.max_access_count == 0) {
-                    pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: nolimit)</p>`;
-                  } else {
-                    if (!paste.delete_if_not_available) {
-                      if (paste.access_count < paste.max_access_count) {
-                        pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count})</p>`;
-                      } else {
-                        pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count}) <span class="mdui-text-color-red">(limit reached)</span></p>`;
-                      }
-                    } else {
-                      if (paste.access_count < paste.max_access_count) {
-                        pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count}) (auto delete)</p>`;
-                      } else {
-                        pastes_panel += `<p><strong>access_count:</strong> ${paste.access_count} (max: ${paste.max_access_count}) <span class="mdui-text-color-red">(limit reached, delete flagged)</span></p>`;
-                      }
-                    }
-                  }
-                  pastes_panel += `
-                          <p><strong>password:</strong> ${paste.has_password ? "yes" : "no"}</p>
-                          <p><strong>uuid:</strong> ${paste.uuid}</p>
-                  `;
-                  if (paste.delete_if_not_available) {
-                    if ((paste.expire_after != "0001-01-01T00:00:00Z" && now >= expired) || (paste.max_access_count != 0 && paste.access_count >= paste.max_access_count)) {
-                      pastes_panel += ` <p class="mdui-text-color-red"><strong>hold_before:</strong> ${paste.hold_before} (count: ${paste.hold_count})</p>`;
-                    }
-                  }
-                  pastes_panel += `
-                        </div>
-                        <div>
-                          <p class="paste-link">url: <a href="${paste.url}" target="${isDesktop ? "_blank" : "_self"}">${paste.url}</a></p>
-                        </div>
-                        <div class="mdui-panel-item-actions">
-                          <div class="mdui-container-fluid">
-                            <div class="mdui-row">
-                              <div class="mdui-col-sm-3 mdui-col-md-6 mdui-col-lg-9 mdui-hidden-xs"></div>
-                              <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
-                                <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-red paste-manage-delete-btn" style="min-width: 0;">删除</button>
-                              </div>
-                              <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
-                                <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-blue-accent paste-manage-view-btn" style="min-width: 0;">查看</button>
-                              </div>
-                              <div class="mdui-col-lg-1 mdui-col-md-2 mdui-col-sm-3 mdui-col-xs-4">
-                                <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-theme-accent paste-manage-edit-btn" style="min-width: 0;">编辑</button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  `;
                 }
+                mdui.mutation(); // re-render
+
+                paste_manage_null.hide();
+                paste_manage_pastes.show();
               } else {
-                pastes_panel += `无 Paste`;
+                paste_manage_pastes.hide();
+                paste_manage_null.show();
               }
-              pastes_panel += `</div>`;
-              paste_manage_pastes.html(pastes_panel);
-              mdui_panel = new mdui.Panel("#paste-manage-pastes > .mdui-panel");
-              register_action_button();
             }
             paste_manage_progress.hide();
             pager_check();
@@ -1451,6 +1475,9 @@
 
       paste_app_tab_element.on("change.mdui.tab", function (e) {
         if (e.detail.index == 2) {
+          paste_viewer_back_to_manage = false;
+          paste_manage_pastes.hide();
+          paste_manage_null.show();
           list_paste();
         }
       });
