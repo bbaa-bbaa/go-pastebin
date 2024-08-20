@@ -8,7 +8,6 @@ RUN set -ex \
     && go build -v -o go-pastebin -trimpath -ldflags "-s -w -buildid=" ./cmd
 FROM alpine:latest
 RUN set -ex \
-  && apk update \
   && apk add --no-cache tzdata ca-certificates mailcap
 COPY --from=builder /var/tmp/go-pastebin/go-pastebin /usr/bin/go-pastebin
 RUN set -ex \

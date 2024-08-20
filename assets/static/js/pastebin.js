@@ -48,38 +48,44 @@
     const new_paste_tab = $("#new-paste-tab");
     const paste_manage_tab = $("#paste-manage-tab");
 
-    function update_user_info() {
-      return $.ajax({
-        method: "GET",
-        url: "api/user",
-        contentType: "application/json"
-      })
-        .then(res => {
-          let response = JSON.parse(res);
-          if (response.code != 0) {
-            return false;
-          }
-          user_info = response.info;
-          return true;
+    function update_user_info(preloaded_user_info) {
+      let login_request;
+      if (preloaded_user_info) {
+        user_info = preloaded_user_info;
+        login_request = Promise.resolve(true);
+      } else {
+        login_request = $.ajax({
+          method: "GET",
+          url: "api/user",
+          contentType: "application/json"
         })
-        .catch(() => false)
-        .then(is_login => {
-          if (is_login) {
-            new_paste_tab.removeAttr("disabled");
-            paste_manage_tab.show();
-          } else {
-            user_info = null;
-            paste_manage_tab.hide();
-            if (!config.allow_anonymous) {
-              new_paste_tab.attr("disabled", "disabled");
-              if (paste_app_tab.activeIndex == 0) {
-                paste_app_tab.activeIndex = 1;
-              }
+          .then(res => {
+            let response = JSON.parse(res);
+            if (response.code != 0) {
+              return false;
+            }
+            user_info = response.info;
+            return true;
+          })
+          .catch(() => false);
+      }
+      return login_request.then(is_login => {
+        if (is_login) {
+          new_paste_tab.removeAttr("disabled");
+          paste_manage_tab.show();
+        } else {
+          user_info = null;
+          paste_manage_tab.hide();
+          if (!config.allow_anonymous) {
+            new_paste_tab.attr("disabled", "disabled");
+            if (paste_app_tab.activeIndex == 0) {
+              paste_app_tab.activeIndex = 1;
             }
           }
-          paste_app_tab.show(paste_app_tab.activeIndex);
-          return is_login;
-        });
+        }
+        paste_app_tab.show(paste_app_tab.activeIndex);
+        return is_login;
+      });
     }
 
     new_paste_tab.on("click", function (e) {
@@ -1103,7 +1109,7 @@
         login_dialog_action.attr("disabled", "disabled");
         $.ajax({
           method: "POST",
-          url: "api/login",
+          url: "api/user/login",
           data: JSON.stringify({
             account: login_username.val(),
             password: login_password.val()
@@ -1112,7 +1118,7 @@
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText);
             if (xhr.status == 200 && response.code === 0) {
-              update_user_info().then(() => {
+              update_user_info(response.info).then(() => {
                 mdui.snackbar("登录成功");
                 login_button.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
                 setTimeout(() => {
