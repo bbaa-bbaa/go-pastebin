@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"text/template"
@@ -100,7 +101,13 @@ func initTemplate() {
 type DebugRender struct{}
 
 func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	tmpl, err := template.ParseFiles("assets/" + name)
+	var tmpl *template.Template
+	var err error
+	if database.Config.CustomTemplateDir == "" {
+		tmpl, err = template.ParseFiles("assets/" + name)
+	} else {
+		tmpl, err = template.ParseFiles(filepath.Join(database.Config.CustomTemplateDir, name))
+	}
 	if err != nil {
 		return err
 	}
@@ -179,14 +186,14 @@ var IgnoreFiles = [...]string{"workbox-config.js"}
 
 func Static(c echo.Context) error {
 	var assets fs.FS
-	if database.Config.Mode == "debug" {
-		assets = echo.MustSubFS(e.Filesystem, "assets")
-	} else {
-		if database.Config.CustomTemplateDir == "" {
-			assets = echo.MustSubFS(embed_assets, "assets")
+	if database.Config.CustomTemplateDir == "" {
+		if database.Config.Mode == "debug" {
+			assets = echo.MustSubFS(e.Filesystem, "assets")
 		} else {
-			assets = os.DirFS(database.Config.CustomTemplateDir)
+			assets = echo.MustSubFS(embed_assets, "assets")
 		}
+	} else {
+		assets = os.DirFS(database.Config.CustomTemplateDir)
 	}
 	p := c.Param("*")
 	if !slices.Contains(IgnoreFiles[:], p) {
