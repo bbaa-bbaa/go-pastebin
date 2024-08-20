@@ -93,10 +93,18 @@
 
       .paste-link a {
         text-decoration: none;
+        transition:
+          background-color 0.3s ease-out,
+          color 0.3s ease-out;
       }
 
       .paste-link a:hover {
         text-decoration: underline;
+      }
+
+      .paste-link a:hover,
+      .paste-link a:visited {
+        color: aqua;
       }
 
       body.mdui-theme-layout-dark .paste-link a {
@@ -153,7 +161,7 @@
         z-index: 1;
         transition:
           color 0.3s ease-out,
-          background-color 0.6s ease-out;
+          background-color 0.3s ease-out;
       }
 
       .hljs-ln-numbers {
@@ -186,6 +194,9 @@
       .paste-file-drop-overlay {
         background-color: #f0f0f0;
         color: #707070;
+        transition:
+          background-color 0.3s ease-out,
+          color 0.3s ease-out;
       }
 
       body.mdui-theme-layout-dark .file-paste-bg,
@@ -587,15 +598,11 @@
           <div class="mdui-card-content">
             <div class="mdui-container-fluid">
               <div class="mdui-row" id="paste-manage-null">
-                <div class="mdui-col-xs-12">
-                  无 Paste
-                </div>
+                <div class="mdui-col-xs-12">无 Paste</div>
               </div>
-              <div class="mdui-row" id="paste-manage-pastes" style="display: none;">
+              <div class="mdui-row" id="paste-manage-pastes" style="display: none">
                 <div class="mdui-col-xs-12">
-                  <div class="mdui-panel">
-
-                  </div>
+                  <div class="mdui-panel"></div>
                 </div>
               </div>
               <div class="mdui-row">

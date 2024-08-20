@@ -6,8 +6,7 @@ body.nightmode-transition.mdui-loaded {
 
 .mdui-appbar .mdui-toolbar,
 .mdui-appbar .mdui-tab,
-.mdui-card,
-.paste-link a {
+.mdui-card {
   transition:
     background-color 0.3s ease-out,
     color 0.3s ease-out;
