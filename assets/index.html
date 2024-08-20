@@ -104,7 +104,7 @@
 
       .paste-link a:hover,
       .paste-link a:visited {
-        color: aqua;
+        color: #03A9F4;
       }
 
       body.mdui-theme-layout-dark .paste-link a {
@@ -260,7 +260,7 @@
         {{- end }}
       </div>
     </div>
-    <div class="mdui-container mdui-p-a-1">
+    <div class="mdui-container mdui-p-t-1">
       {{- if $allow_create_paste }}
       <div id="new-paste">{{- if false -}}</div>
       {{- /* make html formatter happy */ -}} {{- end -}} {{- else }}
@@ -385,7 +385,7 @@
                 </div>
                 <div class="mdui-row">
                   <div class="mdui-col-xs-12">
-                    <div class="mdui-float-right mdui-p-a-1">
+                    <div class="mdui-float-right">
                       <label class="mdui-checkbox">
                         不再可用后删除 Paste
                         <input id="new-paste-delete-if-not-available" type="checkbox" disabled />
@@ -394,20 +394,20 @@
                     </div>
                   </div>
                 </div>
-                <div class="mdui-row mdui-p-y-1">
+                <div class="mdui-row">
                   <div class="mdui-col-xs-12">
                     <input type="file" id="new-paste-file-input" style="display: none" />
                     <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple" id="new-paste-load-from-file">从文件中加载</button>
                   </div>
                 </div>
                 <div class="mdui-row">
-                  <div class="mdui-col-md-4 mdui-col-xs-6 mdui-p-a-1">
+                  <div class="mdui-col-md-4 mdui-col-xs-6 mdui-m-t-1">
                     <button class="mdui-btn mdui-btn-block mdui-color-red mdui-ripple new-paste-action-button" id="new-paste-delete" disabled>删除 Paste</button>
                   </div>
-                  <div class="mdui-col-md-4 mdui-col-xs-6 mdui-p-a-1">
+                  <div class="mdui-col-md-4 mdui-col-xs-6 mdui-m-t-1">
                     <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple new-paste-action-button" id="new-paste-update" disabled>更新 Paste</button>
                   </div>
-                  <div class="mdui-col-md-4 mdui-col-xs-12 mdui-p-a-1">
+                  <div class="mdui-col-md-4 mdui-col-xs-12 mdui-m-t-1">
                     <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple new-paste-action-button" id="new-paste-submit">创建 Paste</button>
                   </div>
                 </div>
@@ -597,7 +597,7 @@
           </div>
           <div class="mdui-card-content">
             <div class="mdui-container-fluid">
-              <div class="mdui-row" id="paste-manage-null">
+              <div class="mdui-row" id="paste-manage-null" style="display: none;">
                 <div class="mdui-col-xs-12">无 Paste</div>
               </div>
               <div class="mdui-row" id="paste-manage-pastes" style="display: none">

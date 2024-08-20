@@ -1209,9 +1209,11 @@
       let page = 1;
       let max_page = 1;
       let paste_total = 0;
-      const page_size = 50;
+      const page_size = 10;
 
       let paste_manager_list = [];
+      let paste_detail_opened = new Set();  // uuid
+      const paste_detail_opened_limit = 20 * page_size;
 
       function pager_check() {
         if (page == 1) {
@@ -1231,10 +1233,21 @@
         const paste_manage_view_btn = panel.find(".paste-manage-view-btn");
         const paste_manage_edit_btn = panel.find(".paste-manage-edit-btn");
         const paste_manage_copy_url_btn = panel.find(".paste-manage-copy-url-btn");
+        let uuid = panel.find(".paste-manage-uuid").text();
+        let hash = panel.find(".paste-manage-hash").text();
+
+        panel.on("open.mdui.panel", function () {
+          paste_detail_opened.add(uuid);
+          if (paste_detail_opened.size > paste_detail_opened_limit) {
+            paste_detail_opened.delete(paste_detail_opened.values().next().value);
+          }
+        });
+
+        panel.on("close.mdui.panel", function () {
+          paste_detail_opened.delete(uuid);
+        });
 
         paste_manage_view_btn.on("click", function (e) {
-          let uuid = panel.find(".paste-manage-uuid").text();
-          let hash = panel.find(".paste-manage-hash").text();
           paste_viewer_query_input.val(hash);
           paste_viewer_query_input.get(0).dispatchEvent(new Event("input"));
           paste_viewer_progress.show();
@@ -1288,7 +1301,6 @@
         });
 
         paste_manage_delete_btn.on("click", function (e) {
-          let uuid = panel.find(".paste-manage-uuid").text();
           new_paste_uuid.val(uuid);
           new_paste_uuid.get(0).dispatchEvent(new Event("input"));
           paste_app_tab.show(0);
@@ -1299,7 +1311,6 @@
         });
 
         paste_manage_edit_btn.on("click", function (e) {
-          let uuid = panel.find(".paste-manage-uuid").text();
           new_paste_uuid.val(uuid);
           new_paste_uuid.get(0).dispatchEvent(new Event("input"));
           paste_app_tab.show(0);
@@ -1310,7 +1321,7 @@
         let now = new Date().getTime();
         let expired = new Date(paste.expire_after).getTime();
         let pastes_panel = `
-          <div class="mdui-panel-item">
+          <div class="mdui-panel-item${paste_detail_opened.has(paste.uuid) ? " mdui-panel-item-open" : ""}">
             <div class="mdui-panel-item-header">
               <div class="mdui-panel-item-title paste-manage-uuid">${paste.uuid}</div>
               <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash">${paste.hash}</span></div>
@@ -1408,7 +1419,7 @@
         return pastes_panel;
       }
 
-      function list_paste() {
+      function list_paste(scrollOffset) {
         paste_manage_progress.show();
         paste_manage_pager.attr("disabled", "disabled");
         $.ajax({
@@ -1455,6 +1466,9 @@
             }
             paste_manage_progress.hide();
             pager_check();
+            if(scrollOffset) {
+              window.scrollTo(0, document.documentElement.scrollHeight - scrollOffset);
+            }
           }
         });
       }
@@ -1462,14 +1476,14 @@
       paste_manage_prev.on("click", function () {
         if (page > 1) {
           page--;
-          list_paste();
+          list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
         }
       });
 
       paste_manage_next.on("click", function () {
         if (page < max_page) {
           page++;
-          list_paste();
+          list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
         }
       });
 
