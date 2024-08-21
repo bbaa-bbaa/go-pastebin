@@ -41,16 +41,16 @@
   ],
   "screenshots": [
     {
-      "src": "/static/img/screenshot_desktop.png",
+      "src": "/static/img/screenshot_desktop.webp",
       "sizes": "2560x1440",
       "form_factor": "wide",
-      "type": "image/png"
+      "type": "image/webp"
     },
     {
-      "src": "/static/img/screenshot_mobile.png",
+      "src": "/static/img/screenshot_mobile.webp",
       "sizes": "1170x2532",
       "form_factor": "narrow",
-      "type": "image/png"
+      "type": "image/webp"
     }
   ],
   "orientation": "natural"
