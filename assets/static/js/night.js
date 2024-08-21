@@ -23,12 +23,11 @@
         iconSwitchToNightMode.classList.remove('mdui-hidden');
       }
     });
-    setMode(); // best effort
+    setMode();
   }
   if (document.readyState === "loading") {
     document.addEventListener('DOMContentLoaded', registerNightModeSwitchBtn);
   } else {
     registerNightModeSwitchBtn();
   }
-  setMode();
 })();
