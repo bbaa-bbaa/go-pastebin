@@ -1046,161 +1046,6 @@
         query_paste_metadata(query_hash);
       }
     })();
-    (function user_profile() {
-      const account_dialog_btn = $("#account-dialog-btn");
-      const user_profile_view = $(".user-profile-view");
-      const user_profile_edit = $(".user-profile-edit");
-      const user_profile_dialog = new mdui.Dialog("#user-profile-dialog", { history: false });
-
-      const user_profile_uid_text = $("#user-profile-uid-text");
-      const user_profile_username_text = $("#user-profile-username-text");
-      const user_profile_role_text = $("#user-profile-role-text");
-      const user_profile_email_text = $("#user-profile-email-text");
-      const user_profile_manage_panel = $("#user-profile-manage-panel");
-      const user_profile_edit_btn = $("#user-profile-edit-btn");
-
-      const user_profile_edit_username = $("#user-profile-edit-username");
-      const user_profile_edit_email = $("#user-profile-edit-email");
-      const user_profile_edit_oldpwd = $("#user-profile-edit-oldpwd");
-      const user_profile_edit_newpwd = $("#user-profile-edit-newpwd");
-      const user_profile_edit_action = $(".user-profile-edit-action");
-      const user_profile_edit_confirm = $("#user-profile-edit-confirm");
-      const user_profile_edit_return = $("#user-profile-edit-return");
-
-      const login_dialog = new mdui.Dialog("#login-dialog", { history: false });
-      const login_button = $("#login-button");
-      const login_form = $("#login-form");
-      const login_username = $("#login-username");
-      const login_password = $("#login-password");
-      const login_dialog_action = $(".login-dialog-action");
-
-      function show_user_profile() {
-        if (user_info) {
-          user_profile_uid_text.text(user_info.uid);
-          user_profile_username_text.text(user_info.username);
-          user_profile_role_text.text(user_info.role);
-          user_profile_email_text.text(user_info.email);
-          if (user_info.role == "admin") {
-            user_profile_manage_panel.show();
-          } else {
-            user_profile_manage_panel.hide();
-          }
-          user_profile_view.show();
-          user_profile_edit.hide();
-          user_profile_dialog.handleUpdate();
-        } else {
-          user_profile_dialog.close();
-        }
-      }
-
-      function show_user_profile_edit() {
-        if (user_info) {
-          user_profile_edit_username.attr("placeholder", user_info.username);
-          user_profile_edit_email.attr("placeholder", user_info.email);
-        }
-        user_profile_view.hide();
-        user_profile_edit.show();
-        user_profile_dialog.handleUpdate();
-      }
-
-      user_profile_edit_btn.on("click", function () {
-        show_user_profile_edit();
-      });
-
-      user_profile_edit_return.on("click", function () {
-        show_user_profile();
-      });
-
-      account_dialog_btn.on("click", function () {
-        if (!user_info) {
-          login_dialog.open();
-        } else {
-          show_user_profile();
-          user_profile_dialog.open();
-        }
-      });
-
-      login_form.on("submit", function (e) {
-        e.preventDefault();
-        login_dialog_action.attr("disabled", "disabled");
-        $.ajax({
-          method: "POST",
-          url: "api/user/login",
-          data: JSON.stringify({
-            account: login_username.val(),
-            password: login_password.val()
-          }),
-          contentType: "application/json",
-          complete: function (xhr) {
-            let response = JSON.parse(xhr.responseText);
-            if (xhr.status == 200 && response.code === 0) {
-              update_user_info(response.info).then(() => {
-                mdui.snackbar("登录成功");
-                login_button.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
-                setTimeout(() => {
-                  login_button.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
-                  login_dialog.close();
-                }, 600);
-                login_dialog_action.removeAttr("disabled");
-              });
-            } else {
-              mdui.snackbar("登录失败: " + response.error);
-              login_dialog_action.removeAttr("disabled");
-              login_button.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
-              setTimeout(() => {
-                login_button.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-              }, 600);
-            }
-          }
-        });
-      });
-
-      user_profile_edit_confirm.on("click", function () {
-        let data = {
-          username: user_profile_edit_username.val(),
-          email: user_profile_edit_email.val(),
-          old_password: user_profile_edit_oldpwd.val(),
-          new_password: user_profile_edit_newpwd.val()
-        };
-        if (data.username.length == 0) {
-          delete data.username;
-        }
-        if (data.email.length == 0) {
-          delete data.email;
-        }
-        if (data.old_password !== undefined && data.old_password.length != 0 && (data.new_password === undefined || data.new_password.length == 0)) {
-          mdui.snackbar("请输入新密码");
-          return;
-        }
-        user_profile_edit_action.attr("disabled", "disabled");
-        $.ajax({
-          method: "POST",
-          url: "api/user/edit",
-          data: JSON.stringify(data),
-          contentType: "application/json",
-          complete: function (xhr) {
-            let response = JSON.parse(xhr.responseText);
-            if (xhr.status == 200 && response.code === 0) {
-              update_user_info().then(() => {
-                mdui.snackbar("修改成功");
-                user_profile_edit_confirm.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
-                setTimeout(() => {
-                  user_profile_edit_confirm.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
-                }, 600);
-                user_profile_edit_action.removeAttr("disabled");
-              });
-            } else {
-              mdui.snackbar("修改失败: " + response.error);
-              user_profile_edit_confirm.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
-              setTimeout(() => {
-                user_profile_edit_confirm.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-              }, 600);
-              user_profile_edit_action.removeAttr("disabled");
-            }
-          }
-        });
-      });
-    })();
     (function paste_manage() {
       const new_paste_uuid = $("#new-paste-uuid");
       const new_paste_delete = $("#new-paste-delete").get(0);
@@ -1516,6 +1361,169 @@
           paste_viewer_back_to_manage = false;
           list_paste();
         }
+      });
+    })();
+    (function user_profile() {
+      const account_dialog_btn = $("#account-dialog-btn");
+      const user_profile_view = $(".user-profile-view");
+      const user_profile_edit = $(".user-profile-edit");
+      const user_profile_dialog = new mdui.Dialog("#user-profile-dialog", { history: false });
+  
+      const user_profile_uid_text = $("#user-profile-uid-text");
+      const user_profile_username_text = $("#user-profile-username-text");
+      const user_profile_role_text = $("#user-profile-role-text");
+      const user_profile_email_text = $("#user-profile-email-text");
+      const user_profile_manage_panel = $("#user-profile-manage-panel");
+      const user_profile_edit_btn = $("#user-profile-edit-btn");
+  
+      const user_profile_edit_username = $("#user-profile-edit-username");
+      const user_profile_edit_email = $("#user-profile-edit-email");
+      const user_profile_edit_oldpwd = $("#user-profile-edit-oldpwd");
+      const user_profile_edit_newpwd = $("#user-profile-edit-newpwd");
+      const user_profile_edit_action = $(".user-profile-edit-action");
+      const user_profile_edit_confirm = $("#user-profile-edit-confirm");
+      const user_profile_edit_return = $("#user-profile-edit-return");
+  
+      const login_dialog = new mdui.Dialog("#login-dialog", { history: false });
+      const login_button = $("#login-button");
+      const login_form = $("#login-form");
+      const login_username = $("#login-username");
+      const login_password = $("#login-password");
+      const login_dialog_action = $(".login-dialog-action");
+  
+      function show_user_profile() {
+        if (user_info) {
+          user_profile_uid_text.text(user_info.uid);
+          user_profile_username_text.text(user_info.username);
+          user_profile_role_text.text(user_info.role);
+          user_profile_email_text.text(user_info.email);
+          if (user_info.role == "admin") {
+            user_profile_manage_panel.show();
+          } else {
+            user_profile_manage_panel.hide();
+          }
+          user_profile_view.show();
+          user_profile_edit.hide();
+          user_profile_dialog.handleUpdate();
+        } else {
+          user_profile_dialog.close();
+        }
+      }
+  
+      function show_user_profile_edit() {
+        if (user_info) {
+          user_profile_edit_username.attr("placeholder", user_info.username);
+          user_profile_edit_email.attr("placeholder", user_info.email);
+        }
+        user_profile_view.hide();
+        user_profile_edit.show();
+        user_profile_dialog.handleUpdate();
+      }
+  
+      user_profile_edit_btn.on("click", function () {
+        show_user_profile_edit();
+      });
+  
+      user_profile_edit_return.on("click", function () {
+        show_user_profile();
+      });
+  
+      account_dialog_btn.on("click", function () {
+        if (!user_info) {
+          login_dialog.open();
+        } else {
+          show_user_profile();
+          user_profile_dialog.open();
+        }
+      });
+  
+      login_form.on("submit", function (e) {
+        e.preventDefault();
+        login_dialog_action.attr("disabled", "disabled");
+        $.ajax({
+          method: "POST",
+          url: "api/user/login",
+          data: JSON.stringify({
+            account: login_username.val(),
+            password: login_password.val()
+          }),
+          contentType: "application/json",
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200 && response.code === 0) {
+              update_user_info(response.info).then(() => {
+                mdui.snackbar("登录成功");
+                login_button.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
+                setTimeout(() => {
+                  login_button.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
+                  login_dialog.close();
+                }, 600);
+                login_dialog_action.removeAttr("disabled");
+              });
+            } else {
+              mdui.snackbar("登录失败: " + response.error);
+              login_dialog_action.removeAttr("disabled");
+              login_button.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
+              setTimeout(() => {
+                login_button.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
+              }, 600);
+            }
+          }
+        });
+      });
+  
+      user_profile_edit_confirm.on("click", function () {
+        let data = {
+          username: user_profile_edit_username.val(),
+          email: user_profile_edit_email.val(),
+          old_password: user_profile_edit_oldpwd.val(),
+          new_password: user_profile_edit_newpwd.val()
+        };
+        if (data.username.length == 0) {
+          delete data.username;
+        }
+        if (data.email.length == 0) {
+          delete data.email;
+        }
+        if (data.old_password !== undefined && data.old_password.length != 0 && (data.new_password === undefined || data.new_password.length == 0)) {
+          mdui.snackbar("请输入新密码");
+          return;
+        }
+        user_profile_edit_action.attr("disabled", "disabled");
+        $.ajax({
+          method: "POST",
+          url: "api/user/edit",
+          data: JSON.stringify(data),
+          contentType: "application/json",
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText);
+            if (xhr.status == 200 && response.code === 0) {
+              update_user_info().then((is_login) => {
+                if (is_login) {
+                  mdui.snackbar("修改成功");
+                } else {
+                  mdui.snackbar("修改成功，请重新登录");
+                }
+                user_profile_edit_confirm.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
+                setTimeout(() => {
+                  user_profile_edit_confirm.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
+                  if(!is_login) {
+                    user_profile_dialog.close();
+                    login_dialog.open();
+                  }
+                }, 600);
+                user_profile_edit_action.removeAttr("disabled");
+              });
+            } else {
+              mdui.snackbar("修改失败: " + response.error);
+              user_profile_edit_confirm.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
+              setTimeout(() => {
+                user_profile_edit_confirm.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
+              }, 600);
+              user_profile_edit_action.removeAttr("disabled");
+            }
+          }
+        });
       });
     })();
   });
