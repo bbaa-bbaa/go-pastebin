@@ -26,8 +26,6 @@
   }
 
   let user_info = null;
-
-  let paste_viewer_back_to_manage = false;
   let paste_force_delete = false;
 
   $(function () {
@@ -104,20 +102,29 @@
       this.expand = this.$.hasClass("card-collapse-open");
       this.set_auto = false;
       this.margin = margin === undefined ? 16 : margin;
-      this.callback = null;
       this.max_height = max_height === undefined ? document.documentElement.clientHeight - container.offsetTop : max_height;
       this.transition_counter = 0;
+      this._callback = null;
+      this._pendingCallback = null;
       this.$.on("transitionstart", e => {
         if (e.target != this.transition_element) {
           return;
         }
         this.transition_counter++;
+        if (this._pendingCallback) {
+          this._callback = this._pendingCallback;
+          this._pendingCallback = null;
+        }
       });
       this.$.on("transitioncancel", e => {
         if (e.target != this.transition_element) {
           return;
         }
         this.transition_counter--;
+        if (this._callback) {
+          this._callback.cancel();
+          this._callback = null;
+        }
       });
       this.$.on("transitionend", e => {
         if (e.target != this.transition_element) {
@@ -131,9 +138,9 @@
             this.$.css("height", "auto");
           }
         }
-        if (this.callback) {
-          this.callback();
-          this.callback = null;
+        if (this._callback) {
+          this._callback.complete();
+          this._callback = null;
         }
       });
     }
@@ -148,13 +155,14 @@
       this.set_auto = false;
       if (!fixed) {
         this.fixed();
-        requestAnimationFrame(() => {
-          this.close(true);
-        });
-        return new Promise(resolve => {
-          this.callback = resolve;
+        return new Promise((complete, cancel) => {
+          this._pendingCallback = { complete, cancel };
+          requestAnimationFrame(() => {
+            this.close(true);
+          });
         });
       }
+      this._pendingEvent = "close";
       this.expand = false;
       this.$.css("height", "0");
       if (this.margin !== undefined) {
@@ -163,18 +171,18 @@
     };
 
     Collapse.prototype.open = function () {
-      this.set_auto = true;
-      this.expand = true;
-      if (this.max_height != 0) {
-        this.$.css("height", Math.min(this.height_element.scrollHeight, this.$.innerHeight() + this.max_height) + "px");
-      } else {
-        this.$.css("height", this.height_element.scrollHeight + "px");
-      }
-      if (this.margin !== undefined) {
-        this.$.css("margin", this.margin + "px 0");
-      }
-      return new Promise(resolve => {
-        this.callback = resolve;
+      return new Promise((complete, cancel) => {
+        this._pendingCallback = { complete, cancel };
+        this.set_auto = true;
+        this.expand = true;
+        if (this.max_height != 0) {
+          this.$.css("height", Math.min(this.height_element.scrollHeight, this.$.innerHeight() + this.max_height) + "px");
+        } else {
+          this.$.css("height", this.height_element.scrollHeight + "px");
+        }
+        if (this.margin !== undefined) {
+          this.$.css("margin", this.margin + "px 0");
+        }
       });
     };
 
@@ -182,12 +190,14 @@
       this._group = group;
       this._target = target;
     }
+
     CollapseGroupProxy.prototype.open = function () {
       return this._group._open(this._target);
     };
     CollapseGroupProxy.prototype.close = function () {
       return this._group._close(this._target);
     };
+
     function CollapseGroup(group) {
       this._group = [];
       for (let [k, v] of Object.entries(group)) {
@@ -203,7 +213,7 @@
         if (item === target) {
           result = item.open();
         } else {
-          item.close();
+          item.close().catch(() => { });
         }
       }
       return result;
@@ -460,7 +470,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () {});
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () { });
           new_paste_result_link.closest(".mdui-card").find(".paste-link").show();
           new_paste_result_qr_code.show();
         } else {
@@ -820,22 +830,29 @@
           }
         };
       }
+      let paste_viewer_file_preview_element;
+
       function paste_preview_file() {
         paste_viewer_file_filename.text(paste_metadata.filename + " (" + (paste_metadata.size / 1024 / 1024).toFixed(2).toString() + " MiB)");
         paste_viewer_file_icon.hide();
         paste_viewer_file_preview.show();
+        if (paste_viewer_file_preview_element) {
+          paste_viewer_file_preview_element.remove();
+          paste_preview_file_preview_element = null;
+        }
         let show = paste_preview_file_show();
         if (paste_metadata.type.startsWith("image/")) {
-          $(`<img style="max-height: inherit; max-width:100%">`).on("load", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
+          paste_viewer_file_preview_element = $(`<img style="max-height: inherit; max-width:100%">`).on("load", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
         } else if (paste_metadata.type.startsWith("audio/")) {
-          $('<audio controls style="max-height: inherit; max-width:100%">').on("loadedmetadata", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
+          paste_viewer_file_preview_element = $('<audio controls style="max-height: inherit; max-width:100%">').on("loadedmetadata", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
         } else if (paste_metadata.type.startsWith("video/")) {
-          $('<video controls style="max-height: inherit; max-width:100%">').on("loadedmetadata", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
+          paste_viewer_file_preview_element = $('<video controls style="max-height: inherit; max-width:100%">').on("loadedmetadata", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
         } else {
           paste_viewer_file_preview.hide();
           paste_viewer_file_icon.show();
         }
       }
+
       let collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0);
       function paste_preview_text_render(init) {
         if (!paste_viewer_enable_highlight_js.prop("checked")) {
@@ -911,6 +928,7 @@
           paste_preview_file();
         }
       }
+
       function parse_filename(xhr) {
         try {
           if (TextDecoder) {
@@ -921,7 +939,7 @@
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) {}
+        } catch (e) { }
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
@@ -971,7 +989,7 @@
               action_unlock();
             }
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       paste_viewer_query_btn.on("click", function () {
@@ -986,16 +1004,12 @@
 
       paste_viewer_back_to_query.on("click", function () {
         collapse_manager.paste_viewer_query.open().then(() => {
-          paste_viewer_file_preview.html("");
-          paste_viewer_file_icon.show();
-          paste_viewer_text_content.html("");
-          paste_viewer_highlight_language.val("");
-          collapse_paste_viewer_text_content.open();
-          if (paste_viewer_back_to_manage) {
-            paste_viewer_back_to_manage = false;
-            paste_app_tab.show(2);
+          console.log("remove preview");
+          if (paste_viewer_file_preview_element) {
+            paste_viewer_file_preview_element.remove();
+            paste_viewer_file_preview_element = null;
           }
-        });
+        }).catch(() => { });
       });
 
       paste_viewer_confirm_password.on("click", function () {
@@ -1191,10 +1205,11 @@
       const new_paste_uuid = $("#new-paste-uuid");
       const new_paste_delete = $("#new-paste-delete").get(0);
 
-      const paste_viewer_query = $("#paste-viewer-query");
       const paste_viewer_query_input = $("#paste-viewer-query-input");
       const paste_viewer_progress = $(".paste-viewer-progress");
       const paste_viewer_query_btn = $("#paste-viewer-query-btn");
+      let paste_viewer_back_to_manage = false;
+      const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
 
       const paste_manage_pastes = $("#paste-manage-pastes");
       const paste_manage_null = $("#paste-manage-null");
@@ -1206,6 +1221,9 @@
 
       const paste_manage_mdui_panel = new mdui.Panel("#paste-manage-pastes .mdui-panel");
       const paste_manage_panel = $("#paste-manage-pastes .mdui-panel");
+
+
+
       let page = 1;
       let max_page = 1;
       let paste_total = 0;
@@ -1227,6 +1245,13 @@
           paste_manage_next.removeAttr("disabled");
         }
       }
+
+      paste_viewer_back_to_query.on("click", function () {
+        if (paste_viewer_back_to_manage) {
+          paste_viewer_back_to_manage = false;
+          paste_app_tab.show(2);
+        }
+      });
 
       function register_action_button(panel) {
         const paste_manage_delete_btn = panel.find(".paste-manage-delete-btn");
@@ -1253,8 +1278,8 @@
           paste_viewer_progress.show();
           paste_viewer_query_btn.attr("disabled", "disabled");
           paste_app_tab.show(1);
-          const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
           paste_viewer_back_to_query.get(0).click();
+          paste_viewer_back_to_manage = true;
           $.ajax({
             method: "GET",
             url: "api/paste/" + uuid,
@@ -1264,7 +1289,6 @@
             complete: function (xhr) {
               let response = JSON.parse(xhr.responseText);
               if (xhr.status == 200 && response.code === 0) {
-                paste_viewer_back_to_manage = true;
                 paste_viewer_query_btn.removeAttr("disabled");
                 paste_viewer_query_btn.get(0).click();
               } else {
@@ -1466,7 +1490,7 @@
             }
             paste_manage_progress.hide();
             pager_check();
-            if(scrollOffset) {
+            if (scrollOffset) {
               window.scrollTo(0, document.documentElement.scrollHeight - scrollOffset);
             }
           }
@@ -1490,8 +1514,6 @@
       paste_app_tab_element.on("change.mdui.tab", function (e) {
         if (e.detail.index == 2) {
           paste_viewer_back_to_manage = false;
-          paste_manage_pastes.hide();
-          paste_manage_null.show();
           list_paste();
         }
       });
