@@ -46,6 +46,7 @@ func httpServe() {
 	}))
 	//e.Use(middleware.Recover())
 	e.Use(controllers.UserMiddleware)
+	//e.Use(staticRender)
 	initTemplate()
 	setupIndex()
 	setupAdmin()
@@ -121,10 +122,14 @@ func setupAdmin() {
 			c.Redirect(http.StatusFound, "/")
 			return nil
 		}
-
+		color_scheme := "light"
+		if user_color_scheme, err := c.Cookie("color_scheme"); err == nil {
+			color_scheme = user_color_scheme.Value
+		}
 		err := c.Render(200, "admin.html", map[string]any{
-			"SiteName":  database.Config.SiteName,
-			"SiteTitle": database.Config.SiteTitle,
+			"SiteName":    database.Config.SiteName,
+			"SiteTitle":   database.Config.SiteTitle,
+			"ColorScheme": color_scheme,
 		})
 		if err != nil {
 			log.Error(err)
@@ -145,9 +150,14 @@ func setupIndex() {
 		if user, ok := c.Get("user").(*database.User); ok {
 			is_login = user != nil
 		}
+		color_scheme := "light"
+		if user_color_scheme, err := c.Cookie("color_scheme"); err == nil {
+			color_scheme = user_color_scheme.Value
+		}
 		err := c.Render(200, "index.html", map[string]any{
 			"SiteName":       database.Config.SiteName,
 			"SiteTitle":      database.Config.SiteTitle,
+			"ColorScheme":    color_scheme,
 			"AllowAnonymous": database.Config.AllowAnonymous,
 			"IsLogin":        is_login,
 		})

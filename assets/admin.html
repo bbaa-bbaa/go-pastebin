@@ -30,7 +30,7 @@
     </script>
   </head>
 
-  <body class="mdui-theme-primary-indigo mdui-theme-accent-pink nightmode-transition">
+  <body class="mdui-theme-primary-indigo mdui-theme-accent-pink{{- if eq .ColorScheme `dark`}} mdui-theme-layout-dark{{- end -}}">
     <div class="mdui-appbar">
       <div class="mdui-toolbar mdui-color-theme">
         <a href="javascript:;" class="mdui-typo-title">{{.SiteName}} 管理面板</a>
@@ -39,8 +39,13 @@
           <i class="mdui-icon material-icons">exit_to_app</i>
         </a>
         <button class="mdui-btn mdui-btn-icon" id="switch-nightmode-btn">
-          <i class="mdui-icon material-icons mdui-hidden">brightness_high</i>
+          {{- if eq .ColorScheme "dark"}}
+          <i class="mdui-icon material-icons">brightness_high</i>
+          <i class="mdui-icon material-icons" style="display: none;">brightness_2</i>
+          {{- else}}
+          <i class="mdui-icon material-icons" style="display: none;">brightness_high</i>
           <i class="mdui-icon material-icons">brightness_2</i>
+          {{- end}}
         </button>
       </div>
     </div>

@@ -104,7 +104,7 @@
 
       .paste-link a:hover,
       .paste-link a:visited {
-        color: #03A9F4;
+        color: #03a9f4;
       }
 
       body.mdui-theme-layout-dark .paste-link a {
@@ -118,12 +118,17 @@
       }
 
       .card-collapse {
-        transition:
-          color 0.3s ease-out,
-          background-color 0.3s ease-out,
-          height 0.6s ease-out;
+        transition: height 0.6s ease-out;
         height: 0px;
         overflow: hidden;
+      }
+
+      body.mdui-loaded .card-collapse,
+      body.mdui-loaded .mdui-card.card-collapse {
+        transition:
+          height 0.6s ease-out,
+          background-color 0.3s ease-out,
+          color 0.3s ease-out;
       }
 
       .card-collapse.card-collapse-open {
@@ -232,8 +237,8 @@
       }
     </script>
   </head>
-
-  <body class="mdui-theme-primary-indigo mdui-theme-accent-pink nightmode-transition">
+  <body class="mdui-theme-primary-indigo mdui-theme-accent-pink{{- if eq .ColorScheme `dark`}} mdui-theme-layout-dark{{- end -}}">
+    <script src="static/js/night.js"></script>
     <div class="mdui-appbar">
       <div class="mdui-toolbar mdui-color-theme">
         <a href="javascript:;" class="mdui-typo-title">{{.SiteName}}</a>
@@ -242,8 +247,13 @@
           <i class="mdui-icon material-icons">account_circle</i>
         </button>
         <button class="mdui-btn mdui-btn-icon" id="switch-nightmode-btn">
-          <i class="mdui-icon material-icons mdui-hidden">brightness_high</i>
+          {{- if eq .ColorScheme "dark"}}
+          <i class="mdui-icon material-icons">brightness_high</i>
+          <i class="mdui-icon material-icons" style="display: none;">brightness_2</i>
+          {{- else}}
+          <i class="mdui-icon material-icons" style="display: none;">brightness_high</i>
           <i class="mdui-icon material-icons">brightness_2</i>
+          {{- end}}
         </button>
       </div>
       <div class="mdui-tab mdui-color-theme" id="paste-mdui-tab">
@@ -597,7 +607,7 @@
           </div>
           <div class="mdui-card-content">
             <div class="mdui-container-fluid">
-              <div class="mdui-row" id="paste-manage-null" style="display: none;">
+              <div class="mdui-row" id="paste-manage-null" style="display: none">
                 <div class="mdui-col-xs-12">无 Paste</div>
               </div>
               <div class="mdui-row" id="paste-manage-pastes" style="display: none">
@@ -744,7 +754,6 @@
         </form>
       </div>
     </div>
-    <script src="static/js/night.js"></script>
     <script src="static/mdui/js/mdui.min.js"></script>
     <script src="static/lodash/js/lodash.min.js"></script>
     <script src="static/purify/js/purify.min.js"></script>
