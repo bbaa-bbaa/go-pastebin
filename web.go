@@ -123,7 +123,8 @@ func setupAdmin() {
 		}
 
 		err := c.Render(200, "admin.html", map[string]any{
-			"SiteName": database.Config.SiteName,
+			"SiteName":  database.Config.SiteName,
+			"SiteTitle": database.Config.SiteTitle,
 		})
 		if err != nil {
 			log.Error(err)
