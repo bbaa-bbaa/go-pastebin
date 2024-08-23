@@ -1760,12 +1760,14 @@
         user_profile_webauthn_manage_name_row.hide();
         user_profile_webauthn_manage_name_loading.show();
         user_profile_dialog_progress.show();
+        user_profile_dialog.handleUpdate();
 
         function post_register() {
           user_profile_webauthn_manage_action.removeAttr("disabled");
           user_profile_webauthn_manage_name_row.show();
           user_profile_webauthn_manage_name_loading.hide();
           user_profile_dialog_progress.hide();
+          user_profile_dialog.handleUpdate();
           webauthn_back_to_main();
         }
 

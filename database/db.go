@@ -89,17 +89,16 @@ func Init() (err error) {
 		return err
 	}
 	db = &Pastebin_DB{DB: dbx}
+	_, err = db.Exec(schema)
+	if err != nil {
+		return err
+	}
 	var count int
-	err = dbx.Get(&count, "SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
+	err = dbx.Get(&count, "SELECT COUNT(1) FROM users LIMIT 1")
 	if err != nil {
 		return err
 	}
 	if count == 0 {
-		log.Info("数据库不存在，初始化数据库")
-		_, err = db.Exec(schema)
-		if err != nil {
-			return err
-		}
 		adminPassword := randStr(8)
 		admin := &User{UID: 0, Username: "admin", Email: "admin@go-pastebin.app", Role: "admin", Password: ""}
 		admin.SetPassword(adminPassword)

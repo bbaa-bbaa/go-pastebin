@@ -39,11 +39,11 @@ CREATE TABLE IF NOT EXISTS "sessions" (
 	"expire_after"	DATETIME NOT NULL
 );
 
-CREATE INDEX "UID_Mapping" ON "pastes" (
+CREATE INDEX IF NOT EXISTS  "UID_Mapping" ON "pastes" (
 	"uid"	ASC
 );
 
-CREATE INDEX "UUID" ON "sessions" (
+CREATE INDEX IF NOT EXISTS  "UUID" ON "sessions" (
 	"uuid"	ASC
 );
 COMMIT;
