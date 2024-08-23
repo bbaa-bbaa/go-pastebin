@@ -64,6 +64,8 @@ func httpServe() {
 	e.POST("/api/user/webauthn/register", controllers.UserWebAuthnRegister)
 	e.POST("/api/user/webauthn/login/request", controllers.UserWebAuthnLoginRequest)
 	e.POST("/api/user/webauthn/login", controllers.UserWebAuthnLogin)
+	e.GET("/api/user/webauthn/passkey/login/request", controllers.UserWebAuthnDiscoverableLoginRequest)
+	e.POST("/api/user/webauthn/passkey/login", controllers.UserWebAuthnDiscoverableLogin)
 	e.GET("/api/user/webauthn/list", controllers.UserWebAuthnList)
 	e.POST("/api/user/webauthn/delete", controllers.UserWebAuthnDelete)
 
@@ -78,6 +80,7 @@ func httpServe() {
 		IdleTimeout:          10 * time.Second,
 	}
 	e.Logger.Fatal(e.StartH2CServer(":8080", s))
+	//e.Logger.Fatal(e.StartTLS(":443", "./data/certificate.crt", "./data/private.key"))
 }
 
 type TemplateRender struct {

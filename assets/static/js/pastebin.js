@@ -1396,6 +1396,7 @@
       const user_profile_edit_action = $(".user-profile-edit-action");
       const user_profile_edit_confirm = $("#user-profile-edit-confirm");
       const user_profile_edit_return = $("#user-profile-edit-return");
+
       const user_profile_webauthn_manage = $(".user-profile-webauthn-manage");
       const user_profile_webauthn_manage_list = $("#user-profile-webauthn-manage-list");
       const user_profile_webauthn_manage_add = $("#user-profile-webauthn-manage-add");
@@ -1403,6 +1404,7 @@
       const user_profile_webauthn_manage_main = $("#user-profile-webauthn-manage-main");
       const user_profile_webauthn_manage_name = $("#user-profile-webauthn-manage-name");
       const user_profile_webauthn_manage_name_input = $("#user-profile-webauthn-manage-name-input");
+      const user_profile_webauthn_manage_register_as_passkey = $("#user-profile-webauthn-manage-register-as-passkey");
       const user_profile_webauthn_manage_name_cancel = $("#user-profile-webauthn-manage-name-cancel");
       const user_profile_webauthn_manage_name_confirm = $("#user-profile-webauthn-manage-name-confirm");
       const user_profile_webauthn_manage_name_row = $("#user-profile-webauthn-manage-name-row");
@@ -1580,20 +1582,17 @@
 
       login_webauthn.on("click", function () {
         let account = login_username.val();
-        if (account.length == 0) {
-          mdui.snackbar("请输入用户名");
-          return;
-        }
         if (!navigator.credentials) {
           mdui.snackbar("WebAuthn 不可用");
           return;
         }
+        let passkey = account.length == 0;
         login_dialog_action.attr("disabled", "disabled");
         $.ajax({
-          method: "POST",
-          url: "api/user/webauthn/login/request",
+          method: passkey ? "GET" : "POST",
+          url: passkey ? "api/user/webauthn/passkey/login/request" : "api/user/webauthn/login/request",
           contentType: "application/json",
-          data: JSON.stringify({
+          data: passkey ? null : JSON.stringify({
             account: account
           }),
           processData: false,
@@ -1601,10 +1600,12 @@
             let response = JSON.parse(xhr.responseText || "");
             if (xhr.status == 200 && response.code === 0) {
               response.publicKey.challenge = bufferDecode(response.publicKey.challenge);
-              response.publicKey.allowCredentials = response.publicKey.allowCredentials.map(credential => {
-                credential.id = bufferDecode(credential.id);
-                return credential;
-              });
+              if (response.publicKey.allowCredentials && response.publicKey.allowCredentials.length > 0) {
+                response.publicKey.allowCredentials = response.publicKey.allowCredentials.map(credential => {
+                  credential.id = bufferDecode(credential.id);
+                  return credential;
+                });
+              }
               navigator.credentials
                 .get({
                   publicKey: response.publicKey
@@ -1612,7 +1613,7 @@
                 .then(credential => {
                   $.ajax({
                     method: "POST",
-                    url: "api/user/webauthn/login",
+                    url: passkey ? "api/user/webauthn/passkey/login" : "api/user/webauthn/login",
                     headers: {
                       "X-WebAuthn-Session": response.session
                     },
@@ -1648,7 +1649,7 @@
                   });
                 })
                 .catch(err => {
-                  mdui.snackbar("登录失败: " + err);
+                  mdui.snackbar("登录失败: 身份验证失败，如果你的认证器不是 Passkey 类型，请确保输入了正确的账号");
                   login_dialog_action.removeAttr("disabled");
                 });
             } else {
@@ -1679,23 +1680,33 @@
         user_profile_dialog.handleUpdate();
       });
 
-      function generate_webauthn_list_item_html(name) {
-        return `
+      function generate_webauthn_list_item_html(credential) {
+        item_html = `
         <li class="mdui-list-item mdui-ripple">
           <i class="mdui-list-item-icon mdui-icon material-icons">fingerprint</i>
-          <div class="mdui-list-item-content">${name}</div>
+          <div class="mdui-list-item-content">
+          ${credential.name}
+        `;
+        if (credential.passkey) {
+          item_html += `
+            <div class="mdui-chip">
+              <span class="mdui-chip-title">Passkey</span>
+            </div>
+          `;  
+        }
+        item_html+=`</div>
           <i class="mdui-list-item-icon mdui-icon material-icons user-profile-webauthn-manage-del">delete</i>
         </li>
         `;
+        return item_html;
       }
 
-      function register_action_button(item) {
+      function register_action_button(item, credential) {
         item.find(".user-profile-webauthn-manage-del").on("click", function () {
-          let name = item.find(".mdui-list-item-content").text();
           $.ajax({
             method: "POST",
             url: "api/user/webauthn/delete",
-            data: JSON.stringify([name]),
+            data: JSON.stringify([credential.name]),
             contentType: "application/json",
             processData: false,
             complete: function (xhr) {
@@ -1723,10 +1734,10 @@
             let response = JSON.parse(xhr.responseText || "");
             if (xhr.status == 200 && response.code === 0) {
               user_profile_webauthn_manage_list.empty();
-              for (let name of response.info) {
-                let item = $(generate_webauthn_list_item_html(name));
+              for (let credential of response.credentials) {
+                let item = $(generate_webauthn_list_item_html(credential));
                 user_profile_webauthn_manage_list.append(item);
-                register_action_button(item);
+                register_action_button(item, credential);
               }
             }
             user_profile_dialog_progress.hide();
@@ -1775,7 +1786,8 @@
           method: "POST",
           url: "api/user/webauthn/register/request",
           data: JSON.stringify({
-            name: name
+            name: name,
+            passkey: user_profile_webauthn_manage_register_as_passkey.prop("checked")
           }),
           contentType: "application/json",
           processData: false,

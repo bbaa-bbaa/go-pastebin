@@ -21,26 +21,32 @@ import (
 	"regexp"
 	"runtime"
 
+	"github.com/go-webauthn/webauthn/webauthn"
 	"gopkg.in/yaml.v3"
 )
 
 type Pastebin_Config struct {
-	SiteName            string  `yaml:"site_name"`
-	SiteTitle           string  `yaml:"site_title"`
-	SupportNoFilename   bool    `yaml:"support_no_filename"`
-	Mode                string  `yaml:"mode"`
-	AllowHTML           bool    `yaml:"allow_html"`
-	AllowAnonymous      bool    `yaml:"allow_anonymous"`
-	UserCookieMaxAge    int     `yaml:"user_cookie_max_age"`
-	PasteAssessTokenAge int     `yaml:"paste_assess_token_age"`
-	CustomTemplateDir   string  `yaml:"custom_template_dir"`
-	SessionCookie       string  `yaml:"session_cookie"`
-	dataDir             *string `yaml:"-"`
+	SiteName            string           `yaml:"site_name"`
+	SiteTitle           string           `yaml:"site_title"`
+	SiteDomain          string           `yaml:"site_domain"`
+	WebauthnOrigins     []string         `yaml:"webauthn_origins"`
+	SupportNoFilename   bool             `yaml:"support_no_filename"`
+	Mode                string           `yaml:"mode"`
+	AllowHTML           bool             `yaml:"allow_html"`
+	AllowAnonymous      bool             `yaml:"allow_anonymous"`
+	UserCookieMaxAge    int              `yaml:"user_cookie_max_age"`
+	PasteAssessTokenAge int              `yaml:"paste_assess_token_age"`
+	CustomTemplateDir   string           `yaml:"custom_template_dir"`
+	SessionCookie       string           `yaml:"session_cookie"`
+	dataDir             *string          `yaml:"-"`
+	webauthnConfig      *webauthn.Config `yaml:"-"`
 }
 
 var Config *Pastebin_Config = &Pastebin_Config{
 	SiteName:            "Pastebin",
 	SiteTitle:           "",
+	SiteDomain:          "go-pastebin.app",
+	WebauthnOrigins:     []string{"https://go-pastebin.app"},
 	SupportNoFilename:   true,
 	Mode:                "release",
 	AllowHTML:           false,
@@ -50,6 +56,7 @@ var Config *Pastebin_Config = &Pastebin_Config{
 	SessionCookie:       "PASTEBIN_SESSION",
 	CustomTemplateDir:   "",
 	dataDir:             flag.String("data", "/var/lib/go-pastebin", "Data directory"),
+	webauthnConfig:      &webauthn.Config{},
 }
 
 var HTMLTAGRegex = regexp.MustCompile(`(?i)<[^>]*>`)
@@ -78,5 +85,8 @@ func LoadConfig() {
 	if Config.SiteTitle == "" {
 		Config.SiteTitle = Config.SiteName
 	}
+	Config.webauthnConfig.RPID = Config.SiteDomain
+	Config.webauthnConfig.RPDisplayName = Config.SiteTitle
+	Config.webauthnConfig.RPOrigins = Config.WebauthnOrigins
 	SaveConfig()
 }

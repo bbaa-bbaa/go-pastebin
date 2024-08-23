@@ -758,7 +758,8 @@
               </div>
             </div>
             <div class="mdui-container-fluid" id="user-profile-webauthn-manage-name" style="display: none">
-              <div class="mdui-row" id="user-profile-webauthn-manage-name-row">
+              <div id="user-profile-webauthn-manage-name-row">
+              <div class="mdui-row">
                 <div class="mdui-col-xs-12">
                   <div class="mdui-textfield">
                     <label class="mdui-textfield-label">新验证器名称</label>
@@ -766,6 +767,22 @@
                   </div>
                 </div>
               </div>
+              <div class="mdui-row">
+                <div class="mdui-col-xs-12">
+                  <div class="mdui-row">
+                    <div class="mdui-col-xs-12">
+                      <div class="mdui-float-right" mdui-tooltip="{content: '注册为 Passkey, 需要 rk, 免用户名'}">
+                        <label class="mdui-checkbox">
+                          Passkey
+                          <input id="user-profile-webauthn-manage-register-as-passkey" type="checkbox" />
+                          <i class="mdui-checkbox-icon"></i>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
               <div id="user-profile-webauthn-manage-name-loading" class="mdui-m-b-1" style="display: none;">
                 <div class="mdui-row mdui-text-center">
                   <div class="mdui-col-xs-12">

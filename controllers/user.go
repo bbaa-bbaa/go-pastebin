@@ -49,7 +49,7 @@ func UserLogin(c echo.Context) error {
 		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
 		return nil
 	}
-	u, err := database.Login(user.Account, user.Password)
+	u, err := database.UserLogin(user.Account, user.Password)
 	if err != nil {
 		c.JSON(200, map[string]any{"code": -1, "error": "username or password wrong"})
 		return nil
@@ -211,8 +211,9 @@ func UserPasteList(c echo.Context) error {
 }
 
 type webauthnRegisterSession struct {
-	CredentialName string
-	Session        webauthn.SessionData
+	CredentialName string               `json:"name"`
+	Passkey        bool                 `json:"passkey"`
+	Session        webauthn.SessionData `json:"session"`
 }
 
 func UserWebAuthnRegisterRequest(c echo.Context) error {
@@ -222,7 +223,8 @@ func UserWebAuthnRegisterRequest(c echo.Context) error {
 		return nil
 	}
 	type webauthnRegisterReq struct {
-		Name string `json:"name"`
+		Name    string `json:"name"`
+		Passkey bool   `json:"passkey"`
 	}
 	var req webauthnRegisterReq
 	if err := c.Bind(&req); err != nil {
@@ -233,7 +235,7 @@ func UserWebAuthnRegisterRequest(c echo.Context) error {
 		c.JSON(200, map[string]any{"code": -1, "error": "internal error"})
 		return nil
 	}
-	creation, reg_session, err := user.RegisterWebAuthnRequest(c, req.Name)
+	creation, reg_session, err := user.RegisterWebAuthnRequest(req.Name, req.Passkey)
 	if err != nil {
 		c.JSON(200, map[string]any{"code": -1, "error": err.Error()})
 		return nil
@@ -241,6 +243,7 @@ func UserWebAuthnRegisterRequest(c echo.Context) error {
 	session_name := fmt.Sprint("webauthn_session_", rand.Int())
 	session.Set(session_name, &webauthnRegisterSession{
 		CredentialName: req.Name,
+		Passkey:        req.Passkey,
 		Session:        *reg_session,
 	}, 1*time.Hour)
 
@@ -271,7 +274,7 @@ func UserWebAuthnRegister(c echo.Context) error {
 		return nil
 	}
 	session.Del(session_name)
-	err = user.RegisterWebAuthn(c, reg_session.CredentialName, reg_session.Session)
+	err = user.RegisterWebAuthn(c, reg_session.Session, reg_session.CredentialName, reg_session.Passkey)
 	if err != nil {
 		c.JSON(200, map[string]any{"code": -1, "error": err.Error()})
 		return nil
@@ -281,8 +284,8 @@ func UserWebAuthnRegister(c echo.Context) error {
 }
 
 type webauthnLoginSession struct {
-	UID     int64
-	Session webauthn.SessionData
+	UID     int64                `json:"uid"`
+	Session webauthn.SessionData `json:"session"`
 }
 
 func UserWebAuthnLoginRequest(c echo.Context) error {
@@ -359,6 +362,59 @@ func UserWebAuthnLogin(c echo.Context) error {
 	return nil
 }
 
+func UserWebAuthnDiscoverableLoginRequest(c echo.Context) error {
+	session := getSession(c)
+	if session == nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	assertion, webauthn_session, err := database.UserDiscoverableLoginRequest()
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "fail to begin login"})
+		return nil
+	}
+	session_name := fmt.Sprint("webauthn_session_", rand.Int())
+	session.Set(session_name, webauthn_session, 1*time.Hour)
+	c.JSON(200, map[string]any{"code": 0, "session": session_name, "publicKey": assertion.Response})
+	return nil
+}
+
+func UserWebAuthnDiscoverableLogin(c echo.Context) error {
+	session := getSession(c)
+	if session == nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	session_name := c.Request().Header.Get("X-WebAuthn-Session")
+	if session_name == "" {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	var webauthn_session webauthn.SessionData
+	err := session.Get(session_name, &webauthn_session)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	session.Del(session_name)
+	user, err := database.UserDiscoverableLogin(c, webauthn_session)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "fail to login"})
+		return nil
+	}
+	token := user.Token()
+	c.SetCookie(&http.Cookie{
+		Name:     "user_token",
+		Value:    token,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   Config.UserCookieMaxAge,
+		Path:     "/",
+	})
+	c.JSON(200, map[string]any{"code": 0, "info": userInfo(user), "token": token})
+	return nil
+}
+
 func UserWebAuthnList(c echo.Context) error {
 	user, ok := c.Get("user").(*database.User)
 	if !ok {
@@ -369,7 +425,13 @@ func UserWebAuthnList(c echo.Context) error {
 		c.JSON(200, map[string]any{"code": 0, "info": []string{}})
 		return nil
 	}
-	c.JSON(200, map[string]any{"code": 0, "info": lo.Keys(user.Extra.WebAuthn.Credentials)})
+	type CredentialInfo struct {
+		Name    string `json:"name"`
+		Passkey bool   `json:"passkey"`
+	}
+	c.JSON(200, map[string]any{"code": 0, "credentials": lo.MapToSlice(user.Extra.WebAuthn.Credentials, func(name string, credential *database.User_WebAuthn_Credential) CredentialInfo {
+		return CredentialInfo{Name: name, Passkey: credential.Passkey}
+	})})
 	return nil
 }
 
@@ -388,14 +450,20 @@ func UserWebAuthnDelete(c echo.Context) error {
 		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
 		return nil
 	}
-	for _, credential_name := range delete_credentails {
-		delete(user.Extra.WebAuthn.Credentials, credential_name)
+	success := []bool{}
+	err_flag := false
+	for _, name := range delete_credentails {
+		err := user.RemoveWebAuthnCredential(name)
+		success = append(success, err == nil)
+		if err != nil {
+			err_flag = true
+		}
 	}
-	if err := user.Update(); err != nil {
-		c.JSON(200, map[string]any{"code": -1, "error": "fail to delete"})
+	if err_flag {
+		c.JSON(200, map[string]any{"code": -1, "deleted": success, "error": "some credential can not be deleted"})
 		return nil
 	}
-	c.JSON(200, map[string]any{"code": 0, "info": "delete success"})
+	c.JSON(200, map[string]any{"code": 0, "deleted": success})
 	return nil
 }
 

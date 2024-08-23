@@ -118,5 +118,7 @@ func sessionCleaner() {
 		return
 	}
 	row, _ := r.RowsAffected()
-	log.Info("Cleaned ", row, " expired sessions")
+	if row > 0 {
+		log.Info("Cleaned ", row, " expired sessions")
+	}
 }

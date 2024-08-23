@@ -39,6 +39,14 @@ CREATE TABLE IF NOT EXISTS "sessions" (
 	"expire_after"	DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS "webauthn_credentials" (
+	"id"	BLOB NOT NULL,
+  "user_handle" BLOB NOT NULL,
+	"uid"	INTEGER NOT NULL,
+	PRIMARY KEY("id"),
+	FOREIGN KEY("uid") REFERENCES users(uid) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS  "UID_Mapping" ON "pastes" (
 	"uid"	ASC
 );

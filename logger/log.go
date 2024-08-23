@@ -17,6 +17,7 @@ package logger
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 )
@@ -26,7 +27,7 @@ type Logger struct {
 }
 
 func (l *Logger) Println(scope string, a ...any) (n int, err error) {
-	return fmt.Printf("[%s] %s", scope, strings.TrimRight(fmt.Sprint(a...), "\r\n")+"\r\n")
+	return fmt.Printf("[%s] %s %s", scope, time.Now().Format(time.RFC3339), strings.TrimRight(fmt.Sprint(a...), "\r\n")+"\r\n")
 }
 
 func (l *Logger) Error(a ...any) (n int, err error) {
