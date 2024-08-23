@@ -12,31 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pastebin
+package controllers
 
 import (
-	"bytes"
-	"fmt"
+	"net/http"
 
+	"cgit.bbaa.fun/bbaa/go-pastebin/database"
 	"github.com/labstack/echo/v4"
 )
 
-type WarpRenderer struct {
-	echo.Context
-}
-
-func (w *WarpRenderer) Render(code int, name string, data interface{}) error {
-	var buf bytes.Buffer
-	err := w.Context.Echo().Renderer.Render(&buf, name, data, w.Context)
+func newSession(c echo.Context) (*database.Session, error) {
+	session, err := database.NewSession()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	w.Response().Header().Set(echo.HeaderContentLength, fmt.Sprint(buf.Len()))
-	return w.HTMLBlob(code, buf.Bytes())
+	c.SetCookie(&http.Cookie{Name: Config.SessionCookie, Value: session.UUID, HttpOnly: true, SameSite: http.SameSiteStrictMode, Path: "/"})
+	return session, nil
 }
 
-func StaticRender(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		return next(&WarpRenderer{c})
+func getSession(c echo.Context) *database.Session {
+	cookie, err := c.Cookie(Config.SessionCookie)
+	if err != nil {
+		session, _ := newSession(c)
+		return session
 	}
+	session, err := database.GetSession(cookie.Value)
+	if err != nil {
+		return nil
+	}
+	return session
 }

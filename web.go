@@ -60,6 +60,12 @@ func httpServe() {
 	e.POST("/api/user/add", controllers.AddUser)
 	e.POST("/api/user/edit", controllers.EditUserProfile)
 	e.GET("/api/user/pastes", controllers.UserPasteList)
+	e.POST("/api/user/webauthn/register/request", controllers.UserWebAuthnRegisterRequest)
+	e.POST("/api/user/webauthn/register", controllers.UserWebAuthnRegister)
+	e.POST("/api/user/webauthn/login/request", controllers.UserWebAuthnLoginRequest)
+	e.POST("/api/user/webauthn/login", controllers.UserWebAuthnLogin)
+	e.GET("/api/user/webauthn/list", controllers.UserWebAuthnList)
+	e.POST("/api/user/webauthn/delete", controllers.UserWebAuthnDelete)
 
 	e.POST("/", controllers.NewPaste)
 	e.PUT("/:uuid", controllers.UpdatePaste)

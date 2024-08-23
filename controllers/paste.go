@@ -669,6 +669,6 @@ func PasteAccess(c echo.Context) error {
 	access_token := paste.Token(available_before)
 	c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + paste.Base64Hash()})
 	c.Response().Header().Set("X-Access-Token", access_token)
-	c.JSON(200, map[string]any{"code": 0, "info": paste})
+	c.JSON(200, map[string]any{"code": 0, "info": pasteInfo(paste)})
 	return nil
 }

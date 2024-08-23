@@ -654,7 +654,7 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64) (pastes []*Past
 }
 
 func pasteCleaner() {
-	rows, err := db.Queryx(`DELETE FROM pastes WHERE delete_if_not_available = 1 AND (unixepoch(expire_after) >= 0 AND datetime(expire_after) < CURRENT_TIMESTAMP OR max_access_count <> 0 AND access_count >= max_access_count) AND hold_count = 0 AND datetime(hold_before) < CURRENT_TIMESTAMP RETURNING uuid`)
+	rows, err := db.Queryx(`DELETE FROM pastes WHERE delete_if_not_available = 1 AND (unixepoch(expire_after) >= 0 AND datetime(expire_after) <= CURRENT_TIMESTAMP OR max_access_count <> 0 AND access_count >= max_access_count) AND hold_count = 0 AND datetime(hold_before) <= CURRENT_TIMESTAMP RETURNING uuid`)
 	if err != nil {
 		log.Error(err)
 		return

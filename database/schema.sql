@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"extra"	TEXT NOT NULL,
 	PRIMARY KEY("uid" AUTOINCREMENT)
 );
+
 CREATE TABLE IF NOT EXISTS "pastes" (
 	"uuid"	TEXT UNIQUE NOT NULL,
   "uid"	INTEGER NOT NULL,
@@ -23,13 +24,26 @@ CREATE TABLE IF NOT EXISTS "pastes" (
   "created_at" DATETIME NOT NULL,
 	PRIMARY KEY("uuid")
 );
+
 CREATE TABLE IF NOT EXISTS "short_url" (
 	"name"	TEXT UNIQUE NOT NULL,
 	"target"	TEXT NOT NULL,
 	FOREIGN KEY(target) REFERENCES pastes(uuid) ON UPDATE CASCADE ON DELETE CASCADE
 	PRIMARY KEY("name")
 );
+
+CREATE TABLE IF NOT EXISTS "sessions" (
+	"uuid"	TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+	"value"	TEXT NOT NULL,
+	"expire_after"	DATETIME NOT NULL
+);
+
 CREATE INDEX "UID_Mapping" ON "pastes" (
 	"uid"	ASC
+);
+
+CREATE INDEX "UUID" ON "sessions" (
+	"uuid"	ASC
 );
 COMMIT;

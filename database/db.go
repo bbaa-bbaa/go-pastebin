@@ -70,13 +70,14 @@ func RenameOldDatabaseColumn() {
 }
 
 func PostInit() {
-	RenameOldDatabaseColumn()
-	ResetHoldCount()
 	if *ResetAdminFlag {
 		ResetAdmin()
 	}
+	RenameOldDatabaseColumn()
+	ResetHoldCount()
 	s, _ := gocron.NewScheduler()
 	s.NewJob(gocron.CronJob("*/5 * * * *", false), gocron.NewTask(pasteCleaner))
+	s.NewJob(gocron.CronJob("*/5 * * * *", false), gocron.NewTask(sessionCleaner))
 	s.Start()
 }
 

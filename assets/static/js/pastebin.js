@@ -46,7 +46,7 @@
     paste_app_tab_element.addClass("paste-tab-loaded");
     const new_paste_tab = $("#new-paste-tab");
     const paste_manage_tab = $("#paste-manage-tab");
-
+    let user_is_login;
     function update_user_info(preloaded_user_info) {
       let login_request;
       if (preloaded_user_info) {
@@ -68,7 +68,7 @@
           })
           .catch(() => false);
       }
-      return login_request.then(is_login => {
+      user_is_login = login_request.then(is_login => {
         if (is_login) {
           new_paste_tab.removeAttr("disabled");
           paste_manage_tab.show();
@@ -85,6 +85,7 @@
         paste_app_tab.show(paste_app_tab.activeIndex);
         return is_login;
       });
+      return user_is_login;
     }
 
     new_paste_tab.on("click", function (e) {
@@ -842,11 +843,20 @@
         }
         let show = paste_preview_file_show();
         if (paste_metadata.type.startsWith("image/")) {
-          paste_viewer_file_preview_element = $(`<img style="max-height: inherit; max-width:100%">`).on("load", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
+          paste_viewer_file_preview_element = $(`<img style="max-height: inherit; max-width:100%">`)
+            .on("load", show)
+            .attr("src", paste_metadata.url)
+            .appendTo(paste_viewer_file_preview);
         } else if (paste_metadata.type.startsWith("audio/")) {
-          paste_viewer_file_preview_element = $('<audio controls style="max-height: inherit; max-width:100%">').on("loadedmetadata", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
+          paste_viewer_file_preview_element = $('<audio controls style="max-height: inherit; max-width:100%">')
+            .on("loadedmetadata", show)
+            .attr("src", paste_metadata.url)
+            .appendTo(paste_viewer_file_preview);
         } else if (paste_metadata.type.startsWith("video/")) {
-          paste_viewer_file_preview_element = $('<video controls style="max-height: inherit; max-width:100%">').on("loadedmetadata", show).attr("src", paste_metadata.url).appendTo(paste_viewer_file_preview);
+          paste_viewer_file_preview_element = $('<video controls style="max-height: inherit; max-width:100%">')
+            .on("loadedmetadata", show)
+            .attr("src", paste_metadata.url)
+            .appendTo(paste_viewer_file_preview);
         } else {
           paste_viewer_file_preview.hide();
           paste_viewer_file_icon.show();
@@ -1003,13 +1013,16 @@
       });
 
       paste_viewer_back_to_query.on("click", function () {
-        collapse_manager.paste_viewer_query.open().then(() => {
-          console.log("remove preview");
-          if (paste_viewer_file_preview_element) {
-            paste_viewer_file_preview_element.remove();
-            paste_viewer_file_preview_element = null;
-          }
-        }).catch(() => { });
+        collapse_manager.paste_viewer_query
+          .open()
+          .then(() => {
+            console.log("remove preview");
+            if (paste_viewer_file_preview_element) {
+              paste_viewer_file_preview_element.remove();
+              paste_viewer_file_preview_element = null;
+            }
+          })
+          .catch(() => { });
       });
 
       paste_viewer_confirm_password.on("click", function () {
@@ -1067,15 +1080,13 @@
       const paste_manage_mdui_panel = new mdui.Panel("#paste-manage-pastes .mdui-panel");
       const paste_manage_panel = $("#paste-manage-pastes .mdui-panel");
 
-
-
       let page = 1;
       let max_page = 1;
       let paste_total = 0;
       const page_size = 10;
 
       let paste_manager_list = [];
-      let paste_detail_opened = new Set();  // uuid
+      let paste_detail_opened = new Set(); // uuid
       const paste_detail_opened_limit = 20 * page_size;
 
       function pager_check() {
@@ -1368,14 +1379,16 @@
       const user_profile_view = $(".user-profile-view");
       const user_profile_edit = $(".user-profile-edit");
       const user_profile_dialog = new mdui.Dialog("#user-profile-dialog", { history: false });
-  
+      const user_profile_dialog_progress = $(".user-profile-dialog-progress");
+
       const user_profile_uid_text = $("#user-profile-uid-text");
       const user_profile_username_text = $("#user-profile-username-text");
       const user_profile_role_text = $("#user-profile-role-text");
       const user_profile_email_text = $("#user-profile-email-text");
       const user_profile_manage_panel = $("#user-profile-manage-panel");
       const user_profile_edit_btn = $("#user-profile-edit-btn");
-  
+      const user_profile_webauthn_manage_btn = $("#user-profile-webauthn-manage-btn");
+
       const user_profile_edit_username = $("#user-profile-edit-username");
       const user_profile_edit_email = $("#user-profile-edit-email");
       const user_profile_edit_oldpwd = $("#user-profile-edit-oldpwd");
@@ -1383,14 +1396,28 @@
       const user_profile_edit_action = $(".user-profile-edit-action");
       const user_profile_edit_confirm = $("#user-profile-edit-confirm");
       const user_profile_edit_return = $("#user-profile-edit-return");
-  
-      const login_dialog = new mdui.Dialog("#login-dialog", { history: false });
-      const login_button = $("#login-button");
-      const login_form = $("#login-form");
-      const login_username = $("#login-username");
-      const login_password = $("#login-password");
-      const login_dialog_action = $(".login-dialog-action");
-  
+      const user_profile_webauthn_manage = $(".user-profile-webauthn-manage");
+      const user_profile_webauthn_manage_list = $("#user-profile-webauthn-manage-list");
+      const user_profile_webauthn_manage_add = $("#user-profile-webauthn-manage-add");
+      const user_profile_webauthn_manage_return = $("#user-profile-webauthn-manage-return");
+      const user_profile_webauthn_manage_main = $("#user-profile-webauthn-manage-main");
+      const user_profile_webauthn_manage_name = $("#user-profile-webauthn-manage-name");
+      const user_profile_webauthn_manage_name_input = $("#user-profile-webauthn-manage-name-input");
+      const user_profile_webauthn_manage_name_cancel = $("#user-profile-webauthn-manage-name-cancel");
+      const user_profile_webauthn_manage_name_confirm = $("#user-profile-webauthn-manage-name-confirm");
+      const user_profile_webauthn_manage_name_row = $("#user-profile-webauthn-manage-name-row");
+      const user_profile_webauthn_manage_name_loading = $("#user-profile-webauthn-manage-name-loading");
+      const user_profile_webauthn_manage_action = $(".user-profile-webauthn-manage-action");
+
+      const login_dialog = new mdui.Dialog("#user-login-dialog", { history: false });
+      const login_button = $("#user-login-button");
+      const login_form = $("#user-login-form");
+      const login_username = $("#user-login-username");
+      const login_password = $("#user-login-password");
+      const login_dialog_action = $(".user-login-dialog-action");
+
+      const login_webauthn = $("#user-login-webauthn");
+
       function show_user_profile() {
         if (user_info) {
           user_profile_uid_text.text(user_info.uid);
@@ -1409,7 +1436,7 @@
           user_profile_dialog.close();
         }
       }
-  
+
       function show_user_profile_edit() {
         if (user_info) {
           user_profile_edit_username.attr("placeholder", user_info.username);
@@ -1419,24 +1446,38 @@
         user_profile_edit.show();
         user_profile_dialog.handleUpdate();
       }
-  
+
       user_profile_edit_btn.on("click", function () {
         show_user_profile_edit();
       });
-  
+
       user_profile_edit_return.on("click", function () {
         show_user_profile();
       });
-  
+
+      let account_button_lock = false;
       account_dialog_btn.on("click", function () {
-        if (!user_info) {
-          login_dialog.open();
-        } else {
-          show_user_profile();
-          user_profile_dialog.open();
+        if (account_button_lock || !user_is_login) {
+          mdui.snackbar("数据加载中，请稍后");
+          return;
         }
+        account_button_lock = true;
+        Promise.race([user_is_login, "loading"]).then(is_login => {
+          if (is_login === "loading") {
+            mdui.snackbar("数据加载中，请稍后");
+          }
+        });
+        user_is_login.then(is_login => {
+          account_button_lock = false;
+          if (is_login) {
+            show_user_profile();
+            user_profile_dialog.open();
+          } else {
+            login_dialog.open();
+          }
+        });
       });
-  
+
       login_form.on("submit", function (e) {
         e.preventDefault();
         login_dialog_action.attr("disabled", "disabled");
@@ -1449,7 +1490,7 @@
           }),
           contentType: "application/json",
           complete: function (xhr) {
-            let response = JSON.parse(xhr.responseText);
+            let response = JSON.parse(xhr.responseText || "");
             if (xhr.status == 200 && response.code === 0) {
               update_user_info(response.info).then(() => {
                 mdui.snackbar("登录成功");
@@ -1471,7 +1512,7 @@
           }
         });
       });
-  
+
       user_profile_edit_confirm.on("click", function () {
         let data = {
           username: user_profile_edit_username.val(),
@@ -1498,7 +1539,7 @@
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText);
             if (xhr.status == 200 && response.code === 0) {
-              update_user_info().then((is_login) => {
+              update_user_info().then(is_login => {
                 if (is_login) {
                   mdui.snackbar("修改成功");
                 } else {
@@ -1507,7 +1548,7 @@
                 user_profile_edit_confirm.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
                 setTimeout(() => {
                   user_profile_edit_confirm.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
-                  if(!is_login) {
+                  if (!is_login) {
                     user_profile_dialog.close();
                     login_dialog.open();
                   }
@@ -1521,6 +1562,277 @@
                 user_profile_edit_confirm.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
               }, 600);
               user_profile_edit_action.removeAttr("disabled");
+            }
+          }
+        });
+      });
+
+      function bufferEncode(value) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=/g, "");
+      }
+
+      function bufferDecode(value) {
+        return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+      }
+
+      login_webauthn.on("click", function () {
+        let account = login_username.val();
+        if (account.length == 0) {
+          mdui.snackbar("请输入用户名");
+          return;
+        }
+        if (!navigator.credentials) {
+          mdui.snackbar("WebAuthn 不可用");
+          return;
+        }
+        login_dialog_action.attr("disabled", "disabled");
+        $.ajax({
+          method: "POST",
+          url: "api/user/webauthn/login/request",
+          contentType: "application/json",
+          data: JSON.stringify({
+            account: account
+          }),
+          processData: false,
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText || "");
+            if (xhr.status == 200 && response.code === 0) {
+              response.publicKey.challenge = bufferDecode(response.publicKey.challenge);
+              response.publicKey.allowCredentials = response.publicKey.allowCredentials.map(credential => {
+                credential.id = bufferDecode(credential.id);
+                return credential;
+              });
+              navigator.credentials
+                .get({
+                  publicKey: response.publicKey
+                })
+                .then(credential => {
+                  $.ajax({
+                    method: "POST",
+                    url: "api/user/webauthn/login",
+                    headers: {
+                      "X-WebAuthn-Session": response.session
+                    },
+                    data: JSON.stringify({
+                      id: credential.id,
+                      rawId: bufferEncode(credential.rawId),
+                      type: credential.type,
+                      response: {
+                        authenticatorData: bufferEncode(credential.response.authenticatorData),
+                        clientDataJSON: bufferEncode(credential.response.clientDataJSON),
+                        signature: bufferEncode(credential.response.signature),
+                        userHandle: bufferEncode(credential.response.userHandle)
+                      }
+                    }),
+                    contentType: "application/json",
+                    processData: false,
+                    complete: function (xhr) {
+                      let response = JSON.parse(xhr.responseText);
+                      if (xhr.status == 200 && response.code === 0) {
+                        update_user_info(response.info).then(() => {
+                          mdui.snackbar("登录成功");
+                          login_button.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
+                          setTimeout(() => {
+                            login_button.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
+                            login_dialog.close();
+                          }, 600);
+                        });
+                      } else {
+                        mdui.snackbar("登录失败: " + response.error);
+                      }
+                      login_dialog_action.removeAttr("disabled");
+                    }
+                  });
+                })
+                .catch(err => {
+                  mdui.snackbar("登录失败: " + err);
+                  login_dialog_action.removeAttr("disabled");
+                });
+            } else {
+              mdui.snackbar("登录失败: " + response.error);
+              login_dialog_action.removeAttr("disabled");
+            }
+
+          }
+        });
+      });
+
+      user_profile_webauthn_manage_btn.on("click", function () {
+        user_profile_view.hide();
+        user_profile_webauthn_manage.show();
+        user_profile_dialog.handleUpdate();
+        update_webauthn_list();
+      });
+
+      user_profile_webauthn_manage_return.on("click", function () {
+        user_profile_webauthn_manage.hide();
+        user_profile_view.show();
+        user_profile_dialog.handleUpdate();
+      });
+
+      user_profile_webauthn_manage_add.on("click", function () {
+        user_profile_webauthn_manage_main.hide();
+        user_profile_webauthn_manage_name.show();
+        user_profile_dialog.handleUpdate();
+      });
+
+      function generate_webauthn_list_item_html(name) {
+        return `
+        <li class="mdui-list-item mdui-ripple">
+          <i class="mdui-list-item-icon mdui-icon material-icons">fingerprint</i>
+          <div class="mdui-list-item-content">${name}</div>
+          <i class="mdui-list-item-icon mdui-icon material-icons user-profile-webauthn-manage-del">delete</i>
+        </li>
+        `;
+      }
+
+      function register_action_button(item) {
+        item.find(".user-profile-webauthn-manage-del").on("click", function () {
+          let name = item.find(".mdui-list-item-content").text();
+          $.ajax({
+            method: "POST",
+            url: "api/user/webauthn/delete",
+            data: JSON.stringify([name]),
+            contentType: "application/json",
+            processData: false,
+            complete: function (xhr) {
+              let response = JSON.parse(xhr.responseText);
+              if (xhr.status == 200 && response.code === 0) {
+                item.remove();
+                user_profile_dialog.handleUpdate();
+              } else {
+                mdui.snackbar("删除失败: " + response.error);
+              }
+            }
+          });
+        });
+      }
+
+      function update_webauthn_list() {
+        user_profile_dialog_progress.show();
+        $.ajax({
+          method: "GET",
+          url: "api/user/webauthn/list",
+          headers: {
+            Accept: "application/json"
+          },
+          complete: function (xhr) {
+            let response = JSON.parse(xhr.responseText || "");
+            if (xhr.status == 200 && response.code === 0) {
+              user_profile_webauthn_manage_list.empty();
+              for (let name of response.info) {
+                let item = $(generate_webauthn_list_item_html(name));
+                user_profile_webauthn_manage_list.append(item);
+                register_action_button(item);
+              }
+            }
+            user_profile_dialog_progress.hide();
+            user_profile_dialog.handleUpdate();
+          }
+        });
+      }
+
+      function webauthn_back_to_main() {
+        user_profile_webauthn_manage_name.hide();
+        user_profile_webauthn_manage_main.show();
+        update_webauthn_list();
+        user_profile_dialog.handleUpdate();
+      }
+
+      user_profile_webauthn_manage_name_cancel.on("click", webauthn_back_to_main);
+
+      user_profile_webauthn_manage_name_confirm.on("click", function () {
+        let name = user_profile_webauthn_manage_name_input.val();
+        if (name.length == 0) {
+          mdui.snackbar("请输入名称");
+          return;
+        }
+
+        if (!navigator.credentials) {
+          mdui.snackbar("WebAuthn 不可用");
+          return;
+        }
+
+        user_profile_webauthn_manage_action.attr("disabled", "disabled");
+        user_profile_webauthn_manage_name_row.hide();
+        user_profile_webauthn_manage_name_loading.show();
+        user_profile_dialog_progress.show();
+
+        function post_register() {
+          user_profile_webauthn_manage_action.removeAttr("disabled");
+          user_profile_webauthn_manage_name_row.show();
+          user_profile_webauthn_manage_name_loading.hide();
+          user_profile_dialog_progress.hide();
+          webauthn_back_to_main();
+        }
+
+        $.ajax({
+          method: "POST",
+          url: "api/user/webauthn/register/request",
+          data: JSON.stringify({
+            name: name
+          }),
+          contentType: "application/json",
+          processData: false,
+          complete: function (xhr) {
+            if (xhr.status == 200) {
+              let response = JSON.parse(xhr.responseText);
+              if (response.code === 0) {
+                response.publicKey.challenge = bufferDecode(response.publicKey.challenge);
+                response.publicKey.user.id = bufferDecode(response.publicKey.user.id);
+                if (response.publicKey.excludeCredentials && response.publicKey.excludeCredentials.length > 0) {
+                  response.publicKey.excludeCredentials = response.publicKey.excludeCredentials.map(credential => {
+                    credential.id = bufferDecode(credential.id);
+                    return credential;
+                  });
+                }
+                navigator.credentials
+                  .create({
+                    publicKey: response.publicKey
+                  })
+                  .then(credential => {
+                    $.ajax({
+                      method: "POST",
+                      url: "api/user/webauthn/register",
+                      headers: {
+                        "X-WebAuthn-Session": response.session
+                      },
+                      data: JSON.stringify({
+                        id: credential.id,
+                        rawId: bufferEncode(credential.rawId),
+                        type: credential.type,
+                        response: {
+                          attestationObject: bufferEncode(credential.response.attestationObject),
+                          clientDataJSON: bufferEncode(credential.response.clientDataJSON)
+                        }
+                      }),
+                      contentType: "application/json",
+                      processData: false,
+                      complete: function (xhr) {
+                        let response = JSON.parse(xhr.responseText);
+                        if (xhr.status == 200 && response.code === 0) {
+                          mdui.snackbar("注册成功");
+                        } else {
+                          mdui.snackbar("注册失败: " + response.error);
+                        }
+                        post_register();
+                      }
+                    });
+                  })
+                  .catch(err => {
+                    mdui.snackbar("注册失败: " + err);
+                    post_register();
+                  });
+              } else {
+                mdui.snackbar("注册失败: " + response.error);
+                post_register();
+              }
+            } else {
+              mdui.snackbar("网络错误");
+              post_register();
             }
           }
         });

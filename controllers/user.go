@@ -15,14 +15,29 @@
 package controllers
 
 import (
+	"fmt"
+	"math/rand"
 	"net/http"
 	"net/mail"
 	"strconv"
+	"time"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/database"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/lo"
 )
+
+type UserInfo struct {
+	UID      int64  `json:"uid" db:"uid"`
+	Username string `json:"username" db:"username"`
+	Email    string `json:"email" db:"email"`
+	Role     string `json:"role" db:"role"`
+}
+
+func userInfo(u *database.User) *UserInfo {
+	return &UserInfo{UID: u.UID, Username: u.Username, Email: u.Email, Role: u.Role}
+}
 
 func UserLogin(c echo.Context) error {
 	type ReqUserLogin struct {
@@ -39,15 +54,16 @@ func UserLogin(c echo.Context) error {
 		c.JSON(200, map[string]any{"code": -1, "error": "username or password wrong"})
 		return nil
 	}
+	token := u.Token()
 	c.SetCookie(&http.Cookie{
 		Name:     "user_token",
-		Value:    u.Token(),
+		Value:    token,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   Config.UserCookieMaxAge,
 		Path:     "/",
 	})
-	c.JSON(200, map[string]any{"code": 0, "info": u, "token": u.Token()})
+	c.JSON(200, map[string]any{"code": 0, "info": userInfo(u), "token": token})
 	return nil
 }
 
@@ -89,7 +105,7 @@ func EditUserProfile(c echo.Context) error {
 		c.JSON(200, map[string]any{"code": -1, "error": "fail to update"})
 		return nil
 	}
-	c.JSON(200, map[string]any{"code": 0, "info": user})
+	c.JSON(200, map[string]any{"code": 0, "info": userInfo(user)})
 	return nil
 }
 
@@ -191,6 +207,195 @@ func UserPasteList(c echo.Context) error {
 		}
 		return pi
 	})})
+	return nil
+}
+
+type webauthnRegisterSession struct {
+	CredentialName string
+	Session        webauthn.SessionData
+}
+
+func UserWebAuthnRegisterRequest(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
+		return nil
+	}
+	type webauthnRegisterReq struct {
+		Name string `json:"name"`
+	}
+	var req webauthnRegisterReq
+	if err := c.Bind(&req); err != nil {
+		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
+	}
+	session := getSession(c)
+	if session == nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "internal error"})
+		return nil
+	}
+	creation, reg_session, err := user.RegisterWebAuthnRequest(c, req.Name)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": err.Error()})
+		return nil
+	}
+	session_name := fmt.Sprint("webauthn_session_", rand.Int())
+	session.Set(session_name, &webauthnRegisterSession{
+		CredentialName: req.Name,
+		Session:        *reg_session,
+	}, 1*time.Hour)
+
+	c.JSON(200, map[string]any{"code": 0, "publicKey": creation.Response, "session": session_name})
+	return nil
+}
+
+func UserWebAuthnRegister(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
+		return nil
+	}
+	session := getSession(c)
+	if session == nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	session_name := c.Request().Header.Get("X-WebAuthn-Session")
+	if session_name == "" {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	var reg_session webauthnRegisterSession
+	err := session.Get(session_name, &reg_session)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	session.Del(session_name)
+	err = user.RegisterWebAuthn(c, reg_session.CredentialName, reg_session.Session)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": err.Error()})
+		return nil
+	}
+	c.JSON(200, map[string]any{"code": 0, "info": "register success"})
+	return nil
+}
+
+type webauthnLoginSession struct {
+	UID     int64
+	Session webauthn.SessionData
+}
+
+func UserWebAuthnLoginRequest(c echo.Context) error {
+	type webauthnLoginReq struct {
+		Account string `json:"account"`
+	}
+	var req webauthnLoginReq
+	if err := c.Bind(&req); err != nil {
+		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
+		return nil
+	}
+	user, err := database.GetUserByAccount(req.Account)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": err.Error()})
+		return nil
+	}
+	session := getSession(c)
+	if session == nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "internal error"})
+		return nil
+	}
+	assertion, webauthn_session, err := user.LoginWebAuthnRequest()
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "fail to begin login"})
+		return nil
+	}
+	session_name := fmt.Sprint("webauthn_session_", rand.Int())
+	session.Set(session_name, &webauthnLoginSession{
+		UID:     user.UID,
+		Session: *webauthn_session,
+	}, 1*time.Hour)
+	c.JSON(200, map[string]any{"code": 0, "session": session_name, "publicKey": assertion.Response})
+	return nil
+}
+
+func UserWebAuthnLogin(c echo.Context) error {
+	session := getSession(c)
+	if session == nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	session_name := c.Request().Header.Get("X-WebAuthn-Session")
+	if session_name == "" {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	var login_session webauthnLoginSession
+	err := session.Get(session_name, &login_session)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "no session"})
+		return nil
+	}
+	session.Del(session_name)
+	user, err := database.GetUser(login_session.UID)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": err.Error()})
+		return nil
+	}
+	err = user.LoginWebAuthn(c, login_session.Session)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "fail to login"})
+		return nil
+	}
+	token := user.Token()
+	c.SetCookie(&http.Cookie{
+		Name:     "user_token",
+		Value:    token,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   Config.UserCookieMaxAge,
+		Path:     "/",
+	})
+	c.JSON(200, map[string]any{"code": 0, "info": userInfo(user), "token": token})
+	return nil
+}
+
+func UserWebAuthnList(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
+		return nil
+	}
+	if user.Extra.WebAuthn == nil {
+		c.JSON(200, map[string]any{"code": 0, "info": []string{}})
+		return nil
+	}
+	c.JSON(200, map[string]any{"code": 0, "info": lo.Keys(user.Extra.WebAuthn.Credentials)})
+	return nil
+}
+
+func UserWebAuthnDelete(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
+		return nil
+	}
+	if user.Extra.WebAuthn == nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "no webauthn config"})
+		return nil
+	}
+	var delete_credentails []string
+	if err := c.Bind(&delete_credentails); err != nil {
+		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
+		return nil
+	}
+	for _, credential_name := range delete_credentails {
+		delete(user.Extra.WebAuthn.Credentials, credential_name)
+	}
+	if err := user.Update(); err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "fail to delete"})
+		return nil
+	}
+	c.JSON(200, map[string]any{"code": 0, "info": "delete success"})
 	return nil
 }
 

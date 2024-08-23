@@ -26,10 +26,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/fatih/color"
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jmoiron/sqlx"
+	"github.com/labstack/echo/v4"
 	"github.com/matthewhartstonge/argon2"
+	"github.com/samber/lo"
+	"golang.org/x/exp/maps"
 )
 
 type User struct {
@@ -41,7 +47,14 @@ type User struct {
 	Extra    *User_Extra `json:"extra" db:"extra"`
 }
 
+type User_WebAuthn struct {
+	Id          []byte                         `json:"id"`
+	Credentials map[string]webauthn.Credential `json:"credential"`
+	Config      *webauthn.Config               `json:"config"`
+}
+
 type User_Extra struct {
+	WebAuthn *User_WebAuthn `json:"webauthn"`
 }
 
 func (e *User_Extra) String() string {
@@ -66,6 +79,120 @@ func (e *User_Extra) Value() (driver.Value, error) {
 		return nil, err
 	}
 	return string(encoded), nil
+}
+
+func (user *User) WebAuthnID() []byte {
+	return user.Extra.WebAuthn.Id
+}
+
+func (user *User) WebAuthnName() string {
+	return user.Username
+}
+
+func (user *User) WebAuthnDisplayName() string {
+	return user.Username
+}
+
+func (user *User) WebAuthnCredentials() []webauthn.Credential {
+	return maps.Values(user.Extra.WebAuthn.Credentials)
+}
+
+func (user *User) RegisterWebAuthnRequest(c echo.Context, credential_name string) (creation *protocol.CredentialCreation, session *webauthn.SessionData, err error) {
+	request := c.Request()
+	if user.Extra.WebAuthn == nil {
+		user.Extra.WebAuthn = &User_WebAuthn{
+			Config: &webauthn.Config{
+				RPID:          strings.Split(request.Host, ":")[0],
+				RPDisplayName: Config.SiteTitle,
+				RPOrigins:     []string{c.Scheme() + "://" + request.Host},
+				Debug:         true,
+			},
+			Credentials: make(map[string]webauthn.Credential),
+		}
+		user.Extra.WebAuthn.Id = make([]byte, 64)
+		_, err = rand.Read(user.Extra.WebAuthn.Id)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	if _, ok := user.Extra.WebAuthn.Credentials[credential_name]; ok {
+		return nil, nil, fmt.Errorf("name already exists")
+	}
+
+	webAuthn, err := webauthn.New(user.Extra.WebAuthn.Config)
+	if err != nil {
+		return nil, nil, err
+	}
+	credentials := user.WebAuthnCredentials()
+	creation, session, err = webAuthn.BeginRegistration(user, webauthn.WithExclusions(lo.Map(credentials, func(credential webauthn.Credential, _ int) protocol.CredentialDescriptor {
+		return credential.Descriptor()
+	})))
+	if err != nil {
+		return nil, nil, err
+	}
+	err = user.Update()
+	if err != nil {
+		return nil, nil, err
+	}
+	return creation, session, nil
+}
+
+func (user *User) RegisterWebAuthn(c echo.Context, credential_name string, session webauthn.SessionData) error {
+	if user.Extra.WebAuthn == nil {
+		return fmt.Errorf("no webauthn config")
+	}
+	if _, ok := user.Extra.WebAuthn.Credentials[credential_name]; ok {
+		return fmt.Errorf("name already exists")
+	}
+	webAuthn, err := webauthn.New(user.Extra.WebAuthn.Config)
+	if err != nil {
+		return err
+	}
+	credential, err := webAuthn.FinishRegistration(user, session, c.Request())
+	if err != nil {
+		return err
+	}
+	if user.Extra.WebAuthn.Credentials == nil {
+		user.Extra.WebAuthn.Credentials = make(map[string]webauthn.Credential)
+	}
+	user.Extra.WebAuthn.Credentials[credential_name] = *credential
+	return user.Update()
+}
+
+func (user *User) LoginWebAuthnRequest() (assertion *protocol.CredentialAssertion, session *webauthn.SessionData, err error) {
+	if user.Extra.WebAuthn == nil {
+		return nil, nil, fmt.Errorf("no webauthn config")
+	}
+	webAuthn, err := webauthn.New(user.Extra.WebAuthn.Config)
+	if err != nil {
+		return nil, nil, err
+	}
+	assertion, session, err = webAuthn.BeginLogin(user)
+	if err != nil {
+		return nil, nil, err
+	}
+	return assertion, session, nil
+}
+
+func (user *User) LoginWebAuthn(c echo.Context, session webauthn.SessionData) error {
+	if user.Extra.WebAuthn == nil {
+		return fmt.Errorf("no webauthn config")
+	}
+	webAuthn, err := webauthn.New(user.Extra.WebAuthn.Config)
+	if err != nil {
+		return err
+	}
+	credential, err := webAuthn.FinishLogin(user, session, c.Request())
+	if err != nil {
+		return err
+	}
+	for k, v := range user.Extra.WebAuthn.Credentials {
+		if slices.Equal(v.ID, credential.ID) {
+			user.Extra.WebAuthn.Credentials[k] = *credential
+		}
+	}
+	return user.Update()
 }
 
 func (user *User) IsAnonymous() bool {
@@ -176,14 +303,21 @@ func GetUserByToken(token string) (*User, error) {
 	return user, nil
 }
 
+func GetUserByAccount(account string) (*User, error) {
+	result := db.QueryRowx("SELECT * FROM users WHERE email = ? OR username = ?", account, account)
+	user := &User{}
+	err := result.StructScan(user)
+	if err != nil || user.Password == "" {
+		return nil, ErrNotFoundOrPasswordWrong
+	}
+	return user, nil
+}
+
 func GetUser(uid int64) (*User, error) {
 	result := db.QueryRowx("SELECT * FROM users WHERE uid = ?", uid)
 	user := &User{}
 	err := result.StructScan(user)
-	if err != nil {
-		return nil, ErrNotFoundOrPasswordWrong
-	}
-	if user.Password == "" {
+	if err != nil || user.Password == "" {
 		return nil, ErrNotFoundOrPasswordWrong
 	}
 	return user, nil

@@ -34,6 +34,7 @@ type Pastebin_Config struct {
 	UserCookieMaxAge    int     `yaml:"user_cookie_max_age"`
 	PasteAssessTokenAge int     `yaml:"paste_assess_token_age"`
 	CustomTemplateDir   string  `yaml:"custom_template_dir"`
+	SessionCookie       string  `yaml:"session_cookie"`
 	dataDir             *string `yaml:"-"`
 }
 
@@ -46,6 +47,7 @@ var Config *Pastebin_Config = &Pastebin_Config{
 	AllowAnonymous:      true,
 	UserCookieMaxAge:    86400 * 30,
 	PasteAssessTokenAge: 86400,
+	SessionCookie:       "PASTEBIN_SESSION",
 	CustomTemplateDir:   "",
 	dataDir:             flag.String("data", "/var/lib/go-pastebin", "Data directory"),
 }
