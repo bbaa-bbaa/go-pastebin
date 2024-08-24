@@ -23,6 +23,7 @@ import (
 	"cgit.bbaa.fun/bbaa/go-pastebin/logger"
 	"github.com/fatih/color"
 	"github.com/go-co-op/gocron/v2"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -69,10 +70,20 @@ func RenameOldDatabaseColumn() {
 	db.Exec("ALTER TABLE pastes RENAME COLUMN `delete_if_expire` TO `delete_if_not_available`")
 }
 
+func InitWebAuthn() (err error) {
+	webAuthn, err = webauthn.New(Config.webauthnConfig)
+	if err != nil {
+		log.Error("初始化WebAuthn失败: ", err)
+		os.Exit(1)
+	}
+	return err
+}
+
 func PostInit() {
 	if *ResetAdminFlag {
 		ResetAdmin()
 	}
+	InitWebAuthn()
 	RenameOldDatabaseColumn()
 	ResetHoldCount()
 	s, _ := gocron.NewScheduler()

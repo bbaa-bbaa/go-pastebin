@@ -309,7 +309,7 @@ func UserWebAuthnLoginRequest(c echo.Context) error {
 	}
 	assertion, webauthn_session, err := user.LoginWebAuthnRequest()
 	if err != nil {
-		c.JSON(200, map[string]any{"code": -1, "error": "fail to begin login"})
+		c.JSON(200, map[string]any{"code": -1, "error": err.Error()})
 		return nil
 	}
 	session_name := fmt.Sprint("webauthn_session_", rand.Int())
@@ -370,7 +370,7 @@ func UserWebAuthnDiscoverableLoginRequest(c echo.Context) error {
 	}
 	assertion, webauthn_session, err := database.UserDiscoverableLoginRequest()
 	if err != nil {
-		c.JSON(200, map[string]any{"code": -1, "error": "fail to begin login"})
+		c.JSON(200, map[string]any{"code": -1, "error": err.Error()})
 		return nil
 	}
 	session_name := fmt.Sprint("webauthn_session_", rand.Int())
@@ -399,7 +399,7 @@ func UserWebAuthnDiscoverableLogin(c echo.Context) error {
 	session.Del(session_name)
 	user, err := database.UserDiscoverableLogin(c, webauthn_session)
 	if err != nil {
-		c.JSON(200, map[string]any{"code": -1, "error": "fail to login"})
+		c.JSON(200, map[string]any{"code": -1, "error": err.Error()})
 		return nil
 	}
 	token := user.Token()
@@ -422,7 +422,7 @@ func UserWebAuthnList(c echo.Context) error {
 		return nil
 	}
 	if user.Extra.WebAuthn == nil {
-		c.JSON(200, map[string]any{"code": 0, "info": []string{}})
+		c.JSON(200, map[string]any{"code": 0, "credentials": []string{}})
 		return nil
 	}
 	type CredentialInfo struct {

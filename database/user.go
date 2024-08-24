@@ -86,6 +86,8 @@ func (e *User_Extra) Value() (driver.Value, error) {
 	return string(encoded), nil
 }
 
+var webAuthn *webauthn.WebAuthn
+
 func (user *User) WebAuthnID() []byte {
 	return user.Extra.WebAuthn.Id
 }
@@ -120,11 +122,6 @@ func (user *User) RegisterWebAuthnRequest(credential_name string, passkey bool) 
 	if _, ok := user.Extra.WebAuthn.Credentials[credential_name]; ok {
 		return nil, nil, fmt.Errorf("name already exists")
 	}
-
-	webAuthn, err := webauthn.New(Config.webauthnConfig)
-	if err != nil {
-		return nil, nil, err
-	}
 	credentials := user.WebAuthnCredentials()
 	register_options := []webauthn.RegistrationOption{}
 	if len(credentials) > 0 {
@@ -153,10 +150,6 @@ func (user *User) RegisterWebAuthn(c echo.Context, session webauthn.SessionData,
 	if _, ok := user.Extra.WebAuthn.Credentials[credential_name]; ok {
 		return fmt.Errorf("name already exists")
 	}
-	webAuthn, err := webauthn.New(Config.webauthnConfig)
-	if err != nil {
-		return err
-	}
 	credential, err := webAuthn.FinishRegistration(user, session, c.Request())
 	if err != nil {
 		return err
@@ -181,9 +174,8 @@ func (user *User) LoginWebAuthnRequest() (assertion *protocol.CredentialAssertio
 	if user.Extra.WebAuthn == nil {
 		return nil, nil, fmt.Errorf("no webauthn config")
 	}
-	webAuthn, err := webauthn.New(Config.webauthnConfig)
-	if err != nil {
-		return nil, nil, err
+	if len(user.Extra.WebAuthn.Credentials) == 0 {
+		return nil, nil, fmt.Errorf("no webauthn credentials")
 	}
 	assertion, session, err = webAuthn.BeginLogin(user)
 	if err != nil {
@@ -196,10 +188,7 @@ func (user *User) LoginWebAuthn(c echo.Context, session webauthn.SessionData) er
 	if user.Extra.WebAuthn == nil {
 		return fmt.Errorf("no webauthn config")
 	}
-	webAuthn, err := webauthn.New(Config.webauthnConfig)
-	if err != nil {
-		return err
-	}
+
 	credential, err := webAuthn.FinishLogin(user, session, c.Request())
 	if err != nil {
 		return err
@@ -230,10 +219,6 @@ func (user *User) RemoveWebAuthnCredential(credential_name string) error {
 }
 
 func UserDiscoverableLoginRequest() (assertion *protocol.CredentialAssertion, session *webauthn.SessionData, err error) {
-	webAuthn, err := webauthn.New(Config.webauthnConfig)
-	if err != nil {
-		return nil, nil, err
-	}
 	assertion, session, err = webAuthn.BeginDiscoverableLogin()
 	if err != nil {
 		return nil, nil, err
@@ -252,10 +237,6 @@ func UserDiscoverableHandle(rawID, userHandle []byte) (webauthn.User, error) {
 }
 
 func UserDiscoverableLogin(c echo.Context, session webauthn.SessionData) (*User, error) {
-	webAuthn, err := webauthn.New(Config.webauthnConfig)
-	if err != nil {
-		return nil, err
-	}
 	var user *User
 	credential, err := webAuthn.FinishDiscoverableLogin(func(rawID, userHandle []byte) (webauthn.User, error) {
 		u, err := UserDiscoverableHandle(rawID, userHandle)
