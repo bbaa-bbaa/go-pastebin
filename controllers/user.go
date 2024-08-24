@@ -19,7 +19,9 @@ import (
 	"math/rand"
 	"net/http"
 	"net/mail"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"cgit.bbaa.fun/bbaa/go-pastebin/database"
@@ -426,12 +428,26 @@ func UserWebAuthnList(c echo.Context) error {
 		return nil
 	}
 	type CredentialInfo struct {
-		Name    string `json:"name"`
-		Passkey bool   `json:"passkey"`
+		Name      string    `json:"name"`
+		Passkey   bool      `json:"passkey"`
+		CreatedAt time.Time `json:"created_at"`
 	}
-	c.JSON(200, map[string]any{"code": 0, "credentials": lo.MapToSlice(user.Extra.WebAuthn.Credentials, func(name string, credential *database.User_WebAuthn_Credential) CredentialInfo {
-		return CredentialInfo{Name: name, Passkey: credential.Passkey}
-	})})
+
+	credentials := lo.MapToSlice(user.Extra.WebAuthn.Credentials, func(name string, credential *database.User_WebAuthn_Credential) CredentialInfo {
+		return CredentialInfo{Name: name, Passkey: credential.Passkey, CreatedAt: credential.CreatedAt}
+	})
+
+	slices.SortFunc(credentials, func(a, b CredentialInfo) int {
+		if a.CreatedAt.Before(b.CreatedAt) {
+			return -1
+		}
+		if a.CreatedAt.After(b.CreatedAt) {
+			return 1
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+
+	c.JSON(200, map[string]any{"code": 0, "credentials": credentials})
 	return nil
 }
 

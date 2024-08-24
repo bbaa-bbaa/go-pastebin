@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/go-webauthn/webauthn/protocol"
@@ -51,6 +52,7 @@ type User struct {
 type User_WebAuthn_Credential struct {
 	webauthn.Credential `json:"credential"`
 	Passkey             bool `json:"passkey"`
+	CreatedAt           time.Time
 }
 
 type User_WebAuthn struct {
@@ -161,6 +163,7 @@ func (user *User) RegisterWebAuthn(c echo.Context, session webauthn.SessionData,
 	user.Extra.WebAuthn.Credentials[credential_name] = &User_WebAuthn_Credential{
 		Passkey:    passkey,
 		Credential: *credential,
+		CreatedAt:  time.Now(),
 	}
 	return user.Update()
 }

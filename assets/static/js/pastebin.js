@@ -1686,16 +1686,25 @@
         <li class="mdui-list-item mdui-ripple">
           <i class="mdui-list-item-icon mdui-icon material-icons">fingerprint</i>
           <div class="mdui-list-item-content">
+          <div>
           ${credential.name}
         `;
         if (credential.passkey) {
           item_html += `
-            <div class="mdui-chip">
+            <div class="mdui-chip mdui-m-l-1">
               <span class="mdui-chip-title">Passkey</span>
             </div>
-          `;  
+          `;
         }
-        item_html+=`</div>
+        let created_at = new Date(credential.created_at);
+        item_html += `
+        </div>
+          <div class="mdui-text-right mdui-text-color-gray">
+            <small>${(created_at.toISOString().substring(0, 10))}</small>
+          </div>
+          </div>
+        `;
+        item_html += `
           <i class="mdui-list-item-icon mdui-icon material-icons user-profile-webauthn-manage-del">delete</i>
         </li>
         `;
