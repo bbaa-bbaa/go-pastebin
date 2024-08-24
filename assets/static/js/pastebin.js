@@ -1433,6 +1433,7 @@
           }
           user_profile_view.show();
           user_profile_edit.hide();
+          user_profile_webauthn_manage.hide();
           user_profile_dialog.handleUpdate();
         } else {
           user_profile_dialog.close();
