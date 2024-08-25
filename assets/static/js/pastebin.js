@@ -214,7 +214,7 @@
         if (item === target) {
           result = item.open();
         } else {
-          item.close().catch(() => { });
+          item.close().catch(() => {});
         }
       }
       return result;
@@ -471,7 +471,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () { });
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () {});
           new_paste_result_link.closest(".mdui-card").find(".paste-link").show();
           new_paste_result_qr_code.show();
         } else {
@@ -949,7 +949,7 @@
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) { }
+        } catch (e) {}
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
@@ -999,7 +999,7 @@
               action_unlock();
             }
           }
-        }).catch(() => { });
+        }).catch(() => {});
       }
 
       paste_viewer_query_btn.on("click", function () {
@@ -1022,7 +1022,7 @@
               paste_viewer_file_preview_element = null;
             }
           })
-          .catch(() => { });
+          .catch(() => {});
       });
 
       paste_viewer_confirm_password.on("click", function () {
@@ -1483,13 +1483,19 @@
 
       login_form.on("submit", function (e) {
         e.preventDefault();
+        let account = login_username.val();
+        let password = login_password.val();
+        if (account.length == 0 || password.length == 0) {
+          mdui.snackbar("用户或密码不能为空");
+          return;
+        }
         login_dialog_action.attr("disabled", "disabled");
         $.ajax({
           method: "POST",
           url: "api/user/login",
           data: JSON.stringify({
-            account: login_username.val(),
-            password: login_password.val()
+            account: account,
+            password: password
           }),
           contentType: "application/json",
           complete: function (xhr) {
@@ -1593,9 +1599,11 @@
           method: passkey ? "GET" : "POST",
           url: passkey ? "api/user/webauthn/passkey/login/request" : "api/user/webauthn/login/request",
           contentType: "application/json",
-          data: passkey ? null : JSON.stringify({
-            account: account
-          }),
+          data: passkey
+            ? null
+            : JSON.stringify({
+                account: account
+              }),
           processData: false,
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText || "");
@@ -1657,7 +1665,6 @@
               mdui.snackbar("登录失败: " + response.error);
               login_dialog_action.removeAttr("disabled");
             }
-
           }
         });
       });
@@ -1700,7 +1707,7 @@
         item_html += `
         </div>
           <div class="mdui-text-right mdui-text-color-gray">
-            <small>${(created_at.toISOString().substring(0, 10))}</small>
+            <small>${created_at.toISOString().substring(0, 10)}</small>
           </div>
           </div>
         `;
