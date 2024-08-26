@@ -38,6 +38,7 @@ type Pastebin_Config struct {
 	PasteAssessTokenAge int              `yaml:"paste_assess_token_age"`
 	CustomTemplateDir   string           `yaml:"custom_template_dir"`
 	SessionCookie       string           `yaml:"session_cookie"`
+	DefaultColorScheme  string           `yaml:"default_color_scheme"`
 	dataDir             *string          `yaml:"-"`
 	webauthnConfig      *webauthn.Config `yaml:"-"`
 }
@@ -47,12 +48,13 @@ var Config *Pastebin_Config = &Pastebin_Config{
 	SiteTitle:           "",
 	SiteDomain:          "go-pastebin.app",
 	WebauthnOrigins:     []string{"https://go-pastebin.app"},
-	SupportNoFilename:   true,
 	Mode:                "release",
+	SupportNoFilename:   true,
 	AllowHTML:           false,
 	AllowAnonymous:      true,
 	UserCookieMaxAge:    86400 * 30,
 	PasteAssessTokenAge: 86400,
+	DefaultColorScheme:  "light",
 	SessionCookie:       "PASTEBIN_SESSION",
 	CustomTemplateDir:   "",
 	dataDir:             flag.String("data", "/var/lib/go-pastebin", "Data directory"),

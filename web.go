@@ -159,9 +159,16 @@ func setupIndex() {
 		if user, ok := c.Get("user").(*database.User); ok {
 			is_login = user != nil
 		}
-		color_scheme := "light"
-		if user_color_scheme, err := c.Cookie("color_scheme"); err == nil {
+		color_scheme := database.Config.DefaultColorScheme
+		if user_color_scheme, err := c.Cookie("color_scheme"); err == nil && user_color_scheme.Value != "" {
 			color_scheme = user_color_scheme.Value
+		} else {
+			c.SetCookie(&http.Cookie{
+				Name:     "color_scheme",
+				Value:    color_scheme,
+				Path:     "/",
+				HttpOnly: false,
+			})
 		}
 		err := c.Render(200, "index.html", map[string]any{
 			"SiteName":       database.Config.SiteName,

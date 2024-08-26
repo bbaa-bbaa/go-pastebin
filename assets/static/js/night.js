@@ -1,5 +1,9 @@
 (function nightMode() {
-  let nightMode = localStorage.getItem("isNightMode") === "true";
+  function getCookie(name) {
+    let cookie = document.cookie.split(";").find((cookie) => cookie.trim().startsWith(`${name}=`));
+    return cookie ? cookie.split("=")[1] : null;
+  }
+  let nightMode = getCookie("color_scheme") === "dark";
   function setMode() {
     if (nightMode) {
       if (!document.body.classList.contains("mdui-theme-layout-dark")) {
@@ -25,7 +29,6 @@
     }
     nightModeSwitchBtn.addEventListener("click", function () {
       nightMode = !nightMode;
-      localStorage.setItem("isNightMode", nightMode);
       setMode();
       setIcon();
     });
