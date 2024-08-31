@@ -311,7 +311,7 @@ func (p *Paste) Path() string {
 
 func (p *Paste) UpdateMetadata() error {
 	p.CreatedAt = time.Now()
-	_, err := db.Exec(`UPDATE pastes SET hash = ?, password = ?, expire_after = ?, access_count = ?, max_access_count = ?, delete_if_not_available = ?, hold_count = ?, hold_before = ?, extra = ?, created_at = ? WHERE uuid = ?`,
+	_, err := db.Exec(`UPDATE pastes SET hash = ?, password = ?, expire_after = ?, access_count = ?, max_access_count = ?, delete_if_not_available = ?, hold_count = ?, hold_before = ?, extra = ?, uid = ?, created_at = ? WHERE uuid = ?`,
 		p.Hash,
 		p.Password,
 		p.ExpireAfter,
@@ -321,6 +321,7 @@ func (p *Paste) UpdateMetadata() error {
 		p.HoldCount,
 		p.HoldBefore,
 		p.Extra,
+		p.UID,
 		p.CreatedAt,
 		p.UUID,
 	)
