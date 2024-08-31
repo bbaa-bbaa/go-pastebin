@@ -16,7 +16,11 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="static/mdui/css/mdui.min.css" />
     <link rel="stylesheet" href="static/css/night.css" />
+    {{- if eq .ColorScheme "dark"}}
+    <link rel="stylesheet" href="static/highlight/styles/github-dark.min.css" />
+    {{- else }}
     <link rel="stylesheet" href="static/highlight/styles/github.min.css" />
+    {{- end}}
     <title>{{.SiteTitle}}</title>
     <style>
       @font-face {
@@ -122,7 +126,9 @@
       }
 
       .card-collapse {
-        transition: height 0.6s ease-out;
+        transition:
+          height 0.6s ease-out,
+          margin 0.6s ease-out;
         height: 0px;
         overflow: hidden;
       }
@@ -131,6 +137,7 @@
       body.mdui-loaded .mdui-card.card-collapse {
         transition:
           height 0.6s ease-out,
+          margin 0.6s ease-out,
           background-color 0.3s ease-out,
           color 0.3s ease-out;
       }
@@ -399,7 +406,14 @@
                   </div>
                 </div>
                 <div class="mdui-row">
-                  <div class="mdui-col-xs-12">
+                  <div class="mdui-col-xs-12 mdui-m-y-1">
+                    <div class="mdui-float-left">
+                      <label class="mdui-checkbox">
+                        探测 mime-type
+                        <input id="new-paste-detect-mime" type="checkbox" />
+                        <i class="mdui-checkbox-icon"></i>
+                      </label>
+                    </div>
                     <div class="mdui-float-right">
                       <label class="mdui-checkbox">
                         不再可用后删除 Paste
@@ -536,8 +550,8 @@
             <div class="mdui-container-fluid">
               <div class="mdui-row">
                 <div class="mdui-col-xs-12">
-                  <div id="paste-viewer-text-content-wrapper" class="card-collapse card-collapse-open mdui-p-a-2" style="overflow-x: scroll">
-                    <div style="display: inline-block">此处是 Paste 内容 动态加载 Paste 中</div>
+                  <div id="paste-viewer-text-content-wrapper" class="card-collapse">
+                    <div style="overflow-x: auto">此处是 Paste 内容 动态加载 Paste 中</div>
                   </div>
                 </div>
               </div>
@@ -847,6 +861,39 @@
         </form>
       </div>
     </div>
+    <script>
+      (function nightMode() {
+        function getCookie(name) {
+          let cookie = document.cookie.split(";").find(cookie => cookie.trim().startsWith(`${name}=`));
+          return cookie ? cookie.split("=")[1] : null;
+        }
+        let nightMode = getCookie("color_scheme") === "dark";
+        function changeMode() {
+          const highlightjsStylesheet = document.querySelector("link[rel=stylesheet][href^='static/highlight']");
+          if (highlightjsStylesheet) {
+            if (nightMode) {
+              highlightjsStylesheet.href = highlightjsStylesheet.href.replace("github.min.css", "github-dark.min.css");
+            } else {
+              highlightjsStylesheet.href = highlightjsStylesheet.href.replace("github-dark.min.css", "github.min.css");
+            }
+          }
+        }
+        function registerNightModeSwitchBtn() {
+          const nightModeSwitchBtn = document.getElementById("switch-nightmode-btn");
+          nightModeSwitchBtn.addEventListener("click", function () {
+            nightMode = !nightMode;
+            changeMode();
+          });
+          changeMode(); // best effort
+        }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", registerNightModeSwitchBtn);
+          changeMode();
+        } else {
+          registerNightModeSwitchBtn();
+        }
+      })();
+    </script>
     <script src="static/mdui/js/mdui.min.js"></script>
     <script src="static/lodash/js/lodash.min.js"></script>
     <script src="static/purify/js/purify.min.js"></script>

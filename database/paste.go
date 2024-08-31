@@ -407,7 +407,7 @@ func (p *Paste) save(paste_file *os.File) error {
 	var mime_detector *io.PipeWriter
 	var mime_result chan string
 	mime_detect_complete_flag := true
-	if p.Extra.MimeType == "" || strings.HasPrefix(p.Extra.MimeType, "text/") && !strings.Contains(p.Extra.MimeType, "charset=") {
+	if p.Extra.MimeType == "" || p.Extra.MimeType == "application/vnd.pastebin.detect" || strings.HasPrefix(p.Extra.MimeType, "text/") && !strings.Contains(p.Extra.MimeType, "charset=") {
 		mime_detect_complete_flag = false
 		mime_detector, mime_result = p.mimeTypeDetector(p.Extra.MimeType)
 	}

@@ -1,21 +1,14 @@
-body.mdui-loaded {
-  transition:
-    background-color 0.3s ease-out,
-    color 0.3s ease-out;
-}
-
+body.mdui-loaded,
 body.mdui-loaded .mdui-appbar .mdui-toolbar,
 body.mdui-loaded .mdui-appbar .mdui-tab,
-body.mdui-loaded .mdui-card {
+body.mdui-loaded .mdui-card,
+body.mdui-loaded .mdui-panel-item .mdui-panel-item-title,
+body.mdui-loaded .mdui-panel-item .mdui-panel-item-summary {
   transition:
     background-color 0.3s ease-out,
     color 0.3s ease-out;
 }
 
-body.mdui-loaded .mdui-panel-item,
-body.mdui-loaded .mdui-panel-item .mdui-panel-item-summary,
-body.mdui-loaded .mdui-panel-item .mdui-panel-item-header {
-  transition:
-    all 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.3s ease-out;
+body.mdui-loaded .mdui-panel-item {
+  transition: background-color 0.3s ease-out;
 }

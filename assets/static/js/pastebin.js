@@ -37,7 +37,7 @@
       e.preventDefault();
     });
 
-    let container = $("body > div.mdui-container").get(0);
+    const container = $("body > div.mdui-container").get(0);
     let config = {
       allow_anonymous: document.querySelector("meta[name='x-allow-anonymous']").content === "true"
     };
@@ -96,22 +96,19 @@
 
     update_user_info();
 
-    function Collapse(jq, heightBox, margin, max_height) {
+    function Collapse(jq, heightBox, margin) {
       this.$ = jq;
       this.transition_element = jq.get(0);
       this.height_element = (heightBox || jq).get(0);
       this.expand = this.$.hasClass("card-collapse-open");
       this.set_auto = false;
       this.margin = margin === undefined ? 16 : margin;
-      this.max_height = max_height === undefined ? document.documentElement.clientHeight - container.offsetTop : max_height;
-      this.transition_counter = 0;
       this._callback = null;
       this._pendingCallback = null;
       this.$.on("transitionstart", e => {
         if (e.target != this.transition_element) {
           return;
         }
-        this.transition_counter++;
         if (this._pendingCallback) {
           this._callback = this._pendingCallback;
           this._pendingCallback = null;
@@ -121,9 +118,8 @@
         if (e.target != this.transition_element) {
           return;
         }
-        this.transition_counter--;
         if (this._callback) {
-          this._callback.cancel();
+          // this._callback.cancel();
           this._callback = null;
         }
       });
@@ -131,11 +127,8 @@
         if (e.target != this.transition_element) {
           return;
         }
-        this.transition_counter--;
-        if (this.set_auto && this.transition_counter == 0) {
-          if (heightBox) {
-            this.$.css("height", this.height_element.scrollHeight + "px");
-          } else {
+        if (this.set_auto) {
+          if (!heightBox) {
             this.$.css("height", "auto");
           }
         }
@@ -148,17 +141,24 @@
 
     Collapse.prototype.fixed = function () {
       if (this.expand) {
-        this.$.css("height", this.height_element.scrollHeight + "px");
+        this.$.css("height", Math.min(this.height_element.scrollHeight, this.transition_element.offsetHeight + document.documentElement.clientHeight - container.offsetTop) + "px");
       }
     };
 
     Collapse.prototype.close = function (fixed) {
+      if (this.$.css("height") == "0px") {
+        return Promise.resolve();
+      }
       this.set_auto = false;
       if (!fixed) {
         this.fixed();
         return new Promise((complete, cancel) => {
           this._pendingCallback = { complete, cancel };
           requestAnimationFrame(() => {
+            if (this._pendingCallback == null || this._pendingCallback.complete != complete) {
+              // avoid race
+              return; // just cancel
+            }
             this.close(true);
           });
         });
@@ -169,18 +169,25 @@
       if (this.margin !== undefined) {
         this.$.css("margin", "0");
       }
+      return Promise.resolve();
     };
 
+    Collapse.prototype.targetHeight = function () {
+      return this.height_element.scrollHeight;
+    }
+
     Collapse.prototype.open = function () {
+      let targetHeight = this.targetHeight();
+      if (this.transition_element == this.height_element) {
+        if (this.$.css("height") == targetHeight + "px" || this.$.css("height") == "auto") {
+          return Promise.resolve();
+        }
+      }
       return new Promise((complete, cancel) => {
         this._pendingCallback = { complete, cancel };
         this.set_auto = true;
         this.expand = true;
-        if (this.max_height != 0) {
-          this.$.css("height", Math.min(this.height_element.scrollHeight, this.$.innerHeight() + this.max_height) + "px");
-        } else {
-          this.$.css("height", this.height_element.scrollHeight + "px");
-        }
+        this.$.css("height", targetHeight + "px");
         if (this.margin !== undefined) {
           this.$.css("margin", this.margin + "px 0");
         }
@@ -214,7 +221,7 @@
         if (item === target) {
           result = item.open();
         } else {
-          item.close().catch(() => {});
+          item.close();
         }
       }
       return result;
@@ -234,6 +241,7 @@
       const paste_max_access_count = $("#new-paste-max-access-count");
       const paste_uuid = $("#new-paste-uuid");
       const paste_short_url = $("#new-paste-short-url");
+      const paste_detect_mime = $("#new-paste-detect-mime");
       const paste_delete_if_not_available = $("#new-paste-delete-if-not-available");
       const paste_delete = $("#new-paste-delete");
       const paste_update = $("#new-paste-update");
@@ -471,7 +479,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () {});
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () { });
           new_paste_result_link.closest(".mdui-card").find(".paste-link").show();
           new_paste_result_qr_code.show();
         } else {
@@ -506,7 +514,7 @@
       }
 
       function hide_result() {
-        result_collapse.close();
+        return result_collapse.close();
       }
 
       function upload_progress(e) {
@@ -525,6 +533,7 @@
         let max_access_count = paste_max_access_count.val();
         let short_url = paste_short_url.val();
         let delete_if_not_available = paste_delete_if_not_available.prop("checked");
+        let detect_mime = paste_detect_mime.prop("checked");
         let data = new FormData();
         let query_params = {};
         if (password.length != 0) {
@@ -556,6 +565,9 @@
         }
 
         if (paste_file) {
+          if (detect_mime) {
+            paste_file = new File([paste_file], paste_file.name, { type: "application/vnd.pastebin.detect" });
+          }
           data.append("c", paste_file);
         } else {
           data.append("c", new File([text], text_file.filename || "-", { type: text_file.mime_type == "" ? "text/plain; charset=utf-8" : text_file.mime_type }));
@@ -563,12 +575,12 @@
         return { data, query_params };
       }
 
-      paste_submit.on("click", function () {
+      paste_submit.on("click", async function () {
         let prepared_data = prepare_data();
         let data = prepared_data.data;
         let query_params = prepared_data.query_params;
         action_button.attr("disabled", "disabled");
-        hide_result();
+        await hide_result();
         const query_string = $.param(query_params).trim();
         $.ajax({
           method: "POST",
@@ -609,7 +621,7 @@
         });
       });
 
-      paste_update.on("click", function () {
+      paste_update.on("click", async function () {
         let uuid = paste_uuid.val();
         if (!check_uuid(uuid) || uuid.length == 0) {
           mdui.snackbar("无效的 UUID");
@@ -623,7 +635,7 @@
         let query_params = prepared_data.query_params;
 
         action_button.attr("disabled", "disabled");
-        hide_result();
+        await hide_result();
         const query_string = $.param(query_params).trim();
         $.ajax({
           method: "PUT",
@@ -664,15 +676,14 @@
         });
       });
 
-      function delete_paste(force) {
+      async function delete_paste(force) {
         let uuid = paste_uuid.val();
         if (!check_uuid(uuid) || uuid.length == 0) {
           mdui.snackbar("无效的 UUID");
           return;
         }
-
         action_button.attr("disabled", "disabled");
-        hide_result();
+        await hide_result();
         $.ajax({
           method: "DELETE",
           url: uuid + (force ? "?force=true" : ""),
@@ -863,7 +874,10 @@
         }
       }
 
-      let collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0);
+      const collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0);
+      collapse_paste_viewer_text_content.targetHeight = function () {
+        return paste_viewer_text_content.get(0).offsetHeight;
+      }
       function paste_preview_text_render(init) {
         if (!paste_viewer_enable_highlight_js.prop("checked")) {
           paste_viewer_highlight_language.closest(".mdui-row").hide();
@@ -949,10 +963,11 @@
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) {}
+        } catch (e) { }
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
+
       function action_lock() {
         paste_viewer_action.attr("disabled", "disabled");
         paste_viewer_progress.show();
@@ -999,7 +1014,7 @@
               action_unlock();
             }
           }
-        }).catch(() => {});
+        })
       }
 
       paste_viewer_query_btn.on("click", function () {
@@ -1016,13 +1031,15 @@
         collapse_manager.paste_viewer_query
           .open()
           .then(() => {
-            console.log("remove preview");
-            if (paste_viewer_file_preview_element) {
-              paste_viewer_file_preview_element.remove();
-              paste_viewer_file_preview_element = null;
-            }
+            paste_viewer_back_to_query.trigger("pastebin.viewer.clean");
           })
-          .catch(() => {});
+      });
+
+      paste_viewer_back_to_query.on("pastebin.viewer.clean", function () {
+        if (paste_viewer_file_preview_element) {
+          paste_viewer_file_preview_element.remove();
+          paste_viewer_file_preview_element = null;
+        }
       });
 
       paste_viewer_confirm_password.on("click", function () {
@@ -1105,7 +1122,10 @@
       paste_viewer_back_to_query.on("click", function () {
         if (paste_viewer_back_to_manage) {
           paste_viewer_back_to_manage = false;
-          paste_app_tab.show(2);
+          setTimeout(() => {
+            paste_app_tab.show(2);
+            paste_viewer_back_to_query.trigger("pastebin.viewer.clean");
+          }, 600);
         }
       });
 
@@ -1184,10 +1204,8 @@
           new_paste_uuid.val(uuid);
           new_paste_uuid.get(0).dispatchEvent(new Event("input"));
           paste_app_tab.show(0);
-          setTimeout(() => {
-            paste_force_delete = true;
-            new_paste_delete.click();
-          }, 600);
+          paste_force_delete = true;
+          new_paste_delete.click();
         });
 
         paste_manage_edit_btn.on("click", function (e) {
@@ -1602,8 +1620,8 @@
           data: passkey
             ? null
             : JSON.stringify({
-                account: account
-              }),
+              account: account
+            }),
           processData: false,
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText || "");
