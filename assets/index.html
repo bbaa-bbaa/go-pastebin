@@ -60,12 +60,6 @@
         border-bottom: 1px solid rgba(0, 0, 0, 0.42);
       }
 
-      .new-paste-action-button,
-      .new-paste-viewer-action,
-      .login-dialog-action {
-        transition: background-color 0.6s ease;
-      }
-
       .user-profile-view ul.mdui-list .mdui-list-item-content {
         word-break: keep-all;
       }
@@ -160,6 +154,26 @@
         line-height: 1;
       }
 
+      @media (min-width:600px) {
+        .new-paste-delete-if-not-available {
+          text-align: right;
+        }
+      }
+      
+      .new-paste-action-button,
+      .new-paste-viewer-action,
+      .login-dialog-action {
+        transition: background-color 0.6s ease;
+      }
+
+      #new-paste-result-copy,
+      .paste-manage-copy-url-btn {
+        z-index: 1;
+        transition:
+          color 0.3s ease-out,
+          background-color 0.3s ease-out;
+      }
+
       .paste-viewer-progress,
       .user-profile-dialog-progress {
         display: none;
@@ -171,14 +185,6 @@
         position: absolute;
         border-radius: 0;
         bottom: 0;
-      }
-
-      #new-paste-result-copy,
-      .paste-manage-copy-url-btn {
-        z-index: 1;
-        transition:
-          color 0.3s ease-out,
-          background-color 0.3s ease-out;
       }
 
       .hljs-ln-numbers {
@@ -227,6 +233,7 @@
         background-color: inherit;
       }
     </style>
+
     <script>
       if ("serviceWorker" in navigator) {
         try {
@@ -255,10 +262,10 @@
       <div class="mdui-toolbar mdui-color-theme">
         <a href="javascript:;" class="mdui-typo-title">{{.SiteName}}</a>
         <div class="mdui-toolbar-spacer"></div>
-        <button href="javascript:;" class="mdui-btn mdui-btn-icon" id="account-dialog-btn">
+        <button type="button" href="javascript:;" class="mdui-btn mdui-btn-icon" id="account-dialog-btn">
           <i class="mdui-icon material-icons">account_circle</i>
         </button>
-        <button class="mdui-btn mdui-btn-icon" id="switch-nightmode-btn">
+        <button type="button" class="mdui-btn mdui-btn-icon" id="switch-nightmode-btn">
           {{- if eq .ColorScheme "dark"}}
           <i class="mdui-icon material-icons">brightness_high</i>
           <i class="mdui-icon material-icons" style="display: none">brightness_2</i>
@@ -290,7 +297,7 @@
         {{- end}}
         <div id="new-paste-result" class="mdui-card card-collapse">
           <div class="mdui-card-primary">
-            <button class="mdui-btn mdui-btn-icon mdui-ripple mdui-float-right paste-link result-copy-btn" id="new-paste-result-copy">
+            <button type="button" class="mdui-btn mdui-btn-icon mdui-ripple mdui-float-right paste-link result-copy-btn" id="new-paste-result-copy">
               <i class="mdui-icon material-icons">content_copy</i>
             </button>
             <div class="mdui-card-primary-title" id="new-paste-result-title"></div>
@@ -406,38 +413,38 @@
                   </div>
                 </div>
                 <div class="mdui-row">
-                  <div class="mdui-col-xs-12 mdui-m-y-1">
-                    <div class="mdui-float-left">
-                      <label class="mdui-checkbox">
-                        探测 mime-type
-                        <input id="new-paste-detect-mime" type="checkbox" />
-                        <i class="mdui-checkbox-icon"></i>
-                      </label>
-                    </div>
-                    <div class="mdui-float-right">
-                      <label class="mdui-checkbox">
-                        不再可用后删除 Paste
-                        <input id="new-paste-delete-if-not-available" type="checkbox" disabled />
-                        <i class="mdui-checkbox-icon"></i>
-                      </label>
-                    </div>
+                  <div class="mdui-col-xs-12 mdui-col-sm-6">
+                    <label class="mdui-checkbox">
+                      探测 mime-type
+                      <input id="new-paste-detect-mime" type="checkbox" />
+                      <i class="mdui-checkbox-icon"></i>
+                    </label>
+                  </div>
+                  <div class="mdui-col-xs-12 mdui-col-sm-6 new-paste-delete-if-not-available">
+                    <label class="mdui-checkbox">
+                      过期即删除
+                      <input id="new-paste-delete-if-not-available" type="checkbox" disabled />
+                      <i class="mdui-checkbox-icon"></i>
+                    </label>
                   </div>
                 </div>
                 <div class="mdui-row">
                   <div class="mdui-col-xs-12">
                     <input type="file" id="new-paste-file-input" style="display: none" />
-                    <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple" id="new-paste-load-from-file">从文件中加载</button>
+                    <button type="button" class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple" id="new-paste-load-from-file">从文件中加载</button>
                   </div>
                 </div>
                 <div class="mdui-row">
                   <div class="mdui-col-md-4 mdui-col-xs-6 mdui-m-t-1">
-                    <button class="mdui-btn mdui-btn-block mdui-color-red mdui-ripple new-paste-action-button" id="new-paste-delete" disabled>删除 Paste</button>
+                    <button type="button" class="mdui-btn mdui-btn-block mdui-color-red mdui-ripple new-paste-action-button" id="new-paste-delete" disabled>删除 Paste</button>
                   </div>
                   <div class="mdui-col-md-4 mdui-col-xs-6 mdui-m-t-1">
-                    <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple new-paste-action-button" id="new-paste-update" disabled>更新 Paste</button>
+                    <button type="button" class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple new-paste-action-button" id="new-paste-update" disabled>
+                      更新 Paste
+                    </button>
                   </div>
                   <div class="mdui-col-md-4 mdui-col-xs-12 mdui-m-t-1">
-                    <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple new-paste-action-button" id="new-paste-submit">创建 Paste</button>
+                    <button type="button" class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple new-paste-action-button" id="new-paste-submit">创建 Paste</button>
                   </div>
                 </div>
               </div>
@@ -458,22 +465,24 @@
             <div class="mdui-card-primary-title">Paste-Viewer</div>
           </div>
           <div class="mdui-card-content">
-            <div class="mdui-container-fluid">
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <i class="mdui-icon material-icons">search</i>
-                    <label class="mdui-textfield-label">Paste</label>
-                    <input id="paste-viewer-query-input" class="mdui-textfield-input paste-viewer-action" type="text" placeholder="输入需要查询的Paste Hash或短链接" />
+            <form id="paste-viewer-query-form" onsubmit="return false;">
+              <div class="mdui-container-fluid">
+                <div class="mdui-row">
+                  <div class="mdui-col-xs-12">
+                    <div class="mdui-textfield">
+                      <i class="mdui-icon material-icons">search</i>
+                      <label class="mdui-textfield-label">Paste</label>
+                      <input id="paste-viewer-query-input" class="mdui-textfield-input paste-viewer-action" type="text" placeholder="输入需要查询的Paste Hash或短链接" />
+                    </div>
+                  </div>
+                </div>
+                <div class="mdui-row">
+                  <div class="mdui-col-xs-12">
+                    <button type="submit" class="mdui-btn mdui-color-theme-accent mdui-ripple mdui-float-right paste-viewer-action" id="paste-viewer-query-btn">查询</button>
                   </div>
                 </div>
               </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <button class="mdui-btn mdui-color-theme-accent mdui-ripple mdui-float-right paste-viewer-action" id="paste-viewer-query-btn">查询</button>
-                </div>
-              </div>
-            </div>
+            </form>
           </div>
         </div>
 
@@ -486,7 +495,7 @@
             <div class="mdui-card-primary-subtitle">此 Paste 要求输入访问口令</div>
           </div>
           <div class="mdui-card-content">
-            <form onsubmit="return false;">
+            <form id="paste-viewer-password-form" onsubmit="return false;">
               <div class="mdui-container-fluid">
                 <div class="mdui-row">
                   <div class="mdui-col-xs-12">
@@ -505,8 +514,8 @@
                 <div class="mdui-row">
                   <div class="mdui-col-xs-12">
                     <div class="mdui-float-right">
-                      <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query paste-viewer-action">返回</button>
-                      <button id="paste-viewer-confirm-password" class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-action">确定</button>
+                      <button type="button" class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query paste-viewer-action">返回</button>
+                      <button type="submit" id="paste-viewer-confirm-password" class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-action">确定</button>
                     </div>
                   </div>
                 </div>
@@ -534,7 +543,7 @@
               <div class="mdui-row">
                 <div class="mdui-col-xs-12">
                   <div class="mdui-float-right">
-                    <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
+                    <button type="button" class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
                   </div>
                 </div>
               </div>
@@ -581,7 +590,7 @@
               <div class="mdui-row">
                 <div class="mdui-col-xs-12">
                   <div class="mdui-float-right">
-                    <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
+                    <button type="button" class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
                     <a class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-download-btn">下载</a>
                   </div>
                 </div>
@@ -610,7 +619,7 @@
               <div class="mdui-row">
                 <div class="mdui-col-xs-12">
                   <div class="mdui-float-right">
-                    <button class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
+                    <button type="button" class="mdui-btn mdui-color-blue-accent mdui-ripple paste-viewer-back-to-query">返回</button>
                     <a class="mdui-btn mdui-color-theme-accent mdui-ripple paste-viewer-download-btn">下载</a>
                   </div>
                 </div>
@@ -637,8 +646,8 @@
               <div class="mdui-row">
                 <div class="mdui-col-xs-12 mdui-m-t-1">
                   <div class="mdui-float-right">
-                    <button id="paste-manage-prev" class="mdui-btn mdui-ripple mdui-color-light-blue-accent mdui-text-color-white paste-manage-pager">上一页</button>
-                    <button id="paste-manage-next" class="mdui-btn mdui-ripple mdui-color-theme-accent paste-manage-pager">下一页</button>
+                    <button type="button" id="paste-manage-prev" class="mdui-btn mdui-ripple mdui-color-light-blue-accent mdui-text-color-white paste-manage-pager">上一页</button>
+                    <button type="button" id="paste-manage-next" class="mdui-btn mdui-ripple mdui-color-theme-accent paste-manage-pager">下一页</button>
                   </div>
                 </div>
               </div>
@@ -690,7 +699,7 @@
             </div>
             <div class="mdui-row mdui-m-b-1">
               <div class="mdui-col-xs-6">
-                <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple" id="user-profile-edit-btn">修改个人信息</button>
+                <button type="button" class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple" id="user-profile-edit-btn">修改个人信息</button>
               </div>
               <div class="mdui-col-xs-6">
                 <a class="mdui-btn mdui-btn-block mdui-color-red mdui-ripple" href="api/user/logout">登出</a>
@@ -698,7 +707,7 @@
             </div>
             <div class="mdui-row">
               <div class="mdui-col-xs-12">
-                <button class="mdui-btn mdui-btn-block mdui-text-color-light-blue mdui-ripple" id="user-profile-webauthn-manage-btn">
+                <button type="button" class="mdui-btn mdui-btn-block mdui-text-color-light-blue mdui-ripple" id="user-profile-webauthn-manage-btn">
                   <i class="mdui-icon material-icons" style="position: relative; top: -2px">fingerprint</i> 身份验证器管理
                 </button>
               </div>
@@ -740,10 +749,10 @@
               </div>
               <div class="mdui-row mdui-p-t-1">
                 <div class="mdui-col-xs-6">
-                  <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple user-profile-edit-action" id="user-profile-edit-return">返回</button>
+                  <button type="button" class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple user-profile-edit-action" id="user-profile-edit-return">返回</button>
                 </div>
                 <div class="mdui-col-xs-6">
-                  <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple user-profile-edit-action" id="user-profile-edit-confirm">确认</button>
+                  <button type="submit" class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple user-profile-edit-action" id="user-profile-edit-confirm">确认</button>
                 </div>
               </div>
             </form>
@@ -760,65 +769,79 @@
               </div>
               <div class="mdui-row mdui-p-t-1">
                 <div class="mdui-col-xs-6">
-                  <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple user-profile-webauthn-manage-action" id="user-profile-webauthn-manage-return">
+                  <button
+                    type="button"
+                    class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple user-profile-webauthn-manage-action"
+                    id="user-profile-webauthn-manage-return">
                     返回
                   </button>
                 </div>
                 <div class="mdui-col-xs-6">
-                  <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple user-profile-webauthn-manage-action" id="user-profile-webauthn-manage-add">
+                  <button
+                    type="button"
+                    class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple user-profile-webauthn-manage-action"
+                    id="user-profile-webauthn-manage-add">
                     添加新验证器
                   </button>
                 </div>
               </div>
             </div>
             <div class="mdui-container-fluid" id="user-profile-webauthn-manage-name" style="display: none">
-              <div id="user-profile-webauthn-manage-name-row">
-                <div class="mdui-row">
-                  <div class="mdui-col-xs-12">
-                    <div class="mdui-textfield">
-                      <label class="mdui-textfield-label">新验证器名称</label>
-                      <input id="user-profile-webauthn-manage-name-input" class="mdui-textfield-input" type="text" />
+              <form onsubmit="return false;">
+                <div id="user-profile-webauthn-manage-name-row">
+                  <div class="mdui-row">
+                    <div class="mdui-col-xs-12">
+                      <div class="mdui-textfield">
+                        <label class="mdui-textfield-label">新验证器名称</label>
+                        <input id="user-profile-webauthn-manage-name-input" class="mdui-textfield-input" type="text" />
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="mdui-row">
-                  <div class="mdui-col-xs-12">
-                    <div class="mdui-row">
-                      <div class="mdui-col-xs-12">
-                        <div class="mdui-float-right" mdui-tooltip="{content: '注册为 Passkey, 需要 rk, 免用户名'}">
-                          <label class="mdui-checkbox">
-                            Passkey
-                            <input id="user-profile-webauthn-manage-register-as-passkey" type="checkbox" />
-                            <i class="mdui-checkbox-icon"></i>
-                          </label>
+                  <div class="mdui-row">
+                    <div class="mdui-col-xs-12">
+                      <div class="mdui-row">
+                        <div class="mdui-col-xs-12">
+                          <div class="mdui-float-right" mdui-tooltip="{content: '注册为 Passkey, 需要 rk, 免用户名'}">
+                            <label class="mdui-checkbox">
+                              Passkey
+                              <input id="user-profile-webauthn-manage-register-as-passkey" type="checkbox" />
+                              <i class="mdui-checkbox-icon"></i>
+                            </label>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div id="user-profile-webauthn-manage-name-loading" class="mdui-m-b-1" style="display: none">
-                <div class="mdui-row mdui-text-center">
-                  <div class="mdui-col-xs-12">
-                    <div class="mdui-spinner" style="width: 32px; height: 32px"></div>
+                <div id="user-profile-webauthn-manage-name-loading" class="mdui-m-b-1" style="display: none">
+                  <div class="mdui-row mdui-text-center">
+                    <div class="mdui-col-xs-12">
+                      <div class="mdui-spinner" style="width: 32px; height: 32px"></div>
+                    </div>
+                  </div>
+                  <div class="mdui-row mdui-text-center">
+                    <div class="mdui-col-xs-12">等待身份验证器响应...</div>
                   </div>
                 </div>
-                <div class="mdui-row mdui-text-center">
-                  <div class="mdui-col-xs-12">等待身份验证器响应...</div>
+                <div class="mdui-row mdui-m-t-1">
+                  <div class="mdui-col-xs-6">
+                    <button
+                      type="button"
+                      class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple user-profile-webauthn-manage-action"
+                      id="user-profile-webauthn-manage-name-cancel">
+                      取消
+                    </button>
+                  </div>
+                  <div class="mdui-col-xs-6">
+                    <button
+                      type="submit"
+                      class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple user-profile-webauthn-manage-action"
+                      id="user-profile-webauthn-manage-name-confirm">
+                      确认
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div class="mdui-row mdui-m-t-1">
-                <div class="mdui-col-xs-6">
-                  <button class="mdui-btn mdui-btn-block mdui-color-blue-accent mdui-ripple user-profile-webauthn-manage-action" id="user-profile-webauthn-manage-name-cancel">
-                    取消
-                  </button>
-                </div>
-                <div class="mdui-col-xs-6">
-                  <button class="mdui-btn mdui-btn-block mdui-color-theme-accent mdui-ripple user-profile-webauthn-manage-action" id="user-profile-webauthn-manage-name-confirm">
-                    确认
-                  </button>
-                </div>
-              </div>
+              </form>
             </div>
           </div>
         </div>
@@ -827,7 +850,7 @@
     <div class="mdui-dialog" id="user-login-dialog">
       <div class="mdui-dialog-title">登录</div>
       <div class="mdui-dialog-content">
-        <form id="user-login-form">
+        <form id="user-login-form" onsubmit="return false;">
           <div class="mdui-container-fluid">
             <div class="mdui-row">
               <div class="mdui-col-xs-12">
@@ -847,12 +870,12 @@
             </div>
             <div class="mdui-row mdui-m-t-1">
               <div class="mdui-col-xs-12">
-                <button class="mdui-btn mdui-btn-block mdui-ripple mdui-color-theme-accent user-login-dialog-action" id="user-login-button" type="submit">登录</button>
+                <button type="submit" class="mdui-btn mdui-btn-block mdui-ripple mdui-color-theme-accent user-login-dialog-action" id="user-login-button">登录</button>
               </div>
             </div>
             <div class="mdui-row mdui-m-t-1">
               <div class="mdui-col-xs-12">
-                <button class="mdui-btn mdui-btn-block mdui-text-color-light-blue mdui-ripple user-login-dialog-action" type="button" id="user-login-webauthn">
+                <button type="button" class="mdui-btn mdui-btn-block mdui-text-color-light-blue mdui-ripple user-login-dialog-action" id="user-login-webauthn">
                   <i class="mdui-icon material-icons" style="position: relative; top: -2px">fingerprint</i> 身份验证器登录
                 </button>
               </div>

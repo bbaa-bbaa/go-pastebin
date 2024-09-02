@@ -763,6 +763,7 @@
     (function paste_viewer() {
       const paste_viewer_query = $("#paste-viewer-query");
       const paste_viewer_password = $("#paste-viewer-password");
+      const paste_viewer_password_form = $("#paste-viewer-password-form");
       const paste_viewer_text = $("#paste-viewer-text");
 
       const paste_viewer_not_found = $("#paste-viewer-not-found");
@@ -778,6 +779,7 @@
       const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
       const paste_viewer_action = $(".paste-viewer-action");
       const paste_viewer_query_btn = $("#paste-viewer-query-btn");
+      const paste_viewer_query_form = $("#paste-viewer-query-form");
       const paste_viewer_query_input = $("#paste-viewer-query-input");
       const paste_viewer_progress = $(".paste-viewer-progress");
 
@@ -1017,7 +1019,7 @@
         })
       }
 
-      paste_viewer_query_btn.on("click", function () {
+      paste_viewer_query_form.on("submit", function () {
         query_id = paste_viewer_query_input.val();
         if (query_id.length == 0) {
           mdui.snackbar("请输入 Paste Short URL 或 Paste Hash");
@@ -1042,7 +1044,7 @@
         }
       });
 
-      paste_viewer_confirm_password.on("click", function () {
+      paste_viewer_password_form.on("submit", function () {
         let password = paste_viewer_password_input.val();
         if (password.length == 0) {
           mdui.snackbar("请输入密码");
@@ -1050,6 +1052,7 @@
         }
         query_paste_metadata(query_id, password);
       });
+
       if (query_hash) {
         let query_params = new URLSearchParams(location.search);
         let password = query_params.get("pwd");
