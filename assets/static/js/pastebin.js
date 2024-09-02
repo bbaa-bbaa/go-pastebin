@@ -444,7 +444,8 @@
       });
 
       function check_allow_delete_if_not_available() {
-        if (paste_expire.val() != "0" || parseInt(paste_max_access_count.val()) > 0) {
+        let max_access_count = paste_max_access_count.val()
+        if (paste_expire.val() != "0" || max_access_count.length && !isNaN(parseInt(max_access_count))) {
           paste_delete_if_not_available.removeAttr("disabled");
         } else {
           paste_delete_if_not_available.attr("disabled", "disabled");
@@ -559,9 +560,12 @@
           }
           query_params.short_url = short_url;
         }
-
-        if (delete_if_not_available) {
-          query_params.delete_if_not_available = "true";
+        if (paste_delete_if_not_available.attr("disabled") != "disabled") {
+          if (delete_if_not_available) {
+            query_params.delete_if_not_available = "true";
+          } else {
+            query_params.delete_if_not_available = "false";
+          }
         }
 
         if (paste_file) {
@@ -1092,6 +1096,7 @@
       const paste_viewer_progress = $(".paste-viewer-progress");
       const paste_viewer_query_btn = $("#paste-viewer-query-btn");
       let paste_viewer_back_to_manage = false;
+      let paste_manger_store_scroll_top = 0;
       const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
 
       const paste_manage_pastes = $("#paste-manage-pastes");
@@ -1110,7 +1115,7 @@
       let paste_total = 0;
       const page_size = 10;
 
-      let paste_manager_list = [];
+      let paste_manager_map = {};
       let paste_detail_opened = new Set(); // uuid
       const paste_detail_opened_limit = 20 * page_size;
 
@@ -1129,7 +1134,6 @@
 
       paste_viewer_back_to_query.on("click", function () {
         if (paste_viewer_back_to_manage) {
-          paste_viewer_back_to_manage = false;
           setTimeout(() => {
             paste_app_tab.show(2);
             paste_viewer_back_to_query.trigger("pastebin.viewer.clean");
@@ -1161,6 +1165,7 @@
           paste_viewer_query_input.get(0).dispatchEvent(new Event("input"));
           paste_viewer_progress.show();
           paste_viewer_query_btn.attr("disabled", "disabled");
+          paste_manger_store_scroll_top = document.documentElement.scrollTop;
           paste_app_tab.show(1);
           paste_viewer_back_to_query.get(0).click();
           paste_viewer_back_to_manage = true;
@@ -1344,19 +1349,26 @@
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
               if (response.pastes.length != 0) {
-                // remove gone pastes
-                paste_manager_list
-                  .filter(item => !response.pastes.some(p => p.uuid == item.paste.uuid))
-                  .forEach(item => {
-                    item.panel.remove();
-                    item.panel = null;
-                  });
-                paste_manager_list = paste_manager_list.filter(item => item.panel != null); // remove gone pastes from list
+                let paste_map = {};
+                for (let paste of response.pastes) {
+                  paste_map[paste.uuid] = paste;
+                }
+                for (let [uuid, paste] of Object.entries(paste_manager_map)) {
+                  if (!paste_map[uuid]) {
+                    paste.panel.remove();
+                    delete paste_manager_map[uuid];
+                  } else if (!_.isEqual(paste.paste, paste_map[uuid])) {
+                    let panel = $(generate_paste_panel_html(paste_map[uuid]));
+                    paste.panel.replaceWith(panel);
+                    paste_manager_map[uuid] = { paste: paste_map[uuid], panel };
+                    register_action_button(panel);
+                  }
+                }
                 // add new pastes
                 for (let paste of response.pastes) {
-                  if (!paste_manager_list.some(item => item.paste.uuid == paste.uuid)) {
+                  if (!paste_manager_map[paste.uuid]) {
                     let panel = $(generate_paste_panel_html(paste));
-                    paste_manager_list.push({ paste, panel });
+                    paste_manager_map[paste.uuid] = { paste, panel };
                     paste_manage_panel.append(panel);
                     register_action_button(panel);
                   }
@@ -1395,10 +1407,26 @@
 
       paste_app_tab_element.on("change.mdui.tab", function (e) {
         if (e.detail.index == 2) {
-          paste_viewer_back_to_manage = false;
+          if (!paste_viewer_back_to_manage) {
+            paste_manage_pastes.hide();
+            paste_manage_null.show();
+          }
           list_paste();
+          paste_viewer_back_to_manage = false;
         }
       });
+
+      paste_manage_tab.on("show.mdui.tab", function () {
+        if (paste_manger_store_scroll_top) {
+          (function (target) {
+            requestAnimationFrame(() => {
+              window.scrollTo(0, target);
+            });
+          })(paste_manger_store_scroll_top);
+          paste_manger_store_scroll_top = 0;
+        }
+      });
+
     })();
     (function user_profile() {
       const account_dialog_btn = $("#account-dialog-btn");
