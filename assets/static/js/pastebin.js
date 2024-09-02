@@ -566,11 +566,16 @@
 
         if (paste_file) {
           if (detect_mime) {
-            paste_file = new File([paste_file], paste_file.name, { type: "application/vnd.pastebin.detect" });
+            data.append("c", new File([paste_file], paste_file.name, { type: "application/vnd.pastebin.detect" }));
+          } else {
+            data.append("c", paste_file);
           }
-          data.append("c", paste_file);
         } else {
-          data.append("c", new File([text], text_file.filename || "-", { type: text_file.mime_type == "" ? "text/plain; charset=utf-8" : text_file.mime_type }));
+          if (detect_mime) {
+            data.append("c", new File([text], text_file.filename || "-", { type: "application/vnd.pastebin.detect" }));
+          } else {
+            data.append("c", new File([text], text_file.filename || "-", { type: text_file.mime_type == "" ? "text/plain; charset=utf-8" : text_file.mime_type }));
+          }
         }
         return { data, query_params };
       }
