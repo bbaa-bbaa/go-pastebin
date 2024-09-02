@@ -154,12 +154,6 @@
         line-height: 1;
       }
 
-      @media (min-width:600px) {
-        .new-paste-delete-if-not-available {
-          text-align: right;
-        }
-      }
-      
       .new-paste-action-button,
       .new-paste-viewer-action,
       .login-dialog-action {
@@ -364,13 +358,13 @@
                   </div>
                 </div>
                 <div class="mdui-row">
-                  <div class="mdui-col-md-4 mdui-col-xs-6">
+                  <div class="mdui-col-sm-4 mdui-col-xs-5">
                     <div class="mdui-textfield">
                       <label class="mdui-textfield-label">口令</label>
                       <input id="new-paste-password" class="mdui-textfield-input" type="text" />
                     </div>
                   </div>
-                  <div class="mdui-col-md-4 mdui-col-xs-6">
+                  <div class="mdui-col-sm-4 mdui-col-xs-4">
                     <div class="mdui-textfield" style="overflow: visible">
                       <label class="mdui-textfield-label">过期时间</label>
                       <select id="new-paste-expire" class="mdui-select" mdui-select style="width: 100%">
@@ -387,15 +381,15 @@
                       </select>
                     </div>
                   </div>
-                  <div class="mdui-col-md-4 mdui-col-xs-12">
+                  <div class="mdui-col-sm-4 mdui-col-xs-3">
                     <div class="mdui-textfield">
-                      <label class="mdui-textfield-label">最大访问次数</label>
+                      <label class="mdui-textfield-label" style="text-wrap: nowrap">可访问次数</label>
                       <input id="new-paste-max-access-count" class="mdui-textfield-input" type="text" />
                     </div>
                   </div>
                 </div>
                 <div class="mdui-row">
-                  <div class="mdui-col-md-6 mdui-col-xs-12">
+                  <div class="mdui-col-md-6 mdui-col-sm-8 mudi-col-xs-12">
                     <div class="mdui-textfield">
                       <label class="mdui-textfield-label">UUID</label>
                       <input id="new-paste-uuid" class="mdui-textfield-input mdui-text-lowercase" type="text" placeholder="00000000-0000-0000-0000-000000000000" />
@@ -403,7 +397,7 @@
                       <div class="mdui-textfield-helper">填写需要更新的 Paste UUID</div>
                     </div>
                   </div>
-                  <div class="mdui-col-md-6 mdui-col-xs-12">
+                  <div class="mdui-col-md-6 mdui-col-sm-4 mudi-col-xs-12">
                     <div class="mdui-textfield">
                       <label class="mdui-textfield-label">短链接</label>
                       <input id="new-paste-short-url" class="mdui-textfield-input" type="text" placeholder="pastebin" />
@@ -413,14 +407,14 @@
                   </div>
                 </div>
                 <div class="mdui-row">
-                  <div class="mdui-col-xs-12 mdui-col-sm-6">
+                  <div class="mdui-col-xs-6">
                     <label class="mdui-checkbox">
                       探测 mime-type
                       <input id="new-paste-detect-mime" type="checkbox" />
                       <i class="mdui-checkbox-icon"></i>
                     </label>
                   </div>
-                  <div class="mdui-col-xs-12 mdui-col-sm-6 new-paste-delete-if-not-available">
+                  <div class="mdui-col-xs-6 mdui-text-right">
                     <label class="mdui-checkbox">
                       过期即删除
                       <input id="new-paste-delete-if-not-available" type="checkbox" disabled />
@@ -506,7 +500,7 @@
                         id="paste-viewer-password-input"
                         class="mdui-textfield-input paste-viewer-action"
                         autocomplete="paste-password"
-                        type="password"
+                        type="text"
                         placeholder="输入 Paste 访问口令" />
                     </div>
                   </div>

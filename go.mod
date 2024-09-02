@@ -9,7 +9,7 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/gabriel-vasile/mimetype v1.4.5
 	github.com/go-co-op/gocron/v2 v2.11.0
-	github.com/go-webauthn/webauthn v0.11.1
+	github.com/go-webauthn/webauthn v0.11.2
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo/v4 v4.12.0
