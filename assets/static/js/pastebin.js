@@ -1105,6 +1105,7 @@
       const paste_manage_progress = $(".paste-manage-progress");
       const paste_manage_prev = $("#paste-manage-prev");
       const paste_manage_next = $("#paste-manage-next");
+      const paste_manage_pager_hint = $("#paste-manage-pager-hint");
       const paste_manage_pager = $(".paste-manage-pager");
 
       const paste_manage_mdui_panel = new mdui.Panel("#paste-manage-pastes .mdui-panel");
@@ -1115,7 +1116,7 @@
       let paste_total = 0;
       const page_size = 10;
 
-      let paste_manager_map = {};
+      let paste_manager_map = new Map();
       let paste_detail_opened = new Set(); // uuid
       const paste_detail_opened_limit = 20 * page_size;
 
@@ -1130,6 +1131,7 @@
         } else {
           paste_manage_next.removeAttr("disabled");
         }
+        paste_manage_pager_hint.text(`第 ${page} 页 / 共 ${max_page} 页`);
       }
 
       paste_viewer_back_to_query.on("click", function () {
@@ -1141,13 +1143,13 @@
         }
       });
 
-      function register_action_button(panel) {
+      function register_action_button(panel, paste_uuid, paste_hash) {
         const paste_manage_delete_btn = panel.find(".paste-manage-delete-btn");
         const paste_manage_view_btn = panel.find(".paste-manage-view-btn");
         const paste_manage_edit_btn = panel.find(".paste-manage-edit-btn");
         const paste_manage_copy_url_btn = panel.find(".paste-manage-copy-url-btn");
-        let uuid = panel.find(".paste-manage-uuid").text();
-        let hash = panel.find(".paste-manage-hash").text();
+        let uuid = paste_uuid;
+        let hash = paste_hash;
 
         panel.on("open.mdui.panel", function () {
           paste_detail_opened.add(uuid);
@@ -1234,14 +1236,29 @@
         let pastes_panel = `
           <div class="mdui-panel-item${paste_detail_opened.has(paste.uuid) ? " mdui-panel-item-open" : ""}">
             <div class="mdui-panel-item-header">
-              <div class="mdui-panel-item-title paste-manage-uuid">${paste.uuid}</div>
-              <div class="mdui-panel-item-summary">Hash: <span class="paste-manage-hash">${paste.hash}</span></div>
-        `;
-        if (paste.filename != "" && paste.filename != "-") {
-          pastes_panel += `<div class="mdui-panel-item-summary">Filename: <span class="paste-manage-filename">${paste.filename}</span></div>`;
+        `
+        pastes_panel += `<div class="mdui-m-r-1">`;
+        let file_type = paste.mime_type.split("/")[0] || "application";
+        if (file_type == "image") {
+          pastes_panel += `<i class="mdui-icon material-icons">image</i>`;
+        } else if (file_type == "audio") {
+          pastes_panel += `<i class="mdui-icon material-icons">audiotrack</i>`;
+        } else if (file_type == "video") {
+          pastes_panel += `<i class="mdui-icon material-icons">videocam</i>`;
+        } else if (file_type == "text") {
+          pastes_panel += `<i class="mdui-icon material-icons">menu</i>`;
         } else {
-          pastes_panel += `<div class="mdui-panel-item-summary">ShortURL: <span class="paste-manage-shorturl">${paste.short_url}</span></div>`;
+          pastes_panel += `<i class="mdui-icon material-icons">insert_drive_file</i>`;
         }
+        pastes_panel += `</div>`;
+        if (paste.filename != "" && paste.filename != "-") {
+          pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.filename}</div>`;
+        } else {
+          pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.hash}</div>`;
+        }
+        pastes_panel += `
+          <div class="mdui-panel-item-summary mdui-invisible-xs-down">Time: ${paste.created_at.substring(0, Math.min(23, paste.created_at.length))}</div>
+        `;
         pastes_panel += `
               <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
             </div>
@@ -1349,28 +1366,38 @@
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
               if (response.pastes.length != 0) {
-                let paste_map = {};
+                let paste_map = new Map();
                 for (let paste of response.pastes) {
-                  paste_map[paste.uuid] = paste;
+                  paste_map.set(paste.uuid, paste);
                 }
-                for (let [uuid, paste] of Object.entries(paste_manager_map)) {
+                for (let [uuid, paste] of paste_manager_map) {
                   if (!paste_map[uuid]) {
                     paste.panel.remove();
-                    delete paste_manager_map[uuid];
+                    paste_manager_map.delete(uuid);
                   } else if (!_.isEqual(paste.paste, paste_map[uuid])) {
                     let panel = $(generate_paste_panel_html(paste_map[uuid]));
                     paste.panel.replaceWith(panel);
-                    paste_manager_map[uuid] = { paste: paste_map[uuid], panel };
-                    register_action_button(panel);
+                    paste_manager_map.set(uuid, { paste: paste_map[uuid], panel });
+                    register_action_button(panel, paste.uuid, paste.hash);
                   }
                 }
                 // add new pastes
-                for (let paste of response.pastes) {
-                  if (!paste_manager_map[paste.uuid]) {
+                let start_node = null;
+                for (let [index, paste] of response.pastes.entries()) {
+                  if (!paste_manager_map.has(paste.uuid)) {
                     let panel = $(generate_paste_panel_html(paste));
-                    paste_manager_map[paste.uuid] = { paste, panel };
-                    paste_manage_panel.append(panel);
-                    register_action_button(panel);
+                    paste_manager_map.set(paste.uuid, { paste, panel });
+                    if (start_node != null) {
+                      start_node.after(panel);
+                      start_node = panel;
+                    } else if (index == 0) {
+                      paste_manage_panel.prepend(panel);
+                      start_node = panel
+                    } else {
+                      paste_manage_panel.append(panel);
+                    }
+                    register_action_button(panel, paste.uuid, paste.hash);
+
                   }
                 }
                 mdui.mutation(); // re-render

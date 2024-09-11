@@ -84,6 +84,12 @@
         margin: 1px 0;
       }
 
+      @media (max-width: 600px) {
+        .mdui-invisible-xs-down {
+          visibility: hidden;
+        }
+      }
+
       p.paste-link {
         display: inline;
         font-family: "Bender";
@@ -629,16 +635,19 @@
           </div>
           <div class="mdui-card-content">
             <div class="mdui-container-fluid">
-                <div class="mdui-row" id="paste-manage-null" style="display: none">
-                  <div class="mdui-col-xs-12">无 Paste</div>
+              <div class="mdui-row" id="paste-manage-null" style="display: none">
+                <div class="mdui-col-xs-12">无 Paste</div>
+              </div>
+              <div class="mdui-row" id="paste-manage-pastes" style="display: none">
+                <div class="mdui-col-xs-12">
+                  <div class="mdui-panel"></div>
                 </div>
-                <div class="mdui-row" id="paste-manage-pastes" style="display: none">
-                  <div class="mdui-col-xs-12">
-                    <div class="mdui-panel"></div>
-                  </div>
+              </div>
+              <div class="mdui-row mdui-m-t-1">
+                <div class="mdui-col-xs-12">
+                  <div class="mdui-float-right"><span id="paste-manage-pager-hint"></span></div>
                 </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12 mdui-m-t-2">
+                <div class="mdui-col-xs-12">
                   <div class="mdui-float-right">
                     <button type="button" id="paste-manage-prev" class="mdui-btn mdui-ripple mdui-color-light-blue-accent mdui-text-color-white paste-manage-pager mdui-m-x-1">
                       上一页

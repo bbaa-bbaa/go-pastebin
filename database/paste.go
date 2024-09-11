@@ -636,7 +636,7 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64) (pastes []*Past
 		return nil, 0, err
 	}
 	index := max(page-1, 0) * page_size
-	rows, err := db.Queryx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target WHERE uid = ? ORDER BY p.uuid ASC LIMIT ? OFFSET ?`, uid, page_size, index)
+	rows, err := db.Queryx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target WHERE uid = ? ORDER BY p.uuid DESC LIMIT ? OFFSET ?`, uid, page_size, index)
 	if err != nil {
 		log.Error(err)
 		return nil, 0, err
