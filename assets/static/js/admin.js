@@ -209,7 +209,7 @@
         if (paste.filename != "" && paste.filename != "-") {
           pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.filename}</div>`;
         } else {
-          pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.short_url}</div>`;
+          pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.short_url || paste.hash}</div>`;
         }
         if (paste.user) {
           pastes_panel += `
@@ -227,6 +227,17 @@
                 <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn mdui-float-right">
                   <i class="mdui-icon material-icons">content_copy</i>
                 </button>
+        `
+        if (paste.user) {
+          pastes_panel += `
+                <p><strong>user:</strong> ${paste.user.username} [uid: ${paste.uid}](email: ${paste.user.email})</p>
+          `;
+        } else {
+          pastes_panel += `
+                <p><strong>uid:</strong> ${paste.uid}</p>
+          `;
+        }
+        pastes_panel += `
                 <p><strong>date:</strong> ${paste.created_at}</p>
         `;
         if (paste.expire_after != "0001-01-01T00:00:00Z") {

@@ -1263,7 +1263,7 @@
         if (paste.filename != "" && paste.filename != "-") {
           pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.filename}</div>`;
         } else {
-          pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.short_url}</div>`;
+          pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.short_url || paste.hash}</div>`;
         }
         pastes_panel += `
           <div class="mdui-panel-item-summary mdui-invisible-xs-down">Time: ${paste.created_at.substring(0, Math.min(23, paste.created_at.length))}</div>
