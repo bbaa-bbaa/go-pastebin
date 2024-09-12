@@ -7,6 +7,75 @@
     <link rel="stylesheet" href="/static/mdui/css/mdui.min.css" />
     <link rel="stylesheet" href="/static/css/night.css" />
     <title>{{.SiteTitle}} 管理面板</title>
+    <style>
+      @font-face {
+        font-family: "Hack";
+        src:
+          url("../static/font/Hack/hack-regular.woff2") format("woff2"),
+          url("../font/Hack/hack-regular.woff") format("woff");
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      @font-face {
+        font-family: "Bender";
+        src:
+          url("../static/font/Bender/Bender-Bold.woff2") format("woff2"),
+          url("../static/font/Bender/Bender-Bold.otf") format("otf");
+        font-weight: bold;
+      }
+
+
+      .raw-result {
+        font-family: Consolas, Hack, monospace;
+      }
+
+      .raw-result p {
+        margin: 1px 0;
+      }
+
+      @media (max-width: 600px) {
+        .mdui-invisible-xs-down {
+          visibility: hidden;
+        }
+      }
+
+      p.paste-link {
+        display: inline;
+        font-family: "Bender";
+        font-size: 1.5em;
+        text-decoration: none;
+        position: relative;
+        top: 3px;
+      }
+
+      .paste-link a {
+        text-decoration: none;
+        transition:
+          background-color 0.3s ease-out,
+          color 0.3s ease-out;
+      }
+
+      .paste-link a:hover {
+        text-decoration: underline;
+      }
+
+      .paste-link a:hover,
+      .paste-link a:visited {
+        color: #03a9f4;
+      }
+
+      body.mdui-theme-layout-dark .paste-link a {
+        color: rgb(238, 0, 0);
+      }
+
+      body.mdui-theme-layout-dark .paste-link a:hover,
+      body.mdui-theme-layout-dark .paste-link a:visited {
+        color: rgb(255, 192, 203);
+        transition: color 0.3s ease-out;
+      }
+
+    </style>
     <script>
       if ("serviceWorker" in navigator) {
         try {
@@ -42,9 +111,9 @@
         <button class="mdui-btn mdui-btn-icon" id="switch-nightmode-btn">
           {{- if eq .ColorScheme "dark"}}
           <i class="mdui-icon material-icons">brightness_high</i>
-          <i class="mdui-icon material-icons" style="display: none;">brightness_2</i>
+          <i class="mdui-icon material-icons" style="display: none">brightness_2</i>
           {{- else}}
-          <i class="mdui-icon material-icons" style="display: none;">brightness_high</i>
+          <i class="mdui-icon material-icons" style="display: none">brightness_high</i>
           <i class="mdui-icon material-icons">brightness_2</i>
           {{- end}}
         </button>
@@ -56,7 +125,7 @@
           <div class="mdui-card-primary-title">新 User</div>
         </div>
         <div class="mdui-card-content">
-          <form onsubmit="adduser(); return false;">
+          <form id="useradd" onsubmit="return false;">
             <div class="mdui-container-fluid">
               <div class="mdui-row">
                 <div class="mdui-col-xs-12">
@@ -91,47 +160,41 @@
           </form>
         </div>
       </div>
+      <div class="mdui-card mdui-m-y-2">
+        <div class="mdui-card-primary">
+          <div class="mdui-card-primary-title">Paste 管理</div>
+        </div>
+        <div class="mdui-card-content">
+          <div class="mdui-container-fluid">
+            <div class="mdui-row" id="paste-manage-null" style="display: none">
+              <div class="mdui-col-xs-12">无 Paste</div>
+            </div>
+            <div class="mdui-row" id="paste-manage-pastes" style="display: none">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-panel"></div>
+              </div>
+            </div>
+            <div class="mdui-row mdui-m-t-1">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-float-right"><span id="paste-manage-pager-hint"></span></div>
+              </div>
+              <div class="mdui-col-xs-12">
+                <div class="mdui-float-right">
+                  <button type="button" id="paste-manage-prev" class="mdui-btn mdui-ripple mdui-color-light-blue-accent mdui-text-color-white paste-manage-pager mdui-m-x-1">
+                    上一页
+                  </button>
+                  <button type="button" id="paste-manage-next" class="mdui-btn mdui-ripple mdui-color-theme-accent paste-manage-pager">下一页</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mdui-progress paste-manage-progress" style="display: block">
+          <div class="mdui-progress-indeterminate"></div>
+        </div>
+      </div>
     </div>
   </body>
   <script src="/static/mdui/js/mdui.min.js"></script>
-  <script>
-    var $ = mdui.$;
-
-    function adduser() {
-      const email = $("#admin-email-text")[0].value;
-      const username = $("#admin-username-text")[0].value;
-      const password = $("#admin-password-text")[0].value;
-      const group = $("#admin-group-text")[0].value;
-
-      if (!email || !username || !password || !group) {
-        mdui.alert("请填写所有字段");
-        return;
-      }
-
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(email)) {
-        mdui.alert("请输入有效的电子邮件地址");
-        return;
-      }
-
-      $.ajax({
-        method: "POST",
-        url: "/api/user/add",
-        data: JSON.stringify({
-          email: email,
-          username: username,
-          password: password,
-          group: group
-        }),
-        contentType: "application/json"
-      }).then(res => {
-        let response = JSON.parse(res);
-        if (response.code != 0) {
-          mdui.alert(response.error);
-        } else {
-          mdui.alert("添加成功");
-        }
-      });
-    }
-  </script>
+  <script src="/static/js/admin.js"></script>
 </html>

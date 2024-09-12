@@ -53,6 +53,7 @@ func httpServe() {
 
 	e.GET("/api/paste/:uuid", controllers.PasteAccess)
 	e.GET("/api/paste/check_shorturl/:id", controllers.CheckURL)
+	e.GET("/api/paste/pastes", controllers.PasteList)
 
 	e.GET("/api/user", controllers.GetUser)
 	e.POST("/api/user/login", controllers.UserLogin)

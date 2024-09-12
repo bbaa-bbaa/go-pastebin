@@ -21,6 +21,7 @@
   function easeInSine(t) {
     return 1 - Math.cos((t * Math.PI) / 2);
   }
+  
   function isDesktop() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) === false;
   }
@@ -768,6 +769,14 @@
           selectAndHint();
         }
       });
+      (function () {
+        let query_params = new URLSearchParams(location.search);
+        let uuid = query_params.get("uuid");
+        if (uuid && check_uuid(uuid)) {
+          paste_uuid.val(uuid);
+          paste_uuid.get(0).dispatchEvent(new Event("input"));
+        }
+      })();
     })();
     (function paste_viewer() {
       const paste_viewer_query = $("#paste-viewer-query");
@@ -1254,7 +1263,7 @@
         if (paste.filename != "" && paste.filename != "-") {
           pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.filename}</div>`;
         } else {
-          pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.hash}</div>`;
+          pastes_panel += `<div class="mdui-panel-item-title" style="overflow: visible;">${paste.short_url}</div>`;
         }
         pastes_panel += `
           <div class="mdui-panel-item-summary mdui-invisible-xs-down">Time: ${paste.created_at.substring(0, Math.min(23, paste.created_at.length))}</div>

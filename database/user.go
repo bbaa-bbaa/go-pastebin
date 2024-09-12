@@ -359,6 +359,9 @@ func GetUserByToken(token string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+	if user.Password == "" {
+		return nil, ErrNotFoundOrPasswordWrong
+	}
 	hash := hmac.New(sha256.New, []byte(user.Password))
 	hash.Write(buf[:16])
 	if !slices.Equal(buf[16:], hash.Sum(nil)) {
@@ -371,7 +374,7 @@ func GetUserByAccount(account string) (*User, error) {
 	result := db.QueryRowx("SELECT * FROM users WHERE email = ? OR username = ?", account, account)
 	user := &User{}
 	err := result.StructScan(user)
-	if err != nil || user.Password == "" {
+	if err != nil {
 		return nil, ErrNotFoundOrPasswordWrong
 	}
 	return user, nil
@@ -381,7 +384,7 @@ func GetUser(uid int64) (*User, error) {
 	result := db.QueryRowx("SELECT * FROM users WHERE uid = ?", uid)
 	user := &User{}
 	err := result.StructScan(user)
-	if err != nil || user.Password == "" {
+	if err != nil {
 		return nil, ErrNotFoundOrPasswordWrong
 	}
 	return user, nil

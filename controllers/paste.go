@@ -31,6 +31,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/matthewhartstonge/argon2"
+	"github.com/samber/lo"
 )
 
 var DefaultAttachmentExtensions = [...]string{"7z", "bz2", "gz", "rar", "tar", "xz", "zip", "iso", "img", "docx", "doc", "ppt", "pptx", "xls", "xlsx", "exe", "msixbundle", "apk"}
@@ -670,5 +671,63 @@ func PasteAccess(c echo.Context) error {
 	c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + paste.Base64Hash()})
 	c.Response().Header().Set("X-Access-Token", access_token)
 	c.JSON(200, map[string]any{"code": 0, "info": pasteInfo(paste)})
+	return nil
+}
+
+func PasteList(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
+		return nil
+	}
+
+	if !user.IsAdmin() {
+		c.JSON(403, map[string]any{"code": -1, "error": "no permission"})
+		return nil
+	}
+
+	page_size_string := c.QueryParam("page_size")
+	page_size := int64(50)
+	if page_size_string != "" {
+		parsed_page_size, err := strconv.ParseInt(page_size_string, 10, 0)
+		if err == nil {
+			page_size = parsed_page_size
+		}
+	}
+	page := int64(1)
+	page_string := c.QueryParam("page")
+	if page_string != "" {
+		parsed_page, err := strconv.ParseInt(page_string, 10, 0)
+		if err == nil {
+			page = parsed_page
+		}
+	}
+	page_size = max(min(1000, page_size), 1)
+	pastes, total, err := database.QueryAllPaste(page, page_size)
+	if err != nil {
+		c.JSON(200, map[string]any{"code": -1, "error": "query failed"})
+		return nil
+	}
+	users := make(map[int64]*UserInfo)
+	for _, paste := range pastes {
+		if _, ok := users[paste.UID]; ok {
+			continue
+		}
+		user, err := paste.User()
+		if err != nil {
+			continue
+		}
+		users[user.UID] = userInfo(user)
+	}
+	c.JSON(200, map[string]any{"code": 0, "total": total, "users": users, "pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
+		pi := pasteInfo(p)
+		pi.URL = c.Scheme() + "://" + c.Request().Host + "/"
+		if p.Short_url != "" {
+			pi.URL += p.Short_url
+		} else {
+			pi.URL += p.Base64Hash()
+		}
+		return pi
+	})})
 	return nil
 }

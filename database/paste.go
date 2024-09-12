@@ -157,7 +157,7 @@ func (p *Paste) Save() (*Paste, error) {
 		return nil, err
 	}
 	p.CreatedAt = time.Now()
-	p.Extra.HashPadding = ShortURLExist(p.Hash.base64())
+	p.Extra.HashPadding = ShortURLExist(p.Hash.base64WithoutPadding())
 	retry_flag := false
 retry_if_exist_paste_expired:
 	_, err = db.Exec(`INSERT INTO pastes (uuid, hash, password, expire_after, access_count, max_access_count, delete_if_not_available, hold_count, hold_before, extra, uid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -551,6 +551,10 @@ func (p *Paste) VerifyToken(token string) bool {
 	return bytes.Equal(hash.Sum([]byte{}), buf[8:])
 }
 
+func (p *Paste) User() (*User, error) {
+	return GetUser(p.UID)
+}
+
 func QueryPasteByHash(hash Paste_Hash) (*Paste, error) {
 	row := db.QueryRowx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON s.target=p.uuid WHERE hash = ?`, hash)
 	return parsePaste(row)
@@ -627,6 +631,31 @@ func ResetHoldCount() error {
 		log.Error(err)
 	}
 	return err
+}
+
+func QueryAllPaste(page int64, page_size int64) (pastes []*Paste, total int, err error) {
+	err = db.Get(&total, `SELECT COUNT(*) FROM pastes`)
+	if err != nil {
+		log.Error(err)
+		return nil, 0, err
+	}
+	index := max(page-1, 0) * page_size
+	rows, err := db.Queryx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target ORDER BY p.uuid DESC LIMIT ? OFFSET ?`, page_size, index)
+	if err != nil {
+		log.Error(err)
+		return nil, 0, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		paste := &Paste{}
+		err := rows.StructScan(paste)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		pastes = append(pastes, paste)
+	}
+	return
 }
 
 func QueryAllPasteByUser(uid int64, page int64, page_size int64) (pastes []*Paste, total int, err error) {
