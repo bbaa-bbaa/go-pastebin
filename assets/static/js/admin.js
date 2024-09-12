@@ -207,17 +207,17 @@
         }
         pastes_panel += `</div>`;
         if (paste.filename != "" && paste.filename != "-") {
-          pastes_panel += `<div class="mdui-panel-item-title" style="width: max-content;">${paste.filename}</div>`;
+          pastes_panel += `<div class="mdui-panel-item-title" style="flex-grow: 2;">${paste.filename}</div>`;
         } else {
-          pastes_panel += `<div class="mdui-panel-item-title" style="width: max-content;">${paste.short_url || paste.hash}</div>`;
+          pastes_panel += `<div class="mdui-panel-item-title" style="flex-grow: 2;">${paste.short_url || paste.hash}</div>`;
         }
         if (paste.user) {
           pastes_panel += `
-          <div class="mdui-panel-item-summary mdui-invisible-xs-down">User: ${paste.user.username}</div>
+          <div class="mdui-panel-item-summary mdui-hidden-xs-down">User: ${paste.user.username}</div>
         `;
         }
         pastes_panel += `
-          <div class="mdui-panel-item-summary mdui-invisible-sm-down">Time: ${paste.created_at.substring(0, Math.min(23, paste.created_at.length))}</div>
+          <div class="mdui-panel-item-summary mdui-hidden-sm-down">Time: ${paste.created_at.substring(0, Math.min(23, paste.created_at.length))}</div>
         `;
         pastes_panel += `
               <i class="mdui-panel-item-arrow mdui-icon material-icons">keyboard_arrow_down</i>
