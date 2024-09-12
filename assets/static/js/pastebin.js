@@ -21,7 +21,7 @@
   function easeInSine(t) {
     return 1 - Math.cos((t * Math.PI) / 2);
   }
-  
+
   function isDesktop() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) === false;
   }
@@ -609,7 +609,7 @@
             }
           },
           complete: function (xhr) {
-            let response = JSON.parse(xhr.responseText || "{}");
+            let response = JSON.parse(xhr.responseText || "");
             if (xhr.responseText == "" || !response || response.code != 0) {
               paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
               setTimeout(() => {
@@ -664,7 +664,7 @@
             }
           },
           complete: function (xhr) {
-            let response = JSON.parse(xhr.responseText || "{}");
+            let response = JSON.parse(xhr.responseText || "");
             if (xhr.responseText == "" || !response || response.code != 0) {
               paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
               setTimeout(() => {
@@ -703,7 +703,7 @@
           contentType: false,
           processData: false,
           complete: function (xhr) {
-            let response = JSON.parse(xhr.responseText || "{}");
+            let response = JSON.parse(xhr.responseText || "");
             if (xhr.responseText == "" || !response || response.code != 0) {
               paste_delete.removeClass("mdui-color-red").addClass("mdui-color-red-800");
               setTimeout(() => {
@@ -1187,7 +1187,7 @@
               Accept: "application/json"
             },
             complete: function (xhr) {
-              let response = JSON.parse(xhr.responseText);
+              let response = JSON.parse(xhr.responseText || "");
               if (xhr.status == 200 && response.code === 0) {
                 paste_viewer_query_btn.removeAttr("disabled");
                 paste_viewer_query_btn.get(0).click();
@@ -1370,7 +1370,7 @@
             page_size: page_size
           },
           complete: function (xhr) {
-            let response = JSON.parse(xhr.responseText);
+            let response = JSON.parse(xhr.responseText || "");
             if (xhr.status == 200 && response.code === 0) {
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
@@ -1636,7 +1636,7 @@
           data: JSON.stringify(data),
           contentType: "application/json",
           complete: function (xhr) {
-            let response = JSON.parse(xhr.responseText);
+            let response = JSON.parse(xhr.responseText || "{}");
             if (xhr.status == 200 && response.code === 0) {
               update_user_info().then(is_login => {
                 if (is_login) {
@@ -1730,7 +1730,7 @@
                     contentType: "application/json",
                     processData: false,
                     complete: function (xhr) {
-                      let response = JSON.parse(xhr.responseText);
+                      let response = JSON.parse(xhr.responseText || "");
                       if (xhr.status == 200 && response.code === 0) {
                         update_user_info(response.info).then(() => {
                           mdui.snackbar("登录成功");
@@ -1817,7 +1817,7 @@
             contentType: "application/json",
             processData: false,
             complete: function (xhr) {
-              let response = JSON.parse(xhr.responseText);
+              let response = JSON.parse(xhr.responseText || "");
               if (xhr.status == 200 && response.code === 0) {
                 item.remove();
                 user_profile_dialog.handleUpdate();
@@ -1900,7 +1900,7 @@
           processData: false,
           complete: function (xhr) {
             if (xhr.status == 200) {
-              let response = JSON.parse(xhr.responseText);
+              let response = JSON.parse(xhr.responseText || "");
               if (response.code === 0) {
                 response.publicKey.challenge = bufferDecode(response.publicKey.challenge);
                 response.publicKey.user.id = bufferDecode(response.publicKey.user.id);
@@ -1933,7 +1933,7 @@
                       contentType: "application/json",
                       processData: false,
                       complete: function (xhr) {
-                        let response = JSON.parse(xhr.responseText);
+                        let response = JSON.parse(xhr.responseText || "");
                         if (xhr.status == 200 && response.code === 0) {
                           mdui.snackbar("注册成功");
                         } else {

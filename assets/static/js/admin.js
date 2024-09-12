@@ -121,9 +121,9 @@
               Accept: "application/json"
             },
             complete: function (xhr) {
-              let response = JSON.parse(xhr.responseText);
+              let response = JSON.parse(xhr.responseText || "");
               if (xhr.status == 200 && response.code === 0) {
-                location.href="../#"+hash;
+                location.href = "../#" + hash;
               } else {
                 mdui.snackbar("加载失败: " + response.error);
               }
@@ -163,12 +163,12 @@
           paste_manage_delete_btn.attr("disabled", "disabled");
           $.ajax({
             method: "DELETE",
-            url: "../" + uuid+"?force=true",
+            url: "../" + uuid + "?force=true",
             headers: {
               Accept: "application/json"
             },
             complete: function (xhr) {
-              let response = JSON.parse(xhr.responseText);
+              let response = JSON.parse(xhr.responseText || "");
               if (xhr.status == 200 && response.code === 0) {
                 mdui.snackbar("删除成功");
               } else {
@@ -181,7 +181,7 @@
         });
 
         paste_manage_edit_btn.on("click", function (e) {
-          location.href="../?uuid="+uuid;
+          location.href = "../?uuid=" + uuid;
         });
       }
 
@@ -332,7 +332,7 @@
             page_size: page_size
           },
           complete: function (xhr) {
-            let response = JSON.parse(xhr.responseText);
+            let response = JSON.parse(xhr.responseText || "");
             if (xhr.status == 200 && response.code === 0) {
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
