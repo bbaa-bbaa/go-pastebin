@@ -25,7 +25,6 @@
         font-weight: bold;
       }
 
-
       .raw-result {
         font-family: Consolas, Hack, monospace;
       }
@@ -69,6 +68,18 @@
         transition: color 0.3s ease-out;
       }
 
+      .refreshing {
+        animation: refresh-rotate 0.8s linear infinite;
+      }
+
+      @keyframes refresh-rotate {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
     </style>
     <script>
       if ("serviceWorker" in navigator) {
@@ -156,7 +167,12 @@
       </div>
       <div class="mdui-card mdui-m-y-2">
         <div class="mdui-card-primary">
-          <div class="mdui-card-primary-title">Paste 管理</div>
+          <div class="mdui-card-primary-title">
+            Paste 管理
+            <button class="mdui-btn mdui-btn-icon mdui-ripple mdui-color-theme-accent" id="paste-manage-refresh">
+              <i class="mdui-icon material-icons">refresh</i>
+            </button>
+          </div>
         </div>
         <div class="mdui-card-content">
           <div class="mdui-container-fluid">

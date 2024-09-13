@@ -51,6 +51,7 @@
       const paste_manage_null = $("#paste-manage-null");
 
       const paste_manage_progress = $(".paste-manage-progress");
+      const paste_manage_refresh = $("#paste-manage-refresh");
       const paste_manage_prev = $("#paste-manage-prev");
       const paste_manage_next = $("#paste-manage-next");
       const paste_manage_pager_hint = $("#paste-manage-pager-hint");
@@ -123,7 +124,7 @@
             complete: function (xhr) {
               let response = JSON.parse(xhr.responseText || "");
               if (xhr.status == 200 && response.code === 0) {
-                location.href = "../#" + hash;
+                location.href = "../?viewer_mode=true#" + hash;
               } else {
                 mdui.snackbar("加载失败: " + response.error);
               }
@@ -176,6 +177,7 @@
               }
               paste_manage_delete_btn.removeAttr("disabled");
               paste_manage_progress.hide();
+              list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop)
             }
           });
         });
@@ -320,6 +322,8 @@
 
       function list_paste(scrollOffset) {
         paste_manage_progress.show();
+        paste_manage_refresh.addClass("refreshing");
+        paste_manage_refresh.attr("disabled", "disabled");
         paste_manage_pager.attr("disabled", "disabled");
         $.ajax({
           method: "GET",
@@ -336,6 +340,10 @@
             if (xhr.status == 200 && response.code === 0) {
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
+              if (page > max_page) {
+                page = max_page;
+                return list_paste(scrollOffset);
+              }
               if (response.pastes.length != 0) {
                 let paste_map = new Map();
                 for (let paste of response.pastes) {
@@ -385,12 +393,18 @@
             }
             paste_manage_progress.hide();
             pager_check();
+            paste_manage_refresh.removeClass("refreshing");
+            paste_manage_refresh.removeAttr("disabled");
             if (scrollOffset) {
               window.scrollTo(0, document.documentElement.scrollHeight - scrollOffset);
             }
           }
         });
       }
+
+      paste_manage_refresh.on("click", function () {
+        list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
+      });
 
       paste_manage_prev.on("click", function () {
         if (page > 1) {

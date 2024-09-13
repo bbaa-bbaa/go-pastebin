@@ -46,6 +46,7 @@
     const paste_app_tab_element = $("#paste-mdui-tab");
     paste_app_tab_element.addClass("paste-tab-loaded");
     const new_paste_tab = $("#new-paste-tab");
+    const paste_viewer_tab = $("#paste-viewer-tab");
     const paste_manage_tab = $("#paste-manage-tab");
     let user_is_login;
     function update_user_info(preloaded_user_info) {
@@ -824,6 +825,7 @@
         paste_viewer_highlight_language.get(0).selectedIndex = -1;
         return new mdui.Select(paste_viewer_highlight_language.get(0));
       })();
+      let viewer_mode = false;
 
       let query_id;
       let paste_metadata = {
@@ -1053,6 +1055,9 @@
           .then(() => {
             paste_viewer_back_to_query.trigger("pastebin.viewer.clean");
           })
+        if (viewer_mode) {
+          history.back();
+        }
       });
 
       paste_viewer_back_to_query.on("pastebin.viewer.clean", function () {
@@ -1077,6 +1082,7 @@
         let markdown_enable = query_params.has("md");
         let highlight_enable = query_params.has("hl");
         let highlight_language = query_params.get("hl");
+        viewer_mode = query_params.has("viewer_mode") && query_params.get("viewer_mode") == "true";
         if (password) {
           paste_viewer_password_input.val(password);
           paste_viewer_password_input.get(0).dispatchEvent(new Event("input"));
@@ -1090,6 +1096,10 @@
             paste_viewer_highlight_language.val(highlight_language);
             paste_viewer_highlight_language_selector.handleUpdate();
           }
+        }
+        if (viewer_mode) {
+          new_paste_tab.addClass("mdui-hidden");
+          paste_manage_tab.addClass("mdui-hidden");
         }
         paste_app_tab.show(1);
         paste_viewer_query_input.val(query_hash);
@@ -1112,6 +1122,7 @@
       const paste_manage_null = $("#paste-manage-null");
 
       const paste_manage_progress = $(".paste-manage-progress");
+      const paste_manage_refresh = $("#paste-manage-refresh");
       const paste_manage_prev = $("#paste-manage-prev");
       const paste_manage_next = $("#paste-manage-next");
       const paste_manage_pager_hint = $("#paste-manage-pager-hint");
@@ -1358,6 +1369,8 @@
 
       function list_paste(scrollOffset) {
         paste_manage_progress.show();
+        paste_manage_refresh.addClass("refreshing");
+        paste_manage_refresh.attr("disabled", "disabled");
         paste_manage_pager.attr("disabled", "disabled");
         $.ajax({
           method: "GET",
@@ -1374,6 +1387,10 @@
             if (xhr.status == 200 && response.code === 0) {
               paste_total = response.total;
               max_page = Math.ceil(paste_total / page_size);
+              if (page > max_page) {
+                page = max_page;
+                return list_paste(scrollOffset);
+              }
               if (response.pastes.length != 0) {
                 let paste_map = new Map();
                 for (let paste of response.pastes) {
@@ -1406,7 +1423,6 @@
                       paste_manage_panel.append(panel);
                     }
                     register_action_button(panel, paste.uuid, paste.hash);
-
                   }
                 }
                 mdui.mutation(); // re-render
@@ -1420,12 +1436,18 @@
             }
             paste_manage_progress.hide();
             pager_check();
+            paste_manage_refresh.removeClass("refreshing");
+            paste_manage_refresh.removeAttr("disabled");
             if (scrollOffset) {
               window.scrollTo(0, document.documentElement.scrollHeight - scrollOffset);
             }
           }
         });
       }
+
+      paste_manage_refresh.on("click", function () {
+        list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
+      });
 
       paste_manage_prev.on("click", function () {
         if (page > 1) {

@@ -226,6 +226,19 @@
         color: inherit;
         background-color: inherit;
       }
+
+      .refreshing {
+        animation: refresh-rotate 0.8s linear infinite;
+      }
+
+      @keyframes refresh-rotate {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+      }
     </style>
 
     <script>
@@ -625,7 +638,12 @@
       <div id="paste-manage" style="display: none">
         <div class="mdui-card mdui-m-y-2">
           <div class="mdui-card-primary">
-            <div class="mdui-card-primary-title">Paste-Manage</div>
+            <div class="mdui-card-primary-title">
+              Paste-Manage
+              <button class="mdui-btn mdui-btn-icon mdui-ripple mdui-color-theme-accent" id="paste-manage-refresh">
+                <i class="mdui-icon material-icons">refresh</i>
+              </button>
+            </div>
           </div>
           <div class="mdui-card-content">
             <div class="mdui-container-fluid">
