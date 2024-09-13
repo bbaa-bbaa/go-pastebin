@@ -245,6 +245,11 @@
       const paste_short_url = $("#new-paste-short-url");
       const paste_detect_mime = $("#new-paste-detect-mime");
       const paste_delete_if_not_available = $("#new-paste-delete-if-not-available");
+      const new_paste_return_container = $("#new-paste-return-container");
+      const new_paste_delete_container = $("#new-paste-delete-container");
+      const new_paste_update_container = $("#new-paste-update-container");
+      const new_paste_submit_container = $("#new-paste-submit-container");
+      const new_paste_return = $("#new-paste-return");
       const paste_delete = $("#new-paste-delete");
       const paste_update = $("#new-paste-update");
       const paste_submit = $("#new-paste-submit");
@@ -772,10 +777,20 @@
       });
       (function () {
         let query_params = new URLSearchParams(location.search);
-        let uuid = query_params.get("uuid");
+        let uuid = query_params.get("edit");
         if (uuid && check_uuid(uuid)) {
           paste_uuid.val(uuid);
           paste_uuid.get(0).dispatchEvent(new Event("input"));
+          new_paste_delete_container.hide();
+          new_paste_submit_container.hide();
+          new_paste_update_container.removeClass("mdui-col-md-4");
+          new_paste_return_container.show();
+          new_paste_return.on("click", function () {
+            history.back();
+          });
+          paste_viewer_tab.addClass("mdui-hidden");
+          paste_manage_tab.addClass("mdui-hidden");
+          paste_app_tab.show(0);
         }
       })();
     })();

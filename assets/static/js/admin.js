@@ -183,7 +183,7 @@
         });
 
         paste_manage_edit_btn.on("click", function (e) {
-          location.href = "../?uuid=" + uuid;
+          location.href = "../?edit=" + uuid;
         });
       }
 
