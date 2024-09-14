@@ -1,23 +1,6 @@
 (function () {
   let query_hash = window.location.hash.replace(/^#/, "");
   let $ = mdui.$;
-  const well_known_text_mime_types = [
-    "text/plain",
-    "text/html",
-    "text/css",
-    "text/javascript",
-    "application/json",
-    "application/xml",
-    "application/xhtml+xml",
-    "application/rss+xml",
-    "application/atom+xml",
-    "application/mathml+xml",
-    "application/ecmascript",
-    "application/x-javascript",
-    "application/x-latex",
-    "application/x-markdown",
-    "application/x-yaml"
-  ];
   function easeInSine(t) {
     return 1 - Math.cos((t * Math.PI) / 2);
   }
@@ -274,10 +257,6 @@
 
       const action_button = $(".new-paste-action-button");
 
-      let text_file = {
-        filename: "",
-        mime_type: ""
-      };
       let paste_file = null; // file object
 
       let paste_preview_element = null;
@@ -318,19 +297,6 @@
 
       function set_paste_file(file) {
         if (!file) {
-          return;
-        }
-        // 小于 32kb 的文本文件，直接读取内容
-        if (file.size <= 32 * 1024 && well_known_text_mime_types.some(type => new RegExp(type).test(file.type))) {
-          const reader = new FileReader();
-          reader.onload = function () {
-            text_input.val(reader.result);
-            text_input.get(0).dispatchEvent(new Event("input"));
-          };
-          reader.readAsText(file);
-          paste_file = null;
-          text_file.filename = file.name;
-          text_file.mime_type = file.type;
           return;
         }
         paste_file = file;
@@ -583,9 +549,9 @@
           }
         } else {
           if (detect_mime) {
-            data.append("c", new File([text], text_file.filename || "-", { type: "application/vnd.pastebin.detect" }));
+            data.append("c", new File([text], "-", { type: "application/vnd.pastebin.detect" }));
           } else {
-            data.append("c", new File([text], text_file.filename || "-", { type: text_file.mime_type == "" ? "text/plain; charset=utf-8" : text_file.mime_type }));
+            data.append("c", new File([text], "-", { type: "text/plain; charset=utf-8"}));
           }
         }
         return { data, query_params };
