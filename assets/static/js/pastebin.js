@@ -62,6 +62,7 @@
           paste_manage_tab.hide();
           if (!config.allow_anonymous) {
             new_paste_tab.attr("disabled", "disabled");
+            paste_viewer_tab.show();
             if (paste_app_tab.activeIndex == 0) {
               paste_app_tab.activeIndex = 1;
             }
@@ -741,10 +742,13 @@
           selectAndHint();
         }
       });
-      (function () {
+      (async function edit_mode() {
         let query_params = new URLSearchParams(location.search);
         let uuid = query_params.get("edit");
         if (uuid && check_uuid(uuid)) {
+          if (!config.allow_anonymous) {
+            if(!(await user_is_login)) return;
+          }
           paste_uuid.val(uuid);
           paste_uuid.get(0).dispatchEvent(new Event("input"));
           paste_uuid.attr("disabled","disabled");
