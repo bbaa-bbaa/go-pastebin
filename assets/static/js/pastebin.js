@@ -781,6 +781,7 @@
         if (uuid && check_uuid(uuid)) {
           paste_uuid.val(uuid);
           paste_uuid.get(0).dispatchEvent(new Event("input"));
+          paste_uuid.attr("disabled","disabled");
           new_paste_delete_container.hide();
           new_paste_submit_container.hide();
           new_paste_update_container.removeClass("mdui-col-md-4");
