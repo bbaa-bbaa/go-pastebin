@@ -915,6 +915,10 @@
         collapse_paste_viewer_text_content.open();
       }
 
+      $(window).on("resize", () => {
+        collapse_paste_viewer_text_content.open();
+      });
+
       paste_viewer_enable_markdown_render.on("change", () => {
         if (paste_viewer_enable_markdown_render.prop("checked")) {
           paste_viewer_enable_highlight_js.prop("checked", false);
