@@ -93,14 +93,16 @@
         top: 3px;
       }
 
-      .paste-link a, #paste-viewer-text-content-wrapper a {
+      .paste-link a,
+      #paste-viewer-text-content-wrapper a {
         text-decoration: none;
         transition:
           background-color 0.3s ease-out,
           color 0.3s ease-out;
       }
 
-      .paste-link a:hover, #paste-viewer-text-content-wrapper a:hover {
+      .paste-link a:hover,
+      #paste-viewer-text-content-wrapper a:hover {
         text-decoration: underline;
       }
 
@@ -238,10 +240,10 @@
 
       @keyframes refresh-rotate {
         0% {
-            transform: rotate(0deg);
+          transform: rotate(0deg);
         }
         100% {
-            transform: rotate(360deg);
+          transform: rotate(360deg);
         }
       }
     </style>
@@ -362,7 +364,7 @@
                       <div class="mdui-center">
                         <i id="new-paste-file-icon" class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
                         <div id="new-paste-file-preview" style="margin: 0 auto; max-height: 720px; display: none"></div>
-                        <p id="new-paste-file-filename" class="mdui-m-a-0" style="max-width: 100%"></p>
+                        <p id="new-paste-file-filename" class="mdui-m-a-0" style="max-width: 100%; word-break: break-all; white-space: normal"></p>
                       </div>
                     </div>
                     <div id="new-paste-file-progress">
@@ -447,8 +449,13 @@
                   </div>
                 </div>
                 <div class="mdui-row">
-                  <div id="new-paste-return-container" class="mdui-col-xs-6 mdui-m-t-1" style="display: none;">
-                    <button type="button" class="mdui-btn mdui-btn-block mdui-text-color-white mdui-color-light-blue-accent mdui-ripple new-paste-action-button" id="new-paste-return">返回</button>
+                  <div id="new-paste-return-container" class="mdui-col-xs-6 mdui-m-t-1" style="display: none">
+                    <button
+                      type="button"
+                      class="mdui-btn mdui-btn-block mdui-text-color-white mdui-color-light-blue-accent mdui-ripple new-paste-action-button"
+                      id="new-paste-return">
+                      返回
+                    </button>
                   </div>
                   <div id="new-paste-delete-container" class="mdui-col-md-4 mdui-col-xs-6 mdui-m-t-1">
                     <button type="button" class="mdui-btn mdui-btn-block mdui-color-red mdui-ripple new-paste-action-button" id="new-paste-delete" disabled>删除 Paste</button>
@@ -626,7 +633,7 @@
                     <div class="mdui-center">
                       <i id="paste-viewer-file-icon" class="mdui-icon material-icons" style="font-size: 48px; display: block">description</i>
                       <div id="paste-viewer-file-preview" style="margin: 0 auto; max-height: 720px; display: none"></div>
-                      <p id="paste-viewer-file-filename" class="mdui-m-a-0" style="max-width: 100%">Cirno.bmp (9.00 MiB)</p>
+                      <p id="paste-viewer-file-filename" class="mdui-m-a-0" style="max-width: 100%; word-break: break-all; white-space: normal">Cirno.bmp (9.00 MiB)</p>
                     </div>
                   </div>
                 </div>
