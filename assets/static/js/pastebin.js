@@ -915,9 +915,10 @@
         collapse_paste_viewer_text_content.open();
       }
 
-      $(window).on("resize", () => {
+      function updateTextContentHeight() {
         collapse_paste_viewer_text_content.open();
-      });
+      }
+      $(window).on("resize", _.debounce(updateTextContentHeight, 300));
 
       paste_viewer_enable_markdown_render.on("change", () => {
         if (paste_viewer_enable_markdown_render.prop("checked")) {
