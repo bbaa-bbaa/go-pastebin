@@ -433,7 +433,7 @@ func (p *Paste) save(paste_file *os.File) error {
 		if p.Extra.ContentLength != 0 {
 			if time.Since(last_report) > 5*time.Second {
 				log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.MagentaString(`[%s]`, p.Extra.FileName),
-					color.YellowString(" 接收进度: "), color.CyanString(fmt.Sprint(p.Extra.Size)), color.YellowString("/"), color.CyanString(fmt.Sprint(p.Extra.ContentLength)))
+					color.YellowString(" 接收进度: "), color.CyanString(fmt.Sprint(p.Extra.Size)), color.YellowString("/*"), color.CyanString(fmt.Sprint(p.Extra.ContentLength)))
 				last_report = time.Now()
 			}
 		}

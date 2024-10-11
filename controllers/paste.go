@@ -152,6 +152,11 @@ func parseParseArg(c echo.Context) (reader io.ReadCloser, extra *database.Paste_
 		content_length, err := strconv.ParseInt(c.Request().Header.Get("X-Paste-Size"), 10, 64)
 		if err == nil {
 			extra.ContentLength = content_length
+		} else {
+			content_length, err = strconv.ParseInt(c.Request().Header.Get("Content-Length"), 10, 64)
+			if err == nil {
+				extra.ContentLength = content_length
+			}
 		}
 	} else if !Config.SupportNoFilename {
 		err = fmt.Errorf("bad request: no filename")
