@@ -93,10 +93,11 @@ func (p *Paste) HexHash() string {
 }
 
 type Paste_Extra struct {
-	MimeType    string `json:"mime_type"`
-	FileName    string `json:"filename"`
-	Size        uint64 `json:"size"`
-	HashPadding bool   `json:"hash_padding"`
+	MimeType      string `json:"mime_type"`
+	FileName      string `json:"filename"`
+	Size          uint64 `json:"size"`
+	HashPadding   bool   `json:"hash_padding"`
+	ContentLength int64  `json:"-"` // internal use
 }
 
 func (e *Paste_Extra) String() string {
@@ -130,7 +131,7 @@ var ErrAlreadyExist = fmt.Errorf("paste already exist")
 var ErrShortURLAlreadyExist = fmt.Errorf("short url already exist")
 var ErrInvalidShortURL = fmt.Errorf("invalid short url")
 
-const block_size = 1024 * 1024 // 1M
+const block_size = 1024 * 1024 // 1MB
 func (p *Paste) Save() (*Paste, error) {
 	var paste_file *os.File
 	for try := 0; ; {
@@ -183,7 +184,7 @@ retry_if_exist_paste_expired:
 						retry_flag = true
 						goto retry_if_exist_paste_expired
 					} else {
-						fmt.Printf("QueryPasteByHash error: %v\n", err)
+						log.Error("QueryPasteByHash error: ", err)
 						os.Remove(paste_file.Name())
 						return nil, err
 					}
@@ -413,6 +414,8 @@ func (p *Paste) save(paste_file *os.File) error {
 		mime_detector, mime_result = p.mimeTypeDetector(p.Extra.MimeType)
 	}
 	p.Extra.Size = 0
+	log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.MagentaString(`[%s]`, p.Extra.FileName), color.YellowString(" 保存中"))
+	last_report := time.Time{}
 	for {
 		n, err := reader.Read(buf)
 		if err != nil {
@@ -427,6 +430,13 @@ func (p *Paste) save(paste_file *os.File) error {
 			}
 		}
 		p.Extra.Size += uint64(n)
+		if p.Extra.ContentLength != 0 {
+			if time.Since(last_report) > 5*time.Second {
+				log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.MagentaString(`[%s]`, p.Extra.FileName),
+					color.YellowString(" 接收进度: "), color.CyanString(fmt.Sprint(p.Extra.Size)), color.YellowString("/"), color.CyanString(fmt.Sprint(p.Extra.ContentLength)))
+				last_report = time.Now()
+			}
+		}
 	}
 	if mime_detector != nil {
 		mime_detector.Close()

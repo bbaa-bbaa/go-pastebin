@@ -492,14 +492,73 @@
         return result_collapse.close();
       }
 
-      function upload_progress(e) {
-        if (e.lengthComputable) {
-          file_paste_progress_text.text(
-            (e.loaded / 1024 / 1024).toFixed(2) + " MiB / " + (e.total / 1024 / 1024).toFixed(2) + " MiB - " + ((e.loaded / e.total) * 100).toFixed(2) + "%"
-          );
-          file_paste_progress_bar.css("width", ((e.loaded / e.total) * 100).toFixed(2) + "%");
+      let upload_progress = (function () {
+        let base_loaded = 0;
+        let loaded_size = 0;
+        let total_size = 0;
+        let easeDuration = 1500;
+        let last_update = 0;
+        let animation_flag = false;
+
+        let complete_promise;
+        let complete;
+
+        function progress_init() {
+          complete_promise = new Promise((resolve) => {
+            complete = function () {
+              resolve();
+              progress_init();
+            };
+          });
+          base_loaded = 0;
+          loaded_size = 0;
+          total_size = 0;
+          easeDuration = 1500;
+          last_update = 0;
+          animation_flag = false;
         }
-      }
+
+        function easeOutSine(x) {
+          return Math.sin((x * Math.PI) / 2);
+        }
+
+        function now_loaded() {
+          let fake_loaded = base_loaded + easeOutSine(Math.min((new Date().getTime() - last_update) / easeDuration, 1)) * (loaded_size - base_loaded);
+          return fake_loaded;
+        }
+
+        function update_progress() {
+          let loaded = now_loaded();
+          file_paste_progress_text.text(
+            (loaded / 1024 / 1024).toFixed(2) + " MiB / " + (total_size / 1024 / 1024).toFixed(2) + " MiB - " + ((loaded / total_size) * 100).toFixed(2) + "%"
+          );
+          file_paste_progress_bar.css("width", ((loaded / total_size) * 100).toFixed(2) + "%");
+          if (Math.round(loaded) < total_size) {
+            requestAnimationFrame(update_progress);
+          } else {
+            complete();
+          }
+        }
+
+        function set_progress(e) {
+          if (e.lengthComputable) {
+            base_loaded = now_loaded();
+            if (e.loaded > loaded_size) {
+              loaded_size = e.loaded;
+            }
+            total_size = e.total;
+
+            last_update = new Date().getTime();
+            if (!animation_flag) {
+              animation_flag = true;
+              requestAnimationFrame(update_progress);
+            }
+          }
+          return complete_promise;
+        }
+        progress_init();
+        return set_progress;
+      })();
 
       function prepare_data() {
         let text = text_input.val();
@@ -552,7 +611,7 @@
           if (detect_mime) {
             data.append("c", new File([text], "-", { type: "application/vnd.pastebin.detect" }));
           } else {
-            data.append("c", new File([text], "-", { type: "text/plain; charset=utf-8"}));
+            data.append("c", new File([text], "-", { type: "text/plain; charset=utf-8" }));
           }
         }
         return { data, query_params };
@@ -570,7 +629,8 @@
           url: query_string != "" ? "?" + query_string : "",
           data: data,
           headers: {
-            Accept: "application/json"
+            Accept: "application/json",
+            "X-Paste-Size": data.get("c").size
           },
           contentType: false,
           processData: false,
@@ -581,7 +641,7 @@
               collapse_file_paste_progress.open();
             }
           },
-          complete: function (xhr) {
+          complete: async function (xhr) {
             let response = JSON.parse(xhr.responseText || "");
             if (xhr.responseText == "" || !response || response.code != 0) {
               paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
@@ -590,6 +650,9 @@
               }, 600);
               mdui.snackbar("创建失败: " + (response.error || "网络错误"));
             } else {
+              if (paste_file) {
+                await upload_progress({ loaded: paste_file.size, total: paste_file.size, lengthComputable: true });
+              }
               paste_submit.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
               setTimeout(() => {
                 paste_submit.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
@@ -599,6 +662,7 @@
             action_button.removeAttr("disabled");
             if (paste_file) {
               collapse_file_paste_progress.close();
+              file_paste_progress_bar.css("width", "0%");
             }
           }
         });
@@ -625,7 +689,8 @@
           url: uuid + (query_string != "" ? "?" + query_string : ""),
           data: data,
           headers: {
-            Accept: "application/json"
+            Accept: "application/json",
+            "X-Paste-Size": data.get("c").size
           },
           contentType: false,
           processData: false,
@@ -633,10 +698,10 @@
             if (paste_file) {
               upload_progress({ loaded: 0, total: paste_file.size, lengthComputable: true });
               xhr.upload.addEventListener("progress", upload_progress);
-              file_paste_progress.css("height", "18px");
+              collapse_file_paste_progress.open();
             }
           },
-          complete: function (xhr) {
+          complete: async function (xhr) {
             let response = JSON.parse(xhr.responseText || "");
             if (xhr.responseText == "" || !response || response.code != 0) {
               paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
@@ -645,6 +710,9 @@
               }, 600);
               mdui.snackbar("更新失败: " + (response.error || "网络错误"));
             } else {
+              if (paste_file) {
+                await upload_progress({ loaded: paste_file.size, total: paste_file.size, lengthComputable: true });
+              }
               paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-600");
               setTimeout(() => {
                 paste_update.removeClass("mdui-color-green-600").addClass("mdui-color-blue-accent");
@@ -653,7 +721,8 @@
             }
             action_button.removeAttr("disabled");
             if (file_paste) {
-              file_paste_progress.css("height", "0px");
+              collapse_file_paste_progress.close();
+              file_paste_progress_bar.css("width", "0%");
             }
           }
         });
@@ -747,11 +816,11 @@
         let uuid = query_params.get("edit");
         if (uuid && check_uuid(uuid)) {
           if (!config.allow_anonymous) {
-            if(!(await user_is_login)) return;
+            if (!(await user_is_login)) return;
           }
           paste_uuid.val(uuid);
           paste_uuid.get(0).dispatchEvent(new Event("input"));
-          paste_uuid.attr("disabled","disabled");
+          paste_uuid.attr("disabled", "disabled");
           new_paste_delete_container.hide();
           new_paste_submit_container.hide();
           new_paste_update_container.removeClass("mdui-col-md-4");

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -79,7 +80,32 @@ func pasteInfo(paste *database.Paste) *PasteInfo {
 	}
 }
 
-func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extra, expire_after time.Time, max_access_count int64, delete_if_not_available bool, password string, short_url string, err error) {
+func parseFile(c echo.Context) (*multipart.Part, error) {
+	req := c.Request()
+	mime_type := req.Header.Get("Content-Type")
+	if !strings.Contains(mime_type, "multipart/form-data") {
+		return nil, errors.New("bad request: Content-Type")
+	}
+	body := req.Body
+	_, mime_params, err := mime.ParseMediaType(mime_type)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := mime_params["boundary"]; !ok {
+		return nil, errors.New("bad request: boundary")
+	}
+	mr := multipart.NewReader(body, mime_params["boundary"])
+	part, err := mr.NextPart()
+	if err != nil {
+		return nil, err
+	}
+	if part.FormName() != "c" {
+		return nil, errors.New("bad request: form name")
+	}
+	return part, nil
+}
+
+func parseParseArg(c echo.Context) (reader io.ReadCloser, extra *database.Paste_Extra, expire_after time.Time, max_access_count int64, delete_if_not_available bool, password string, short_url string, err error) {
 	short_url = c.QueryParam("short_url")
 	password = c.QueryParam("password")
 	query_expire_after := c.QueryParam("expire_after")
@@ -113,30 +139,27 @@ func parseParseArg(c echo.Context) (reader io.Reader, extra *database.Paste_Extr
 		MimeType: "text/plain; charset=utf-8",
 		FileName: "-",
 	}
-	file, err := c.FormFile("c")
-	if err == nil {
-		extra = &database.Paste_Extra{
-			MimeType: file.Header.Get("Content-Type"),
-			FileName: file.Filename,
-		}
-		reader, err = file.Open()
-		if err != nil {
-			err = fmt.Errorf("internal error")
-			return
-		}
-	} else if errors.Is(err, http.ErrMissingFile) {
-		if !Config.SupportNoFilename {
-			err = fmt.Errorf("bad request: no file")
-			return
-		}
-		content := c.FormValue("c")
-		if content != "" {
-			reader = strings.NewReader(content)
-		}
-	} else {
-		err = fmt.Errorf("internal error")
+
+	data_part, err := parseFile(c)
+
+	if err != nil {
+		err = fmt.Errorf("bad request: file")
 		return
 	}
+	if data_part.FileName() != "" {
+		extra.FileName = data_part.FileName()
+		extra.MimeType = data_part.Header.Get("Content-Type")
+		content_length, err := strconv.ParseInt(c.Request().Header.Get("X-Paste-Size"), 10, 64)
+		if err == nil {
+			extra.ContentLength = content_length
+		}
+	} else if !Config.SupportNoFilename {
+		err = fmt.Errorf("bad request: no filename")
+		return
+	}
+
+	reader = data_part
+
 	err = nil
 	return
 }
