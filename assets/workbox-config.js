@@ -27,7 +27,7 @@ module.exports = {
   skipWaiting: true,
   clientsClaim: true,
   cleanupOutdatedCaches: true,
-  manifestTransforms: [integrityManifestTransform],
+//  manifestTransforms: [integrityManifestTransform],
   swDest: "sw.js",
   ignoreURLParametersMatching: [/^utm_/, /^fbclid$/],
   mode: "production",
