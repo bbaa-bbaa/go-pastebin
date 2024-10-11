@@ -418,24 +418,28 @@ func (p *Paste) save(paste_file *os.File) error {
 	last_report := time.Time{}
 	for {
 		n, err := reader.Read(buf)
-		if err != nil {
+		if n > 0 {
+			hash.Write(buf[:n])
+			paste_file.Write(buf[:n])
+			if !mime_detect_complete_flag {
+				_, err := mime_detector.Write(buf[:n])
+				if err != nil {
+					mime_detect_complete_flag = true
+				}
+			}
+			p.Extra.Size += uint64(n)
+			if p.Extra.ContentLength != 0 {
+				if time.Since(last_report) > 5*time.Second {
+					log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.MagentaString(`[%s]`, p.Extra.FileName),
+						color.YellowString(" 接收进度: "), color.CyanString(fmt.Sprint(p.Extra.Size)), color.YellowString("/*"), color.CyanString(fmt.Sprint(p.Extra.ContentLength)))
+					last_report = time.Now()
+				}
+			}
+		}
+		if err == io.EOF {
 			break
-		}
-		hash.Write(buf[:n])
-		paste_file.Write(buf[:n])
-		if !mime_detect_complete_flag {
-			_, err := mime_detector.Write(buf[:n])
-			if err != nil {
-				mime_detect_complete_flag = true
-			}
-		}
-		p.Extra.Size += uint64(n)
-		if p.Extra.ContentLength != 0 {
-			if time.Since(last_report) > 5*time.Second {
-				log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.MagentaString(`[%s]`, p.Extra.FileName),
-					color.YellowString(" 接收进度: "), color.CyanString(fmt.Sprint(p.Extra.Size)), color.YellowString("/*"), color.CyanString(fmt.Sprint(p.Extra.ContentLength)))
-				last_report = time.Now()
-			}
+		} else if err != nil {
+			return err
 		}
 	}
 	if mime_detector != nil {
