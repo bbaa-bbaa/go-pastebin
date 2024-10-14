@@ -630,7 +630,7 @@
           data: data,
           headers: {
             Accept: "application/json",
-            "X-Paste-Size": data.get("c").size
+            "X-Paste-Size": (data.get("c") || { size: 0 }).size
           },
           contentType: false,
           processData: false,
@@ -690,7 +690,7 @@
           data: data,
           headers: {
             Accept: "application/json",
-            "X-Paste-Size": data.get("c").size
+            "X-Paste-Size": (data.get("c") || { size: 0 }).size
           },
           contentType: false,
           processData: false,
