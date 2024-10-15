@@ -147,24 +147,25 @@ func parseParseArg(c echo.Context) (reader io.ReadCloser, extra *database.Paste_
 	if err != nil {
 		return
 	}
-	if data_part.FileName() != "" {
-		extra.FileName = data_part.FileName()
-		extra.MimeType = data_part.Header.Get("Content-Type")
-		content_length, err := strconv.ParseInt(c.Request().Header.Get("X-Paste-Size"), 10, 64)
-		if err == nil {
-			extra.ContentLength = content_length
-		} else {
-			content_length, err = strconv.ParseInt(c.Request().Header.Get("Content-Length"), 10, 64)
+	if data_part != nil {
+		if data_part.FileName() != "" {
+			extra.FileName = data_part.FileName()
+			extra.MimeType = data_part.Header.Get("Content-Type")
+			content_length, err := strconv.ParseInt(c.Request().Header.Get("X-Paste-Size"), 10, 64)
 			if err == nil {
 				extra.ContentLength = content_length
+			} else {
+				content_length, err = strconv.ParseInt(c.Request().Header.Get("Content-Length"), 10, 64)
+				if err == nil {
+					extra.ContentLength = content_length
+				}
 			}
+		} else if !Config.SupportNoFilename {
+			err = fmt.Errorf("bad request: no filename")
+			return
 		}
-	} else if !Config.SupportNoFilename {
-		err = fmt.Errorf("bad request: no filename")
-		return
+		reader = data_part
 	}
-
-	reader = data_part
 
 	err = nil
 	return
