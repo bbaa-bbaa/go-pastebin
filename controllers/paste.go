@@ -95,14 +95,16 @@ func parseFile(c echo.Context) (*multipart.Part, error) {
 		return nil, errors.New("bad request: boundary")
 	}
 	mr := multipart.NewReader(body, mime_params["boundary"])
-	part, err := mr.NextPart()
-	if err != nil {
-		return nil, err
+	for {
+		part, err := mr.NextPart()
+		if err != nil {
+			break
+		}
+		if part.FormName() == "c" {
+			return part, nil
+		}
 	}
-	if part.FormName() != "c" {
-		return nil, errors.New("bad request: form name")
-	}
-	return part, nil
+	return nil, nil
 }
 
 func parseParseArg(c echo.Context) (reader io.ReadCloser, extra *database.Paste_Extra, expire_after time.Time, max_access_count int64, delete_if_not_available bool, password string, short_url string, err error) {
@@ -143,7 +145,6 @@ func parseParseArg(c echo.Context) (reader io.ReadCloser, extra *database.Paste_
 	data_part, err := parseFile(c)
 
 	if err != nil {
-		err = fmt.Errorf("bad request: file")
 		return
 	}
 	if data_part.FileName() != "" {
