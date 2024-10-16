@@ -17,7 +17,7 @@ package controllers
 import (
 	"net/http"
 
-	"cgit.bbaa.fun/bbaa/go-pastebin/database"
+	"git.bbaa.fun/bbaa/go-pastebin/database"
 	"github.com/labstack/echo/v4"
 )
 

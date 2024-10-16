@@ -78,7 +78,12 @@ func LoadConfig() {
 		*Config.dataDir = filepath.Join(workdir, "data")
 	}
 	ensureDir("pastes")
-	config_file, err := os.ReadFile(GetConfigPath())
+	defer func(){
+        Config.webauthnConfig.RPID = Config.SiteDomain
+        Config.webauthnConfig.RPDisplayName = Config.SiteTitle
+        Config.webauthnConfig.RPOrigins = Config.WebauthnOrigins
+        }()
+        config_file, err := os.ReadFile(GetConfigPath())
 	if err != nil {
 		SaveConfig()
 		return
@@ -87,8 +92,5 @@ func LoadConfig() {
 	if Config.SiteTitle == "" {
 		Config.SiteTitle = Config.SiteName
 	}
-	Config.webauthnConfig.RPID = Config.SiteDomain
-	Config.webauthnConfig.RPDisplayName = Config.SiteTitle
-	Config.webauthnConfig.RPOrigins = Config.WebauthnOrigins
 	SaveConfig()
 }

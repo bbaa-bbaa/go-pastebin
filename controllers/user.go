@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"cgit.bbaa.fun/bbaa/go-pastebin/database"
+	"git.bbaa.fun/bbaa/go-pastebin/database"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/labstack/echo/v4"
 	"github.com/samber/lo"

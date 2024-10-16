@@ -282,6 +282,7 @@ func (p *Paste) Update() (paste *Paste, err error) {
 			return p, err
 		}
 		p.save(paste_file)
+                p.Extra.HashPadding = ShortURLExist(p.Hash.base64WithoutPadding())
 	}
 	err = p.UpdateMetadata()
 	if err != nil {

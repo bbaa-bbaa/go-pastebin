@@ -14,7 +14,7 @@
 
 package main
 
-import "cgit.bbaa.fun/bbaa/go-pastebin"
+import "git.bbaa.fun/bbaa/go-pastebin"
 
 func main() {
 	pastebin.Main()

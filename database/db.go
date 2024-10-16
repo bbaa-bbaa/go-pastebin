@@ -20,7 +20,7 @@ import (
 	"math/rand"
 	"os"
 
-	"cgit.bbaa.fun/bbaa/go-pastebin/logger"
+	"git.bbaa.fun/bbaa/go-pastebin/logger"
 	"github.com/fatih/color"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/go-webauthn/webauthn/webauthn"

@@ -26,8 +26,8 @@ import (
 	"text/template"
 	"time"
 
-	"cgit.bbaa.fun/bbaa/go-pastebin/controllers"
-	database "cgit.bbaa.fun/bbaa/go-pastebin/database"
+	"git.bbaa.fun/bbaa/go-pastebin/controllers"
+	database "git.bbaa.fun/bbaa/go-pastebin/database"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/net/http2"
