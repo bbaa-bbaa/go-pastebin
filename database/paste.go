@@ -282,7 +282,7 @@ func (p *Paste) Update() (paste *Paste, err error) {
 			return p, err
 		}
 		p.save(paste_file)
-                p.Extra.HashPadding = ShortURLExist(p.Hash.base64WithoutPadding())
+		p.Extra.HashPadding = ShortURLExist(p.Hash.base64WithoutPadding())
 	}
 	err = p.UpdateMetadata()
 	if err != nil {
@@ -381,9 +381,13 @@ func (p *Paste) delete(force bool) error {
 		log.Error(err)
 		return err
 	}
-	os.Remove(p.Path())
+	p.RemoveFile()
 	log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.RedString(" 删除"))
 	return nil
+}
+
+func (p *Paste) RemoveFile() error {
+	return os.Remove(p.Path())
 }
 
 func (p *Paste) Delete() error {
@@ -716,6 +720,11 @@ func pasteCleaner() {
 		if err != nil {
 			log.Error(err)
 			continue
+		}
+		paste := &Paste{UUID: uuid}
+		err = paste.RemoveFile()
+		if err != nil {
+			log.Error(err)
 		}
 		log.Info(color.YellowString("清理过期 Paste:"), color.CyanString(uuid))
 	}
