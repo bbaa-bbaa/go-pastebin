@@ -30,6 +30,7 @@ import (
 	database "git.bbaa.fun/bbaa/go-pastebin/database"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/samber/lo"
 	"golang.org/x/net/http2"
 )
 
@@ -49,13 +50,13 @@ func httpServe() {
 	//e.Use(staticRender)
 	initTemplate()
 	setupIndex()
+	setupLegacy()
 	setupAdmin()
 
 	e.GET("/api/paste/:uuid", controllers.PasteAccess)
 	e.GET("/api/paste/check_shorturl/:id", controllers.CheckURL)
 	e.GET("/api/paste/pastes", controllers.PasteList)
 	e.GET("/api/paste/total_size", controllers.GetTotalPasteSize)
-	e.GET("/api/paste/user_size", controllers.GetUserPasteSize)
 
 	e.GET("/api/user", controllers.GetUser)
 	e.POST("/api/user/login", controllers.UserLogin)
@@ -63,6 +64,7 @@ func httpServe() {
 	e.POST("/api/user/add", controllers.AddUser)
 	e.POST("/api/user/edit", controllers.EditUserProfile)
 	e.GET("/api/user/pastes", controllers.UserPasteList)
+	e.GET("/api/user/size", controllers.GetUserPasteSize)
 	e.POST("/api/user/webauthn/register/request", controllers.UserWebAuthnRegisterRequest)
 	e.POST("/api/user/webauthn/register", controllers.UserWebAuthnRegister)
 	e.POST("/api/user/webauthn/login/request", controllers.UserWebAuthnLoginRequest)
@@ -155,6 +157,34 @@ func setupAdmin() {
 	})
 }
 
+func setupLegacy() {
+	e.GET("/legacy", func(c echo.Context) error {
+		user, is_login := c.Get("user").(*database.User)
+		recent_pastes := []*database.Paste{}
+		if is_login {
+			recent_pastes, _, _ = database.QueryAllPasteByUser(user.UID, 0, 10)
+		}
+		c.Response().Header().Set("Cache-Control", "no-store")
+		c.Response().Header().Set("Pragma", "no-cache")
+		err := c.Render(200, "legacy.html", map[string]any{
+			"SiteName":       database.Config.SiteName,
+			"SiteTitle":      database.Config.SiteTitle,
+			"AllowAnonymous": database.Config.AllowAnonymous,
+			"IsLogin":        is_login,
+			"User":           user,
+			"RecentPastes": lo.Map(recent_pastes, func(p *database.Paste, _ int) *controllers.PasteInfo {
+				pi := controllers.ToPasteInfo(p)
+				pi.URL = p.URL(c)
+				return pi
+			}),
+		})
+		if err != nil {
+			log.Error(err)
+		}
+		return err
+	})
+}
+
 func setupIndex() {
 	e.GET("/", func(c echo.Context) error {
 		is_login := false
@@ -192,9 +222,6 @@ func setupIndex() {
 	})
 	e.GET("/index.html", func(c echo.Context) error {
 		return c.Redirect(http.StatusFound, "/")
-	})
-	e.GET("/legacy", func(c echo.Context) error {
-		return c.Render(http.StatusOK, "legacy.html", nil)
 	})
 }
 

@@ -13,7 +13,7 @@
   let paste_force_delete = false;
 
   function formatSize(bytes) {
-    const units = ['Byte', 'KB', 'MB', 'GB', 'TB'];
+    const units =  ['Byte', 'KiB', 'MiB', 'GiB', 'TiB'];
     let unitIndex = 0;
     while (bytes >= 1024 && unitIndex < units.length - 1) {
       bytes /= 1024;
@@ -25,10 +25,10 @@
   function updateUserPasteSize() {
     $.ajax({
       method: "GET",
-      url: "api/paste/user_size",
+      url: "api/user/size",
       contentType: "application/json",
       success: function (response) {
-        response = JSON.parse(response);
+        response = JSON.parse(response || "{}");
         if (response.code === 0) {
           const totalSize = formatSize(response.total_size);
           $("#total-paste-size").text(`Paste总大小: ${totalSize}`);
@@ -43,7 +43,6 @@
   }
 
   $(function () {
-    updateUserPasteSize();
     document.body.addEventListener("drop", function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -80,6 +79,7 @@
               return false;
             }
             user_info = response.info;
+            updateUserPasteSize();
             return true;
           })
           .catch(() => false);
@@ -887,9 +887,8 @@
       });
 
       const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
-      const paste_viewer_copy_to_clipboard = $(".paste-viewer-copy-to-clipboard")
+      const paste_viewer_text_copy = $("#paste-viewer-text-copy")
       const paste_viewer_action = $(".paste-viewer-action");
-      const paste_viewer_query_btn = $("#paste-viewer-query-btn");
       const paste_viewer_query_form = $("#paste-viewer-query-form");
       const paste_viewer_query_input = $("#paste-viewer-query-input");
       const paste_viewer_progress = $(".paste-viewer-progress");
@@ -1157,14 +1156,28 @@
         }
       });
 
-      paste_viewer_copy_to_clipboard.on("click", function () {
-        navigator.clipboard.writeText($("#paste-viewer-text-content-wrapper > div").text()).then(() => {
-          mdui.snackbar({
-            message: '文本已复制到剪贴板'
-          });
-        }).catch(err => {
-          console.error('无法复制文本：', err);
-        });
+      paste_viewer_text_copy.on("click", function () {
+        let text = $("#paste-viewer-text-content-wrapper > div");
+        function selectAndHint() {
+          let selection = window.getSelection();
+          let range = document.createRange();
+          range.selectNodeContents(text.get(0));
+          selection.removeAllRanges();
+          selection.addRange(range);
+          mdui.snackbar("请按 Ctrl+C 复制");
+        }
+        if (navigator.clipboard) {
+          navigator.clipboard
+            .writeText(text.text())
+            .then(() => {
+              mdui.snackbar("已复制到剪贴板");
+            })
+            .catch(err => {
+              selectAndHint();
+            });
+        } else {
+          selectAndHint();
+        }
       });
 
       paste_viewer_back_to_query.on("pastebin.viewer.clean", function () {
@@ -1391,7 +1404,7 @@
             </div>
             <div class="mdui-panel-item-body">
               <div class="raw-result">
-                <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn mdui-float-right">
+                <button class="mdui-btn mdui-btn-icon mdui-ripple paste-manage-copy-url-btn copy-btn mdui-float-right">
                   <i class="mdui-icon material-icons">content_copy</i>
                 </button>
                 <p><strong>date:</strong> ${paste.created_at}</p>

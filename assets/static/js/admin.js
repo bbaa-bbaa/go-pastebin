@@ -5,7 +5,7 @@
   }
 
   function formatSize(bytes) {
-    const units = ['Byte', 'KB', 'MB', 'GB', 'TB'];
+    const units = ['Byte', 'KiB', 'MiB', 'GiB', 'TiB'];
     let unitIndex = 0;
     while (bytes >= 1024 && unitIndex < units.length - 1) {
       bytes /= 1024;
@@ -20,7 +20,7 @@
       url: "../api/paste/total_size",
       contentType: "application/json",
       success: function (response) {
-        response = JSON.parse(response);
+        response = JSON.parse(response || "{}");
         if (response.code === 0) {
           const totalSize = formatSize(response.total_size);
           $("#total-paste-size").text(`Paste总大小: ${totalSize}`);

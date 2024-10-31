@@ -30,7 +30,6 @@ type Pastebin_Config struct {
 	SiteTitle           string           `yaml:"site_title"`
 	SiteDomain          string           `yaml:"site_domain"`
 	WebauthnOrigins     []string         `yaml:"webauthn_origins"`
-	SupportNoFilename   bool             `yaml:"support_no_filename"`
 	Mode                string           `yaml:"mode"`
 	AllowHTML           bool             `yaml:"allow_html"`
 	AllowAnonymous      bool             `yaml:"allow_anonymous"`
@@ -49,7 +48,6 @@ var Config *Pastebin_Config = &Pastebin_Config{
 	SiteDomain:          "go-pastebin.app",
 	WebauthnOrigins:     []string{"https://go-pastebin.app"},
 	Mode:                "release",
-	SupportNoFilename:   true,
 	AllowHTML:           false,
 	AllowAnonymous:      true,
 	UserCookieMaxAge:    86400 * 30,
@@ -78,12 +76,12 @@ func LoadConfig() {
 		*Config.dataDir = filepath.Join(workdir, "data")
 	}
 	ensureDir("pastes")
-	defer func(){
-        Config.webauthnConfig.RPID = Config.SiteDomain
-        Config.webauthnConfig.RPDisplayName = Config.SiteTitle
-        Config.webauthnConfig.RPOrigins = Config.WebauthnOrigins
-        }()
-        config_file, err := os.ReadFile(GetConfigPath())
+	defer func() {
+		Config.webauthnConfig.RPID = Config.SiteDomain
+		Config.webauthnConfig.RPDisplayName = Config.SiteTitle
+		Config.webauthnConfig.RPOrigins = Config.WebauthnOrigins
+	}()
+	config_file, err := os.ReadFile(GetConfigPath())
 	if err != nil {
 		SaveConfig()
 		return

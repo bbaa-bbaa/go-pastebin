@@ -59,7 +59,7 @@ type PasteInfo struct {
 	URL                  string `json:"url"`
 }
 
-func pasteInfo(paste *database.Paste) *PasteInfo {
+func ToPasteInfo(paste *database.Paste) *PasteInfo {
 	return &PasteInfo{
 		UUID:                 paste.UUID,
 		UID:                  paste.UID,
@@ -99,26 +99,13 @@ func GetTotalPasteSize(c echo.Context) error {
 	return nil
 }
 
-func GetUserPasteSize(c echo.Context) error {
-	user, ok := c.Get("user").(*database.User)
-	if !ok {
-		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
-		return nil
-	}
+var ErrNotMultiPart = errors.New("bad request: not multipart/form-data")
 
-	totalSize, err := database.GetUserPasteSize(user.UID)
-	if err != nil {
-		c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
-		return err
-	}
-	c.JSON(200, map[string]any{"code": 0, "total_size": totalSize})
-	return nil
-}
 func parseFile(c echo.Context) (*multipart.Part, error) {
 	req := c.Request()
 	mime_type := req.Header.Get("Content-Type")
 	if !strings.Contains(mime_type, "multipart/form-data") {
-		return nil, errors.New("bad request: Content-Type")
+		return nil, ErrNotMultiPart
 	}
 	body := req.Body
 	_, mime_params, err := mime.ParseMediaType(mime_type)
@@ -178,10 +165,7 @@ func parseParseArg(c echo.Context) (reader io.ReadCloser, extra *database.Paste_
 
 	data_part, err := parseFile(c)
 
-	if err != nil {
-		return
-	}
-	if data_part != nil {
+	if err == nil && data_part != nil {
 		if data_part.FileName() != "" {
 			extra.FileName = data_part.FileName()
 			extra.MimeType = data_part.Header.Get("Content-Type")
@@ -194,11 +178,14 @@ func parseParseArg(c echo.Context) (reader io.ReadCloser, extra *database.Paste_
 					extra.ContentLength = content_length
 				}
 			}
-		} else if !Config.SupportNoFilename {
-			err = fmt.Errorf("bad request: no filename")
-			return
 		}
 		reader = data_part
+	} else if err == ErrNotMultiPart {
+		content := c.FormValue("c")
+		extra.FileName = "-"
+		extra.MimeType = "text/plain;"
+		extra.ContentLength = int64(len(content))
+		reader = io.NopCloser(strings.NewReader(content))
 	}
 
 	err = nil
@@ -250,115 +237,101 @@ func NewPaste(c echo.Context) error {
 }
 
 func pasteActionStatus(action string, paste *database.Paste, err error, c echo.Context) {
-	response_is_json := strings.Contains(c.Request().Header.Get("Accept"), "application/json")
+	type ResponseType int
+	const (
+		JSON ResponseType = iota
+		TEXT
+		HTML
+	)
+	response_type := TEXT
+
+	if strings.Contains(c.Request().Header.Get("Accept"), "application/json") {
+		response_type = JSON
+	} else if strings.Contains(c.Request().Header.Get("Referer"), "legacy") {
+		response_type = HTML
+	} else {
+		response_type = TEXT
+	}
+
+	response := map[string]any{
+		"code": 0,
+	}
+
 	url := "not available"
 	if paste != nil {
-		url = c.Scheme() + "://" + c.Request().Host + "/"
+		url = paste.URL(c)
+	}
+
+	if paste != nil {
+		response["date"] = paste.CreatedAt.Format(time.RFC3339Nano)
+		response["digest"] = paste.HexHash()
+		response["long"] = paste.Base64Hash()
+		response["size"] = paste.Extra.Size
 		if paste.Short_url != "" {
-			url += paste.Short_url
-		} else {
-			url += paste.Base64Hash()
+			response["short"] = paste.Short_url
+		}
+		response["status"] = action
+		response["url"] = url
+	}
+
+	if err == nil {
+		response["uuid"] = paste.UUID
+	} else {
+		switch err {
+		case database.ErrAlreadyExist:
+			response["status"] = "already exist"
+		case database.ErrShortURLAlreadyExist, database.ErrInvalidShortURL:
+			response["status"] = action + ", but short url not available"
+			response["uuid"] = paste.UUID
+		default:
+			response = map[string]any{"code": -3, "error": "internal error"}
 		}
 	}
-	if err == nil {
-		if response_is_json {
-			c.JSON(200, map[string]any{
-				"code":   0,
-				"date":   paste.CreatedAt.Format(time.RFC3339Nano),
-				"digest": paste.HexHash(),
-				"long":   paste.Base64Hash(),
-				"size":   paste.Extra.Size,
-				"short":  paste.Short_url,
-				"status": action,
-				"url":    url,
-				"uuid":   paste.UUID,
-			})
-			return
-		} else {
-			c.String(
-				200,
-				strings.Join([]string{
-					"date: ", paste.CreatedAt.Format(time.RFC3339Nano), "\n",
-					"digest: ", paste.HexHash(), "\n",
-					"long: ", paste.Base64Hash(), "\n",
-					"short: ", paste.Short_url, "\n",
-					"size: ", fmt.Sprint(paste.Extra.Size), "\n",
-					"status: " + action, "\n",
-					"url: ", url, "\n",
-					"uuid: ", paste.UUID,
-				}, ""),
-			)
-			return
-		}
-	} else {
-		if paste != nil {
-			if errors.Is(err, database.ErrAlreadyExist) {
-				if response_is_json {
-					c.JSON(200, map[string]any{
-						"code":   0,
-						"date":   paste.CreatedAt.Format(time.RFC3339Nano),
-						"digest": paste.HexHash(),
-						"long":   paste.Base64Hash(),
-						"short":  paste.Short_url,
-						"size":   paste.Extra.Size,
-						"status": "already exist",
-						"url":    url,
-					})
-					return
-				} else {
-					c.String(
-						200,
-						strings.Join([]string{
-							"date: ", paste.CreatedAt.Format(time.RFC3339Nano), "\n",
-							"digest: ", paste.HexHash(), "\n",
-							"long: ", paste.Base64Hash(), "\n",
-							"size: ", fmt.Sprint(paste.Extra.Size), "\n",
-							"short: ", paste.Short_url, "\n",
-							"status: already exist", "\n",
-							"url: ", url, "\n",
-						}, ""),
-					)
-					return
+
+	key_order := []string{"date", "digest", "long", "short", "size", "status", "url", "uuid", "error"}
+	switch response_type {
+	case JSON:
+		c.JSON(200, response)
+		return
+	case TEXT:
+		c.String(200, strings.Join(lo.Map(key_order, func(key string, _ int) string {
+			if value, ok := response[key]; ok {
+				return fmt.Sprintf("%s: %v", key, value)
+			}
+			return ""
+		},
+		), "\n"))
+		return
+	case HTML:
+		html_body := `
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<meta charset="UTF-8">
+    	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    	<link rel="stylesheet" href="static/normalize/css/normalize.min.css">
+			<style>
+				body {
+					font-family: Consolas, monospace;
+				p {
+					margin: 0;
 				}
-			} else if errors.Is(err, database.ErrShortURLAlreadyExist) || errors.Is(err, database.ErrInvalidShortURL) {
-				url := c.Scheme() + "://" + c.Request().Host + "/" + paste.Base64Hash()
-				if response_is_json {
-					c.JSON(200, map[string]any{
-						"code":   0,
-						"date":   paste.CreatedAt.Format(time.RFC3339Nano),
-						"digest": paste.HexHash(),
-						"long":   paste.Base64Hash(),
-						"size":   paste.Extra.Size,
-						"status": action + ", but short url not available",
-						"url":    url,
-						"uuid":   paste.UUID,
-					})
-					return
+			</style>
+		</head>
+		<body>`
+		for _, key := range key_order {
+			if value, ok := response[key]; ok {
+				if key == "url" {
+					html_body += fmt.Sprintf("<p>%s: <a href=\"%s\">%s</a></p>", key, value, value)
 				} else {
-					c.String(
-						200,
-						strings.Join([]string{
-							"date: ", paste.CreatedAt.Format(time.RFC3339Nano), "\n",
-							"digest: ", paste.HexHash(), "\n",
-							"long: ", paste.Base64Hash(), "\n",
-							"size: ", fmt.Sprint(paste.Extra.Size), "\n",
-							"status: " + action + ", but short url not available", "\n",
-							"url: ", url, "\n",
-							"uuid: ", paste.UUID,
-						}, ""),
-					)
-					return
+					html_body += fmt.Sprintf("<p>%s: %v</p>", key, value)
 				}
 			}
 		}
-		log.Error(err)
-		if response_is_json {
-			c.JSON(500, map[string]any{"code": -3, "error": "internal error", "err": err.Error()})
-		} else {
-			c.String(500, "status: internal error")
-		}
-
+		html_body += "</body></html>"
+		c.HTML(200, html_body)
 	}
+
 }
 
 func UpdatePaste(c echo.Context) error {
@@ -682,6 +655,7 @@ func CheckURL(c echo.Context) error {
 		c.JSON(200, map[string]any{"available": false})
 		return nil
 	}
+
 	c.JSON(200, map[string]any{"available": true})
 	return nil
 }
@@ -701,7 +675,7 @@ func QueryPaste(c echo.Context) error {
 		}
 		return err
 	}
-	c.JSON(200, map[string]any{"code": 0, "info": pasteInfo(paste)})
+	c.JSON(200, map[string]any{"code": 0, "info": ToPasteInfo(paste)})
 	return nil
 }
 
@@ -734,7 +708,7 @@ func PasteAccess(c echo.Context) error {
 	access_token := paste.Token(available_before)
 	c.SetCookie(&http.Cookie{Name: "access_token_" + paste.HexHash(), Value: access_token, HttpOnly: true, Path: "/" + paste.Base64Hash()})
 	c.Response().Header().Set("X-Access-Token", access_token)
-	c.JSON(200, map[string]any{"code": 0, "info": pasteInfo(paste)})
+	c.JSON(200, map[string]any{"code": 0, "info": ToPasteInfo(paste)})
 	return nil
 }
 
@@ -784,13 +758,8 @@ func PasteList(c echo.Context) error {
 		users[user.UID] = userInfo(user)
 	}
 	c.JSON(200, map[string]any{"code": 0, "total": total, "users": users, "pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
-		pi := pasteInfo(p)
-		pi.URL = c.Scheme() + "://" + c.Request().Host + "/"
-		if p.Short_url != "" {
-			pi.URL += p.Short_url
-		} else {
-			pi.URL += p.Base64Hash()
-		}
+		pi := ToPasteInfo(p)
+		pi.URL = p.URL(c)
 		return pi
 	})})
 	return nil

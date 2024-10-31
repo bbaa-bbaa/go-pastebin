@@ -37,11 +37,12 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/labstack/echo/v4"
 	"github.com/matthewhartstonge/argon2"
 	"github.com/mattn/go-sqlite3"
 )
 
-var ReservedURL = regexp.MustCompile(`^(sw\.js(\.map)?|workbox.*?\.js(\.map)?|manifest\.json|favicon\.ico|robots\.txt|index\.(x|s)?htm(l)?|admin\.(x|s)?htm(l)?)$`)
+var ReservedURL = regexp.MustCompile(`^(sw\.js(\.map)?|workbox.*?\.js(\.map)?|manifest\.json|favicon\.ico|robots\.txt|index\.(x|s)?htm(l)?|legacy|admin\.(x|s)?htm(l)?)$`)
 
 type Paste_Hash int64
 
@@ -80,6 +81,16 @@ type Paste struct {
 	Short_url            string       `db:"short_url"`
 }
 
+func (p *Paste) URL(c echo.Context) string {
+	url := c.Scheme() + "://" + c.Request().Host + "/"
+	if p.Short_url != "" {
+		url += p.Short_url
+	} else {
+		url += p.Base64Hash()
+	}
+	return url
+}
+
 func (p *Paste) Base64Hash() string {
 	if p.Extra.HashPadding {
 		return p.Hash.base64()
@@ -108,14 +119,16 @@ func GetTotalPasteSize() (uint64, error) {
 	}
 	return totalSize, nil
 }
-func GetUserPasteSize(uid int64) (uint64, error) {
+
+func GetUserPasteSize(user *User) (uint64, error) {
 	var totalSize uint64
-	err := db.Get(&totalSize, `SELECT COALESCE(SUM(extra->>'size'), 0) FROM pastes WHERE uid = ?`, uid)
+	err := db.Get(&totalSize, `SELECT COALESCE(SUM(extra->>'size'), 0) FROM pastes WHERE uid = ?`, user.UID)
 	if err != nil {
 		return 0, err
 	}
 	return totalSize, nil
 }
+
 func (e *Paste_Extra) String() string {
 	encoded, _ := json.Marshal(e)
 	return string(encoded)
@@ -504,7 +517,7 @@ func CheckShortURL(p *Paste) error {
 	if ReservedURL.MatchString(p.Short_url) {
 		return ErrShortURLAlreadyExist
 	}
-	if HashExist(p.Short_url) {
+	if ShortURLExist(p.Short_url) || HashExist(p.Short_url) {
 		return ErrShortURLAlreadyExist
 	}
 	return nil
@@ -512,6 +525,7 @@ func CheckShortURL(p *Paste) error {
 
 func (p *Paste) UpdateShortURL() error {
 	if err := CheckShortURL(p); err != nil {
+		p.Short_url = ""
 		return err
 	}
 
@@ -519,6 +533,7 @@ func (p *Paste) UpdateShortURL() error {
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok {
 			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				p.Short_url = ""
 				return ErrShortURLAlreadyExist
 			}
 		}
@@ -534,6 +549,7 @@ func (p *Paste) UpdateShortURL() error {
 
 func (p *Paste) CreateShortURL() error {
 	if err := CheckShortURL(p); err != nil {
+		p.Short_url = ""
 		return err
 	}
 
@@ -541,6 +557,7 @@ func (p *Paste) CreateShortURL() error {
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok {
 			if sqliteErr.Code == sqlite3.ErrConstraint {
+				p.Short_url = ""
 				return ErrShortURLAlreadyExist
 			}
 		}

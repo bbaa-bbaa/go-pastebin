@@ -43,16 +43,51 @@ func userInfo(u *database.User) *UserInfo {
 
 func UserLogin(c echo.Context) error {
 	type ReqUserLogin struct {
-		Account  string `json:"account"`
-		Password string `json:"password"`
+		Account  string `json:"account" form:"account"`
+		Password string `json:"password" form:"password"`
+	}
+	legacy := strings.Contains(c.Request().Header.Get("Referer"), "/legacy")
+	legacyErr := func() {
+		if legacy {
+			c.HTML(200, `
+				<!DOCTYPE html>
+					<html lang="zh">
+					<head>
+						<meta charset="UTF-8">
+						<meta name="viewport" content="width=device-width, initial-scale=1.0">
+						<link rel="stylesheet" href="/static/normalize/css/normalize.min.css">
+						<style>
+							p {
+								margin: 0;
+							}
+							a {
+								text-decoration: none;
+							}
+						</style>
+					</head>
+					<body>
+							<p>请输入正确的用户名与密码</p>
+							<a href="/legacy">返回</a>
+					</body>
+				</html>`,
+			)
+		}
 	}
 	var user ReqUserLogin
 	if err := c.Bind(&user); err != nil {
+		if legacy {
+			legacyErr()
+			return nil
+		}
 		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
 		return nil
 	}
 	u, err := database.UserLogin(user.Account, user.Password)
 	if err != nil {
+		if legacy {
+			legacyErr()
+			return nil
+		}
 		c.JSON(200, map[string]any{"code": -1, "error": "username or password wrong"})
 		return nil
 	}
@@ -65,6 +100,10 @@ func UserLogin(c echo.Context) error {
 		MaxAge:   Config.UserCookieMaxAge,
 		Path:     "/",
 	})
+	if legacy {
+		c.Redirect(http.StatusFound, "/legacy")
+		return nil
+	}
 	c.JSON(200, map[string]any{"code": 0, "info": userInfo(u), "token": token})
 	return nil
 }
@@ -168,6 +207,9 @@ func UserLogout(c echo.Context) error {
 		MaxAge: -1,
 		Path:   "/",
 	})
+	if strings.Contains(c.Request().Header.Get("Referer"), "/legacy") {
+		return c.Redirect(http.StatusFound, "/legacy")
+	}
 	return c.Redirect(http.StatusFound, "/")
 }
 
@@ -200,13 +242,8 @@ func UserPasteList(c echo.Context) error {
 		return nil
 	}
 	c.JSON(200, map[string]any{"code": 0, "total": total, "pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
-		pi := pasteInfo(p)
-		pi.URL = c.Scheme() + "://" + c.Request().Host + "/"
-		if p.Short_url != "" {
-			pi.URL += p.Short_url
-		} else {
-			pi.URL += p.Base64Hash()
-		}
+		pi := ToPasteInfo(p)
+		pi.URL = p.URL(c)
 		return pi
 	})})
 	return nil
@@ -480,6 +517,22 @@ func UserWebAuthnDelete(c echo.Context) error {
 		return nil
 	}
 	c.JSON(200, map[string]any{"code": 0, "deleted": success})
+	return nil
+}
+
+func GetUserPasteSize(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
+		return nil
+	}
+
+	totalSize, err := database.GetUserPasteSize(user)
+	if err != nil {
+		c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
+		return err
+	}
+	c.JSON(200, map[string]any{"code": 0, "total_size": totalSize})
 	return nil
 }
 

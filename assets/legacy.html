@@ -1,61 +1,127 @@
 <!doctype html>
-<html lang="zh-cn">
+<html lang="zh">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" />
-    <title>Legacy Pastebin</title>
-  </head>
-  <body>
-    <h1>Legacy Pastebin</h1>
-    <form id="paste-form" enctype="multipart/form-data">
-      <div id="text-container">
-        <label for="paste-text">文本内容:</label>
-        <textarea id="paste-text" name="c" rows="10" cols="50"></textarea>
-      </div>
-      <div id="file-container" style="display: none;">
-        <label for="paste-file">文件上传:</label>
-        <input type="file" id="paste-file" name="c" />
-      </div>
-      <div>
-        <button type="button" id="switch-to-file">切换到文件上传</button>
-        <button type="button" id="switch-to-text" style="display: none;">切换到文本上传</button>
-      </div>
-      <div>
-        <button type="button" onclick="submitPaste()">提交</button>
-      </div>
-    </form>
-    <div id="result"></div>
-    <script>
-      function submitPaste() {
-        var form = document.getElementById('paste-form');
-        var formData = new FormData(form);
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/', true);
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState == 4) {
-            if (xhr.status == 200) {
-              document.getElementById('result').innerHTML = '上传成功: ' + xhr.responseText;
-            } else {
-              document.getElementById('result').innerHTML = '上传失败: ' + xhr.status;
-            }
-          }
-        };
-        xhr.send(formData);
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="static/normalize/css/normalize.min.css" />
+    <title>{{.SiteTitle}}</title>
+    <style>
+      body {
+        font-family: "Segoe UI", system-ui, Arial, Helvetica, sans-serif;
+        margin: 20px;
+        padding: 0;
+      }
+      .container {
+        max-width: 80%;
+        margin: auto;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input[type="text"],
+      textarea,
+      input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      button,
+      a.logout {
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      button:hover,
+      a.logout:hover {
+        background-color: #0056b3;
       }
 
-      document.getElementById('switch-to-file').onclick = function() {
-        document.getElementById('text-container').style.display = 'none';
-        document.getElementById('file-container').style.display = 'block';
-        document.getElementById('switch-to-file').style.display = 'none';
-        document.getElementById('switch-to-text').style.display = 'inline';
-      };
+      .recent-pastes ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+      }
 
-      document.getElementById('switch-to-text').onclick = function() {
-        document.getElementById('text-container').style.display = 'block';
-        document.getElementById('file-container').style.display = 'none';
-        document.getElementById('switch-to-file').style.display = 'inline';
-        document.getElementById('switch-to-text').style.display = 'none';
-      };
-    </script>
+      .recent-pastes li {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .recent-pastes .url {
+        color: #007bff;
+        text-decoration: none;
+      }
+
+      .recent-pastes .url:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      {{- if .IsLogin }}
+      <div>
+        <a href="api/user/logout" class="logout" style="float: right">登出</a>
+        <h1 style="display: inline">欢迎, {{ .User.Username }}</h1>
+      </div>
+      {{- else }}
+      <h1>用户登录</h1>
+      <form method="post" action="/api/user/login">
+        <div class="form-group">
+          <label for="username">用户名</label>
+          <input type="text" id="username" name="account" required />
+        </div>
+        <div class="form-group">
+          <label for="password">密码</label>
+          <input type="text" id="password" name="password" required />
+        </div>
+        <button type="submit">登录</button>
+      </form>
+      {{- end }} {{ if and (not .IsLogin) (not .AllowAnonymous) }}
+      <p>该 Pastebin 不允许匿名用户上传，请先登录</p>
+      {{- else }}
+      <h2>文本上传</h2>
+      <form method="post" action="/">
+        <div class="form-group">
+          <label for="text">输入文本</label>
+          <textarea id="text" name="c" rows="12" required></textarea>
+        </div>
+        <button type="submit">上传文本</button>
+      </form>
+
+      <h2>文件上传</h2>
+      <form method="post" action="/" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="file">选择文件</label>
+          <input type="file" id="file" name="c" required />
+        </div>
+        <button type="submit">上传文件</button>
+      </form>
+      {{- end }} {{- if .IsLogin }}
+      <h2>最近上传的 Pastes</h2>
+      <div class="recent-pastes">
+        <ul>
+          {{- range .RecentPastes }}
+          <li>
+            <span class="datetime">{{ .CreatedAt }}</span>
+            |
+            <span class="hash">{{ .Hash }}</span>
+            |
+            <span class="filename">{{ .FileName }}</span>
+            |
+            <a class="url" href="{{.URL}}">{{.URL}}</a>
+          </li>
+          {{- end }}
+        </ul>
+      </div>
+      {{- end }}
+    </div>
   </body>
 </html>
