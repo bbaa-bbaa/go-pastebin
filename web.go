@@ -193,6 +193,9 @@ func setupIndex() {
 	e.GET("/index.html", func(c echo.Context) error {
 		return c.Redirect(http.StatusFound, "/")
 	})
+	e.GET("/legacy", func(c echo.Context) error {
+		return c.Render(http.StatusOK, "legacy.html", nil)
+	})
 }
 
 type WarpPaste struct {

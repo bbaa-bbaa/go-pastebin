@@ -3,6 +3,37 @@
   function isDesktop() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) === false;
   }
+
+  function formatSize(bytes) {
+    const units = ['Byte', 'KB', 'MB', 'GB', 'TB'];
+    let unitIndex = 0;
+    while (bytes >= 1024 && unitIndex < units.length - 1) {
+      bytes /= 1024;
+      unitIndex++;
+    }
+    return `${bytes.toFixed(2)} ${units[unitIndex]}`;
+  }
+
+  function updateTotalPasteSize() {
+    $.ajax({
+      method: "GET",
+      url: "../api/paste/total_size",
+      contentType: "application/json",
+      success: function (response) {
+        response = JSON.parse(response);
+        if (response.code === 0) {
+          const totalSize = formatSize(response.total_size);
+          $("#total-paste-size").text(`Paste总大小: ${totalSize}`);
+        } else {
+          console.error("Error fetching total paste size:", response.error);
+        }
+      },
+      error: function (xhr, status, error) {
+        console.error("Error fetching total paste size:", error);
+      }
+    });
+  }
+
   $(function () {
     (function useradd() {
       let useradd_form = $("#useradd");
@@ -42,9 +73,12 @@
           }
         });
       })
-    })();
+    }
+
+  )();
 
     (function paste_manage() {
+      updateTotalPasteSize()
       const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
 
       const paste_manage_pastes = $("#paste-manage-pastes");
@@ -68,7 +102,6 @@
       let paste_manager_map = new Map();
       let paste_detail_opened = new Set(); // uuid
       const paste_detail_opened_limit = 20 * page_size;
-
       function pager_check() {
         if (page == 1) {
           paste_manage_prev.attr("disabled", "disabled");
@@ -403,6 +436,7 @@
       }
 
       paste_manage_refresh.on("click", function () {
+        updateTotalPasteSize()
         list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
       });
 

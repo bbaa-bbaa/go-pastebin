@@ -28,6 +28,7 @@
       url: "api/paste/user_size",
       contentType: "application/json",
       success: function (response) {
+        response = JSON.parse(response);
         if (response.code === 0) {
           const totalSize = formatSize(response.total_size);
           $("#total-paste-size").text(`Paste总大小: ${totalSize}`);
@@ -1552,6 +1553,7 @@
       }
 
       paste_manage_refresh.on("click", function () {
+        updateUserPasteSize();
         list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
       });
 
@@ -1581,6 +1583,7 @@
       });
 
       paste_manage_tab.on("show.mdui.tab", function () {
+        updateUserPasteSize();
         if (paste_manger_store_scroll_top) {
           (function (target) {
             requestAnimationFrame(() => {

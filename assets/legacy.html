@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-cn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" />
+    <title>Legacy Pastebin</title>
+  </head>
+  <body>
+    <h1>Legacy Pastebin</h1>
+    <form id="paste-form" enctype="multipart/form-data">
+      <div id="text-container">
+        <label for="paste-text">文本内容:</label>
+        <textarea id="paste-text" name="c" rows="10" cols="50"></textarea>
+      </div>
+      <div id="file-container" style="display: none;">
+        <label for="paste-file">文件上传:</label>
+        <input type="file" id="paste-file" name="c" />
+      </div>
+      <div>
+        <button type="button" id="switch-to-file">切换到文件上传</button>
+        <button type="button" id="switch-to-text" style="display: none;">切换到文本上传</button>
+      </div>
+      <div>
+        <button type="button" onclick="submitPaste()">提交</button>
+      </div>
+    </form>
+    <div id="result"></div>
+    <script>
+      function submitPaste() {
+        var form = document.getElementById('paste-form');
+        var formData = new FormData(form);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/', true);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+              document.getElementById('result').innerHTML = '上传成功: ' + xhr.responseText;
+            } else {
+              document.getElementById('result').innerHTML = '上传失败: ' + xhr.status;
+            }
+          }
+        };
+        xhr.send(formData);
+      }
+
+      document.getElementById('switch-to-file').onclick = function() {
+        document.getElementById('text-container').style.display = 'none';
+        document.getElementById('file-container').style.display = 'block';
+        document.getElementById('switch-to-file').style.display = 'none';
+        document.getElementById('switch-to-text').style.display = 'inline';
+      };
+
+      document.getElementById('switch-to-text').onclick = function() {
+        document.getElementById('text-container').style.display = 'block';
+        document.getElementById('file-container').style.display = 'none';
+        document.getElementById('switch-to-file').style.display = 'inline';
+        document.getElementById('switch-to-text').style.display = 'none';
+      };
+    </script>
+  </body>
+</html>
