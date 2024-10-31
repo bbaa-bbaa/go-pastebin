@@ -851,6 +851,7 @@
       });
 
       const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
+      const paste_viewer_copy_to_clipboard = $(".paste-viewer-copy-to-clipboard")
       const paste_viewer_action = $(".paste-viewer-action");
       const paste_viewer_query_btn = $("#paste-viewer-query-btn");
       const paste_viewer_query_form = $("#paste-viewer-query-form");
@@ -1118,6 +1119,16 @@
         if (viewer_mode) {
           history.back();
         }
+      });
+
+      paste_viewer_copy_to_clipboard.on("click", function () {
+        navigator.clipboard.writeText($("#paste-viewer-text-content-wrapper > div").text()).then(() => {
+          mdui.snackbar({
+            message: '文本已复制到剪贴板'
+          });
+        }).catch(err => {
+          console.error('无法复制文本：', err);
+        });
       });
 
       paste_viewer_back_to_query.on("pastebin.viewer.clean", function () {
