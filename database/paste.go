@@ -100,6 +100,22 @@ type Paste_Extra struct {
 	ContentLength int64  `json:"-"` // internal use
 }
 
+func GetTotalPasteSize() (uint64, error) {
+	var totalSize uint64
+	err := db.Get(&totalSize, `SELECT COALESCE(SUM(extra->>'size'), 0) FROM pastes`)
+	if err != nil {
+		return 0, err
+	}
+	return totalSize, nil
+}
+func GetUserPasteSize(uid int64) (uint64, error) {
+	var totalSize uint64
+	err := db.Get(&totalSize, `SELECT COALESCE(SUM(extra->>'size'), 0) FROM pastes WHERE uid = ?`, uid)
+	if err != nil {
+		return 0, err
+	}
+	return totalSize, nil
+}
 func (e *Paste_Extra) String() string {
 	encoded, _ := json.Marshal(e)
 	return string(encoded)

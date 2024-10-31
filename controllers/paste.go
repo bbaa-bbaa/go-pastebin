@@ -79,7 +79,41 @@ func pasteInfo(paste *database.Paste) *PasteInfo {
 		HasPassword:          paste.Password != "",
 	}
 }
+func GetTotalPasteSize(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
+		return nil
+	}
 
+	if !user.IsAdmin() {
+		c.JSON(403, map[string]any{"code": -1, "error": "no permission"})
+		return nil
+	}
+	totalSize, err := database.GetTotalPasteSize()
+	if err != nil {
+		c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
+		return err
+	}
+	c.JSON(200, map[string]any{"code": 0, "total_size": totalSize})
+	return nil
+}
+
+func GetUserPasteSize(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(403, map[string]any{"code": -1, "error": "not login"})
+		return nil
+	}
+
+	totalSize, err := database.GetUserPasteSize(user.UID)
+	if err != nil {
+		c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
+		return err
+	}
+	c.JSON(200, map[string]any{"code": 0, "total_size": totalSize})
+	return nil
+}
 func parseFile(c echo.Context) (*multipart.Part, error) {
 	req := c.Request()
 	mime_type := req.Header.Get("Content-Type")

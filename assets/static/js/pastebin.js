@@ -12,7 +12,37 @@
   let user_info = null;
   let paste_force_delete = false;
 
+  function formatSize(bytes) {
+    const units = ['Byte', 'KB', 'MB', 'GB', 'TB'];
+    let unitIndex = 0;
+    while (bytes >= 1024 && unitIndex < units.length - 1) {
+      bytes /= 1024;
+      unitIndex++;
+    }
+    return `${bytes.toFixed(2)} ${units[unitIndex]}`;
+  }
+
+  function updateUserPasteSize() {
+    $.ajax({
+      method: "GET",
+      url: "api/paste/user_size",
+      contentType: "application/json",
+      success: function (response) {
+        if (response.code === 0) {
+          const totalSize = formatSize(response.total_size);
+          $("#total-paste-size").text(`Paste总大小: ${totalSize}`);
+        } else {
+          console.error("Error fetching total paste size:", response.error);
+        }
+      },
+      error: function (xhr, status, error) {
+        console.error("Error fetching total paste size:", error);
+      }
+    });
+  }
+
   $(function () {
+    updateUserPasteSize();
     document.body.addEventListener("drop", function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -560,6 +590,10 @@
         return set_progress;
       })();
 
+      function sanitizeFilename(filename) {
+        return filename.replace(/[\/\\:*?"<>|]/g, '');
+      }
+      
       function prepare_data() {
         let text = text_input.val();
         let password = paste_password.val();
@@ -573,11 +607,11 @@
         if (password.length != 0) {
           query_params.password = password;
         }
-
+      
         if (expire != "0") {
           query_params.expire_after = new Date().getTime() + parseInt(expire) * 1000;
         }
-
+      
         if (max_access_count.length != 0) {
           if (!/^[\d]+$/m.test(max_access_count) || isNaN(parseInt(max_access_count))) {
             mdui.snackbar("最大访问次数必须为数字");
@@ -585,7 +619,7 @@
           }
           query_params.max_access_count = parseInt(max_access_count, 10);
         }
-
+      
         if (short_url.length != 0) {
           if (paste_short_url.closest(".mdui-textfield").hasClass("mdui-textfield-invalid")) {
             mdui.snackbar(short_url_error.text());
@@ -600,7 +634,7 @@
             query_params.delete_if_not_available = "false";
           }
         }
-
+      
         if (paste_file) {
           if (detect_mime) {
             data.append("c", new File([paste_file], paste_file.name, { type: "application/vnd.pastebin.detect" }));
@@ -608,10 +642,11 @@
             data.append("c", paste_file);
           }
         } else {
+          let filename = sanitizeFilename(text.substring(0, 12) || "-");
           if (detect_mime) {
-            data.append("c", new File([text], "-", { type: "application/vnd.pastebin.detect" }));
+            data.append("c", new File([text], filename, { type: "application/vnd.pastebin.detect" }));
           } else {
-            data.append("c", new File([text], "-", { type: "text/plain; charset=utf-8" }));
+            data.append("c", new File([text], filename, { type: "text/plain; charset=utf-8" }));
           }
         }
         return { data, query_params };
