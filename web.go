@@ -28,6 +28,7 @@ import (
 
 	"git.bbaa.fun/bbaa/go-pastebin/controllers"
 	database "git.bbaa.fun/bbaa/go-pastebin/database"
+	"github.com/fatih/color"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/samber/lo"
@@ -42,7 +43,7 @@ var e *echo.Echo
 func httpServe() {
 	e = echo.New()
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "[${time_rfc3339}] ${status} ${method} ${path} (${remote_ip}) ${latency_human}\n",
+		Format: "[" + color.CyanString("Echo") + "] ${time_rfc3339} ${status} ${method} ${path} (${remote_ip}) ${latency_human}\n",
 		Output: e.Logger.Output(),
 	}))
 	//e.Use(middleware.Recover())

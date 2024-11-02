@@ -643,7 +643,7 @@
             data.append("c", paste_file);
           }
         } else {
-          let filename = sanitizeFilename(text.substring(0, 12) || "-");
+          let filename = sanitizeFilename(text.substring(0, 12) || "-") + ".txt";
           if (detect_mime) {
             data.append("c", new File([text], filename, { type: "application/vnd.pastebin.detect" }));
           } else {

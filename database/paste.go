@@ -507,7 +507,7 @@ func (p *Paste) mimeTypeDetector(fallback string) (w *io.PipeWriter, result chan
 
 var ShortURLRule = regexp.MustCompile(`^[a-zA-Z0-9_\.-]+$`)
 
-func CheckShortURL(p *Paste) error {
+func checkShortURL(p *Paste) error {
 	if p.Short_url == "" {
 		return ErrInvalidShortURL
 	}
@@ -517,14 +517,25 @@ func CheckShortURL(p *Paste) error {
 	if ReservedURL.MatchString(p.Short_url) {
 		return ErrShortURLAlreadyExist
 	}
-	if ShortURLExist(p.Short_url) || HashExist(p.Short_url) {
+	if HashExist(p.Short_url) {
+		return ErrShortURLAlreadyExist
+	}
+	return nil
+}
+
+func CheckShortURL(p *Paste) error {
+	err := checkShortURL(p)
+	if err != nil {
+		return err
+	}
+	if ShortURLExist(p.Short_url) {
 		return ErrShortURLAlreadyExist
 	}
 	return nil
 }
 
 func (p *Paste) UpdateShortURL() error {
-	if err := CheckShortURL(p); err != nil {
+	if err := checkShortURL(p); err != nil {
 		p.Short_url = ""
 		return err
 	}
@@ -548,7 +559,11 @@ func (p *Paste) UpdateShortURL() error {
 }
 
 func (p *Paste) CreateShortURL() error {
-	if err := CheckShortURL(p); err != nil {
+	if p.Short_url == "" {
+		return nil
+	}
+
+	if err := checkShortURL(p); err != nil {
 		p.Short_url = ""
 		return err
 	}

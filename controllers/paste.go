@@ -308,8 +308,8 @@ func pasteActionStatus(action string, paste *database.Paste, err error, c echo.C
 		<html>
 		<head>
 			<meta charset="UTF-8">
-    	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    	<link rel="stylesheet" href="static/normalize/css/normalize.min.css">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<link rel="stylesheet" href="static/normalize/css/normalize.min.css">
 			<style>
 				body {
 					font-family: Consolas, monospace;
