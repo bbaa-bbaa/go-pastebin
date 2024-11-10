@@ -13,7 +13,7 @@
   let paste_force_delete = false;
 
   function formatSize(bytes) {
-    const units =  ['Byte', 'KiB', 'MiB', 'GiB', 'TiB'];
+    const units = ['Byte', 'KiB', 'MiB', 'GiB', 'TiB'];
     let unitIndex = 0;
     while (bytes >= 1024 && unitIndex < units.length - 1) {
       bytes /= 1024;
@@ -180,7 +180,6 @@
           });
         });
       }
-      this._pendingEvent = "close";
       this.expand = false;
       this.$.css("height", "0");
       if (this.margin !== undefined) {
@@ -534,11 +533,22 @@
         let complete_promise;
         let complete;
 
-        function progress_init() {
+        function open_progress() {
+          file_paste_progress_text.text("0.00 MiB / "+ (total_size / 1024 / 1024).toFixed(2) +" MiB - 0.00%");
+          file_paste_progress_bar.css("width", "0%");
+          collapse_file_paste_progress.open();
+        }
+
+        function close_progress() {
+          collapse_file_paste_progress.close();
+        }
+
+        function init_progress() {
           complete_promise = new Promise((resolve) => {
             complete = function () {
+              close_progress();
+              init_progress();
               resolve();
-              progress_init();
             };
           });
           base_loaded = 0;
@@ -561,18 +571,25 @@
         function update_progress() {
           let loaded = now_loaded();
           file_paste_progress_text.text(
-            (loaded / 1024 / 1024).toFixed(2) + " MiB / " + (total_size / 1024 / 1024).toFixed(2) + " MiB - " + ((loaded / total_size) * 100).toFixed(2) + "%"
+            (loaded / 1024 / 1024).toFixed(2) + " MiB / " + (total_size / 1024 / 1024).toFixed(2) + " MiB - " + ((Math.min(loaded / total_size, 1)) * 100).toFixed(2) + "%"
           );
-          file_paste_progress_bar.css("width", ((loaded / total_size) * 100).toFixed(2) + "%");
+          file_paste_progress_bar.css("width", ((Math.min(loaded / total_size, 1)) * 100).toFixed(2) + "%");
           if (Math.round(loaded) < total_size) {
             requestAnimationFrame(update_progress);
           } else {
+            file_paste_progress_text.text(
+              (total_size / 1024 / 1024).toFixed(2) + " MiB / " + (total_size / 1024 / 1024).toFixed(2) + " MiB - 100.00%"
+            )
+            file_paste_progress_bar.css("width", "100%");
             complete();
           }
         }
 
         function set_progress(e) {
           if (e.lengthComputable) {
+            if (e.loaded == 0) {
+              open_progress();
+            }
             base_loaded = now_loaded();
             if (e.loaded > loaded_size) {
               loaded_size = e.loaded;
@@ -587,14 +604,14 @@
           }
           return complete_promise;
         }
-        progress_init();
+        init_progress();
         return set_progress;
       })();
 
       function sanitizeFilename(filename) {
         return filename.replace(/[\/\\:*?"<>|]/g, '');
       }
-      
+
       function prepare_data() {
         let text = text_input.val();
         let password = paste_password.val();
@@ -608,11 +625,11 @@
         if (password.length != 0) {
           query_params.password = password;
         }
-      
+
         if (expire != "0") {
           query_params.expire_after = new Date().getTime() + parseInt(expire) * 1000;
         }
-      
+
         if (max_access_count.length != 0) {
           if (!/^[\d]+$/m.test(max_access_count) || isNaN(parseInt(max_access_count))) {
             mdui.snackbar("最大访问次数必须为数字");
@@ -620,7 +637,7 @@
           }
           query_params.max_access_count = parseInt(max_access_count, 10);
         }
-      
+
         if (short_url.length != 0) {
           if (paste_short_url.closest(".mdui-textfield").hasClass("mdui-textfield-invalid")) {
             mdui.snackbar(short_url_error.text());
@@ -635,7 +652,7 @@
             query_params.delete_if_not_available = "false";
           }
         }
-      
+
         if (paste_file) {
           if (detect_mime) {
             data.append("c", new File([paste_file], paste_file.name, { type: "application/vnd.pastebin.detect" }));
@@ -674,7 +691,6 @@
             if (paste_file) {
               upload_progress({ loaded: 0, total: paste_file.size, lengthComputable: true });
               xhr.upload.addEventListener("progress", upload_progress);
-              collapse_file_paste_progress.open();
             }
           },
           complete: async function (xhr) {
@@ -696,10 +712,6 @@
               show_result("创建结果", response, false);
             }
             action_button.removeAttr("disabled");
-            if (paste_file) {
-              collapse_file_paste_progress.close();
-              file_paste_progress_bar.css("width", "0%");
-            }
           }
         });
       });
@@ -734,7 +746,6 @@
             if (paste_file) {
               upload_progress({ loaded: 0, total: paste_file.size, lengthComputable: true });
               xhr.upload.addEventListener("progress", upload_progress);
-              collapse_file_paste_progress.open();
             }
           },
           complete: async function (xhr) {
@@ -756,10 +767,6 @@
               show_result("更新结果", response, false);
             }
             action_button.removeAttr("disabled");
-            if (file_paste) {
-              collapse_file_paste_progress.close();
-              file_paste_progress_bar.css("width", "0%");
-            }
           }
         });
       });

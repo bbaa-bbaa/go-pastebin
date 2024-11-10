@@ -22,8 +22,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -34,8 +32,6 @@ import (
 	"github.com/matthewhartstonge/argon2"
 	"github.com/samber/lo"
 )
-
-var DefaultAttachmentExtensions = [...]string{"7z", "bz2", "gz", "rar", "tar", "xz", "zip", "iso", "img", "docx", "doc", "ppt", "pptx", "xls", "xlsx", "exe", "msixbundle", "apk"}
 
 var HTML_MIME = [...]string{"text/html", "application/xhtml+xml"}
 
@@ -632,15 +628,9 @@ func GetPaste(c echo.Context) error {
 	}
 	response.Header().Set("X-Origin-Filename", paste.Extra.FileName)
 	mime_type, _, _ := mime.ParseMediaType(paste.Extra.MimeType)
-	ext := filepath.Ext(paste.Extra.FileName)
-	if ext == "" {
-		exts, err := mime.ExtensionsByType(mime_type)
-		if err == nil && len(exts) > 0 {
-			ext = exts[0]
-		}
-	}
-	ext = strings.TrimLeft(strings.ToLower(ext), ".")
-	if download || !raw_response && (mime_type == "application/octet-stream" || slices.Contains(DefaultAttachmentExtensions[:], ext)) {
+	if download ||
+		!strings.HasPrefix(mime_type, "text/") && !strings.HasPrefix(mime_type, "image/") &&
+			!strings.HasPrefix(mime_type, "audio/") && !strings.HasPrefix(mime_type, "video/") {
 		c.Attachment(paste.Path(), paste.Extra.FileName)
 	} else {
 		c.File(paste.Path())
