@@ -309,6 +309,7 @@ func pasteActionStatus(action string, paste *database.Paste, err error, c echo.C
 			<style>
 				body {
 					font-family: Consolas, monospace;
+	}
 				p {
 					margin: 0;
 				}

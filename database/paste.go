@@ -42,7 +42,7 @@ import (
 	"github.com/mattn/go-sqlite3"
 )
 
-var ReservedURL = regexp.MustCompile(`^(sw\.js(\.map)?|workbox.*?\.js(\.map)?|manifest\.json|favicon\.ico|robots\.txt|index\.(x|s)?htm(l)?|legacy|admin\.(x|s)?htm(l)?)$`)
+var ReservedURL = regexp.MustCompile(`^(sw\.js(\.map)?|workbox.*?\.js(\.map)?|manifest\.json|favicon\.ico|robots\.txt|index\.?(x|s)?htm(l)?|legacy|admin\.?(x|s)?htm(l)?)$`)
 
 type Paste_Hash int64
 

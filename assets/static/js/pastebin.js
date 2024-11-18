@@ -13,7 +13,7 @@
   let paste_force_delete = false;
 
   function formatSize(bytes) {
-    const units = ['Byte', 'KiB', 'MiB', 'GiB', 'TiB'];
+    const units = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB'];
     let unitIndex = 0;
     while (bytes >= 1024 && unitIndex < units.length - 1) {
       bytes /= 1024;
@@ -113,101 +113,74 @@
 
     update_user_info();
 
-    function Collapse(jq, heightBox, margin) {
+    function Collapse(jq) {
       this.$ = jq;
-      this.transition_element = jq.get(0);
-      this.height_element = (heightBox || jq).get(0);
-      this.expand = this.$.hasClass("card-collapse-open");
-      this.set_auto = false;
-      this.margin = margin === undefined ? 16 : margin;
-      this._callback = null;
-      this._pendingCallback = null;
+      this.element = jq.get(0);
+      this.expanded = this.$.hasClass("pb-collapse-open");
+      this.expanded_magrin = this.element.style.margin;
+      this._callback = {};
+      this._pendingCallback = {};
+      if (!this.expanded) {
+        this.element.style.margin = "0";
+        this.$.css("height", "0px");
+      }
       this.$.on("transitionstart", e => {
-        if (e.target != this.transition_element) {
+        if (e.target != this.element || e.propertyName != "height") {
           return;
         }
-        if (this._pendingCallback) {
-          this._callback = this._pendingCallback;
-          this._pendingCallback = null;
-        }
+        this._callback = this._pendingCallback;
       });
       this.$.on("transitioncancel", e => {
-        if (e.target != this.transition_element) {
+        if (e.target != this.element || e.propertyName != "height") {
           return;
         }
-        if (this._callback) {
-          // this._callback.cancel();
-          this._callback = null;
-        }
+        console.log("trans cancel")
+        if (this._callback.reject) this._callback.reject();
       });
       this.$.on("transitionend", e => {
-        if (e.target != this.transition_element) {
+        if (e.target != this.element || e.propertyName != "height") {
           return;
         }
-        if (this.set_auto) {
-          if (!heightBox) {
-            this.$.css("height", "auto");
-          }
-        }
-        if (this._callback) {
-          this._callback.complete();
-          this._callback = null;
-        }
+        console.log("trans end")
+        if (this._callback.resolve) this._callback.resolve();
       });
+      this.$.addClass("pb-collapse-inited");
     }
 
-    Collapse.prototype.fixed = function () {
-      if (this.expand) {
-        this.$.css("height", Math.min(this.height_element.scrollHeight, this.transition_element.offsetHeight + document.documentElement.clientHeight - container.offsetTop) + "px");
-      }
-    };
+    Collapse.prototype._pendingPromise = function (resolve, reject) {
+      this._pendingCallback = { resolve, reject };
+    }
 
-    Collapse.prototype.close = function (fixed) {
-      if (this.$.css("height") == "0px") {
+    Collapse.prototype.close = function () {
+      if (this.$.css("height") == "0px" || !this.expanded) {
         return Promise.resolve();
       }
-      this.set_auto = false;
-      if (!fixed) {
-        this.fixed();
-        return new Promise((complete, cancel) => {
-          this._pendingCallback = { complete, cancel };
-          requestAnimationFrame(() => {
-            if (this._pendingCallback == null || this._pendingCallback.complete != complete) {
-              // avoid race
-              return; // just cancel
-            }
-            this.close(true);
-          });
+      this.expanded = false;
+      let close = new Promise((resolve, reject) => {
+        this.$.css("height", this.element.scrollHeight + "px");
+        requestAnimationFrame(() => {
+          this._pendingPromise(resolve, reject);
+          this.$.css("height", "0px");
+          this.element.style.margin = "0";
         });
-      }
-      this.expand = false;
-      this.$.css("height", "0");
-      if (this.margin !== undefined) {
-        this.$.css("margin", "0");
-      }
-      return Promise.resolve();
+      });
+      return close;
     };
 
-    Collapse.prototype.targetHeight = function () {
-      return this.height_element.scrollHeight;
-    }
-
     Collapse.prototype.open = function () {
-      let targetHeight = this.targetHeight();
-      if (this.transition_element == this.height_element) {
-        if (this.$.css("height") == targetHeight + "px" || this.$.css("height") == "auto") {
-          return Promise.resolve();
-        }
+      if (this.$.css("height") == "auto" || this.expanded) {
+        return Promise.resolve();
       }
-      return new Promise((complete, cancel) => {
-        this._pendingCallback = { complete, cancel };
-        this.set_auto = true;
-        this.expand = true;
-        this.$.css("height", targetHeight + "px");
-        if (this.margin !== undefined) {
-          this.$.css("margin", this.margin + "px 0");
-        }
+      this.expanded = true;
+      let open = new Promise((resolve, reject) => {
+        this._pendingPromise(resolve, reject);
+        this.element.style.margin = this.expanded_magrin;
+        this.$.css("height", this.element.scrollHeight + "px");
       });
+      open.then(() => {
+        this.$.css("height", "auto")
+      });
+      return open;
     };
 
     function CollapseGroupProxy(group, target) {
@@ -273,7 +246,7 @@
       const file_paste_preview = $("#new-paste-file-preview");
       const file_paste_filename = $("#new-paste-file-filename");
       const file_paste_progress = $("#new-paste-file-progress");
-      const collapse_file_paste_progress = new Collapse(file_paste_progress, null, 0);
+      const collapse_file_paste_progress = new Collapse(file_paste_progress);
       const file_paste_progress_bar = $("#new-paste-file-progress-bar");
       const file_paste_progress_text = $("#new-paste-file-progress-text");
 
@@ -319,7 +292,7 @@
         if (!paste_file) {
           return;
         }
-        file_paste_filename.text(paste_file.name + " (" + (paste_file.size / 1024 / 1024).toFixed(2).toString() + " MiB)");
+        file_paste_filename.text(paste_file.name + " (" + (Math.ceil(paste_file.size / 1024 / 1024 * 100) / 100).toFixed(2).toString() + " MiB)");
         paste_preview(paste_file);
         paste_load.text("切换到文本模式").removeClass("mdui-color-theme-accent").addClass("mdui-color-blue-accent");
         text_input.parent().hide();
@@ -534,7 +507,7 @@
         let complete;
 
         function open_progress() {
-          file_paste_progress_text.text("0.00 MiB / "+ (total_size / 1024 / 1024).toFixed(2) +" MiB - 0.00%");
+          file_paste_progress_text.text("0.00 MiB / " + (Math.ceil(total_size / 1024 / 1024 * 100) / 100).toFixed(2) + " MiB - 0.00%");
           file_paste_progress_bar.css("width", "0%");
           collapse_file_paste_progress.open();
         }
@@ -571,7 +544,7 @@
         function update_progress() {
           let loaded = now_loaded();
           file_paste_progress_text.text(
-            (loaded / 1024 / 1024).toFixed(2) + " MiB / " + (total_size / 1024 / 1024).toFixed(2) + " MiB - " + ((Math.min(loaded / total_size, 1)) * 100).toFixed(2) + "%"
+            (Math.ceil(loaded / 1024 / 1024 * 100) / 100).toFixed(2) + " MiB / " + (Math.ceil(total_size / 1024 / 1024 * 100) / 100).toFixed(2) + " MiB - " + ((Math.min(loaded / total_size, 1)) * 100).toFixed(2) + "%"
           );
           file_paste_progress_bar.css("width", ((Math.min(loaded / total_size, 1)) * 100).toFixed(2) + "%");
           if (Math.round(loaded) < total_size) {
@@ -877,6 +850,7 @@
         }
       })();
     })();
+    let paste_viewer_collapses
     (function paste_viewer() {
       const paste_viewer_query = $("#paste-viewer-query");
       const paste_viewer_password = $("#paste-viewer-password");
@@ -885,7 +859,7 @@
 
       const paste_viewer_not_found = $("#paste-viewer-not-found");
       const paste_viewer_file = $("#paste-viewer-file");
-      const collapse_manager = new CollapseGroup({
+      paste_viewer_collapses = new CollapseGroup({
         paste_viewer_query,
         paste_viewer_password,
         paste_viewer_not_found,
@@ -904,8 +878,7 @@
       const paste_viewer_password_input = $("#paste-viewer-password-input");
       const paste_viewer_confirm_password = $("#paste-viewer-confirm-password");
 
-      const paste_viewer_text_content_wrapper = $("#paste-viewer-text-content-wrapper");
-      const paste_viewer_text_content = paste_viewer_text_content_wrapper.children("div");
+      const paste_viewer_text_content = $("#paste-viewer-text-content");
       const paste_viewer_enable_markdown_render = $("#paste-viewer-enable-markdown-render");
 
       const paste_viewer_download_btn = $(".paste-viewer-download-btn");
@@ -937,7 +910,7 @@
       };
       function paste_preview_file_show() {
         function show_preview() {
-          collapse_manager.paste_viewer_file.open();
+          paste_viewer_collapses.paste_viewer_file.open();
           action_unlock();
         }
         let timeout = setTimeout(() => {
@@ -994,10 +967,6 @@
         }
       }
 
-      const collapse_paste_viewer_text_content = new Collapse(paste_viewer_text_content_wrapper, paste_viewer_text_content, 0);
-      collapse_paste_viewer_text_content.targetHeight = function () {
-        return paste_viewer_text_content.get(0).offsetHeight;
-      }
       function paste_preview_text_render(init) {
         if (!paste_viewer_enable_highlight_js.prop("checked")) {
           paste_viewer_highlight_language.closest(".mdui-row").hide();
@@ -1020,17 +989,8 @@
           paste_viewer_text_content.css("white-space", "pre-wrap");
           paste_viewer_text_content.text(paste_metadata.content);
         }
-        if (init) {
-          paste_viewer_text_content_wrapper.css("height", "auto");
-          collapse_manager.paste_viewer_text.open();
-        }
-        collapse_paste_viewer_text_content.open();
+        paste_viewer_collapses.paste_viewer_text.open();
       }
-
-      function updateTextContentHeight() {
-        collapse_paste_viewer_text_content.open();
-      }
-      $(window).on("resize", _.debounce(updateTextContentHeight, 300));
 
       paste_viewer_enable_markdown_render.on("change", () => {
         if (paste_viewer_enable_markdown_render.prop("checked")) {
@@ -1065,7 +1025,6 @@
           })
           .catch(() => {
             paste_viewer_text_content.text("无法加载 Paste");
-            collapse_paste_viewer_text_content.open();
             action_unlock();
           });
       }
@@ -1122,11 +1081,11 @@
               paste_viewer_download_btn.attr("download", paste_metadata.filename).attr("href", paste_metadata.url);
               paste_preview();
             } else if (xhr.status == 404) {
-              collapse_manager.paste_viewer_not_found.open();
+              paste_viewer_collapses.paste_viewer_not_found.open();
               action_unlock();
             } else if (xhr.status == 401) {
               if (!password) {
-                collapse_manager.paste_viewer_password.open();
+                paste_viewer_collapses.paste_viewer_password.open();
               } else {
                 paste_viewer_confirm_password.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
                 setTimeout(() => {
@@ -1153,7 +1112,7 @@
       });
 
       paste_viewer_back_to_query.on("click", function () {
-        collapse_manager.paste_viewer_query
+        paste_viewer_collapses.paste_viewer_query
           .open()
           .then(() => {
             paste_viewer_back_to_query.trigger("pastebin.viewer.clean");
@@ -1164,7 +1123,7 @@
       });
 
       paste_viewer_text_copy.on("click", function () {
-        let text = $("#paste-viewer-text-content-wrapper > div");
+        let text = $("#paste-viewer-text-content");
         function selectAndHint() {
           let selection = window.getSelection();
           let range = document.createRange();
@@ -1309,14 +1268,14 @@
           paste_detail_opened.delete(uuid);
         });
 
-        paste_manage_view_btn.on("click", function (e) {
+        paste_manage_view_btn.on("click", async function (e) {
           paste_viewer_query_input.val(hash);
           paste_viewer_query_input.get(0).dispatchEvent(new Event("input"));
           paste_viewer_progress.show();
           paste_viewer_query_btn.attr("disabled", "disabled");
           paste_manger_store_scroll_top = document.documentElement.scrollTop;
           paste_app_tab.show(1);
-          paste_viewer_back_to_query.get(0).click();
+          await paste_viewer_collapses.paste_viewer_query.open();
           paste_viewer_back_to_manage = true;
           $.ajax({
             method: "GET",

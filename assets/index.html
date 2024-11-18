@@ -126,32 +126,27 @@
         transition: color 0.3s ease-out;
       }
 
-      .card-collapse {
-        transition:
-          height 0.6s ease-out,
-          margin 0.6s ease-out;
+      .pb-collapse {
         height: 0px;
         overflow: hidden;
       }
 
-      body.mdui-loaded .card-collapse,
-      body.mdui-loaded .mdui-card.card-collapse {
+      .pb-collapse:not(.pb-collapse-inited) {
+        margin: 0!important;
+      }
+
+      .pb-collapse.pb-collapse-inited {
+        height: 0px;
+        overflow: hidden;
         transition:
           height 0.6s ease-out,
           margin 0.6s ease-out,
           background-color 0.3s ease-out,
-          color 0.3s ease-out;
+          color 0.3s ease-out!important;
       }
 
-      .card-collapse.card-collapse-open {
+      .pb-collapse.pb-collapse-open {
         height: auto;
-        margin: 16px 0;
-      }
-
-      #new-paste-file-progress {
-        transition: height 0.6s ease-out;
-        height: 0px;
-        overflow: hidden;
       }
 
       #new-paste-file-progress p {
@@ -302,13 +297,14 @@
         {{- end }}
       </div>
     </div>
-    <div class="mdui-container mdui-p-t-1">
+    <div class="mdui-container mdui-p-t-2">
       {{- if $allow_create_paste }}
       <div id="new-paste">{{- if false -}}</div>
       {{- /* make html formatter happy */ -}} {{- end -}} {{- else }}
       <div id="new-paste" style="display: none">
         {{- end}}
-        <div id="new-paste-result" class="mdui-card card-collapse">
+        
+        <div id="new-paste-result" class="mdui-card pb-collapse" style="margin: 0px 0px 16px 0px;">
           <div class="mdui-card-primary">
             <button type="button" class="mdui-btn mdui-btn-icon mdui-ripple mdui-float-right copy-btn" id="new-paste-result-copy">
               <i class="mdui-icon material-icons">content_copy</i>
@@ -331,7 +327,8 @@
             </div>
           </div>
         </div>
-        <div class="mdui-card mdui-m-y-2">
+
+        <div class="mdui-card">
           <div class="mdui-card-primary">
             <div class="mdui-card-primary-title">新 Paste</div>
           </div>
@@ -366,7 +363,7 @@
                         <p id="new-paste-file-filename" class="mdui-m-a-0" style="max-width: 100%; word-break: break-all; white-space: normal"></p>
                       </div>
                     </div>
-                    <div id="new-paste-file-progress">
+                    <div id="new-paste-file-progress" class="pb-collapse">
                       <div>
                         <p id="new-paste-file-progress-text" class="file-paste-bg">0.00MiB / 0.00MiB - 0.00%</p>
                         <div class="mdui-progress" style="border-radius: 0">
@@ -478,7 +475,7 @@
       {{- /* make html formatter happy */ -}} {{- end -}} {{- else}}
       <div id="paste-viewer">
         {{- end}}
-        <div id="paste-viewer-query" class="mdui-card card-collapse card-collapse-open">
+        <div id="paste-viewer-query" class="mdui-card pb-collapse pb-collapse-open" style="margin: 0px 0px 16px 0px;">
           <div class="mdui-progress paste-viewer-progress">
             <div class="mdui-progress-indeterminate"></div>
           </div>
@@ -507,7 +504,7 @@
           </div>
         </div>
 
-        <div id="paste-viewer-password" class="mdui-card card-collapse">
+        <div id="paste-viewer-password" class="mdui-card pb-collapse" style="margin: 0px 0px 16px 0px;">
           <div class="mdui-progress paste-viewer-progress">
             <div class="mdui-progress-indeterminate"></div>
           </div>
@@ -545,7 +542,7 @@
           </div>
         </div>
 
-        <div id="paste-viewer-not-found" class="mdui-card card-collapse">
+        <div id="paste-viewer-not-found" class="mdui-card pb-collapse" style="margin: 0px 0px 16px 0px;">
           <div class="mdui-card-primary">
             <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
           </div>
@@ -572,7 +569,7 @@
           </div>
         </div>
 
-        <div id="paste-viewer-text" class="mdui-card card-collapse">
+        <div id="paste-viewer-text" class="mdui-card pb-collapse" style="margin: 0px 0px 16px 0px;">
           <div class="mdui-card-primary">
             <button type="button" class="mdui-btn mdui-btn-icon mdui-ripple mdui-float-right copy-btn" id="paste-viewer-text-copy">
               <i class="mdui-icon material-icons">content_copy</i>
@@ -583,8 +580,8 @@
             <div class="mdui-container-fluid">
               <div class="mdui-row">
                 <div class="mdui-col-xs-12">
-                  <div id="paste-viewer-text-content-wrapper" class="card-collapse">
-                    <div style="overflow-x: auto">此处是 Paste 内容 动态加载 Paste 中</div>
+                  <div id="paste-viewer-text-content">
+                    此处是 Paste 内容，加载 Paste 中
                   </div>
                 </div>
               </div>
@@ -623,7 +620,7 @@
           </div>
         </div>
 
-        <div id="paste-viewer-file" class="mdui-card card-collapse">
+        <div id="paste-viewer-file" class="mdui-card pb-collapse" style="margin: 0px 0px 16px 0px;">
           <div class="mdui-card-primary">
             <div class="mdui-card-primary-title paste-viewer-title">Paste-Viewer</div>
           </div>
