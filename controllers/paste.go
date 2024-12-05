@@ -201,6 +201,7 @@ func NewPaste(c echo.Context) error {
 	}
 	if reader == nil {
 		c.JSON(400, map[string]any{"code": -2, "error": "bad request: file"})
+		return nil
 	}
 	paste := &database.Paste{
 		Content:              reader,
@@ -309,7 +310,7 @@ func pasteActionStatus(action string, paste *database.Paste, err error, c echo.C
 			<style>
 				body {
 					font-family: Consolas, monospace;
-	}
+				}
 				p {
 					margin: 0;
 				}
