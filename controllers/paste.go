@@ -631,7 +631,7 @@ func GetPaste(c echo.Context) error {
 	}
 	response.Header().Set("X-Origin-Filename", paste.Extra.FileName)
 	mime_type, _, _ := mime.ParseMediaType(paste.Extra.MimeType)
-	if mime_type == "application/vnd.pastebin.shorten" && !raw_response {
+	if mime_type == "application/vnd.pastebin.shorten" && variant != "raw" {
 		url, err := os.ReadFile(paste.Path())
 		if err != nil {
 			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
