@@ -220,6 +220,10 @@
       return target.close();
     };
 
+    function testVaildURL(url) {
+      return /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/i.test(url);
+    }
+
     (function new_paste() {
       const text_input = $("#new-paste-text-input");
       const file_input = $("#new-paste-file-input");
@@ -232,6 +236,10 @@
       const paste_short_url = $("#new-paste-short-url");
       const paste_detect_mime = $("#new-paste-detect-mime");
       const paste_delete_if_not_available = $("#new-paste-delete-if-not-available");
+      const paste_shorten_url = $("#new-paste-shorten-url");
+      const container_detect_mime = paste_detect_mime.parent().parent("div");
+      const container_paste_shorten_url = paste_shorten_url.parent().parent("div");
+
       const new_paste_return_container = $("#new-paste-return-container");
       const new_paste_delete_container = $("#new-paste-delete-container");
       const new_paste_update_container = $("#new-paste-update-container");
@@ -288,12 +296,31 @@
         file_paste_preview.show();
       }
 
+      let check_and_show_shorten_url = _.debounce(function () {
+        if (testVaildURL(text_input.val())) {
+          container_paste_shorten_url.show();
+          container_detect_mime.hide();
+        } else {
+          container_paste_shorten_url.hide();
+          container_detect_mime.show();
+          paste_shorten_url.prop("checked", false);
+        }
+      }, 300);
+
+      text_input.on("input", function () {
+        check_and_show_shorten_url();
+      });
+
+
       function show_file_paste_info() {
         if (!paste_file) {
           return;
         }
         file_paste_filename.text(paste_file.name + " (" + (Math.ceil(paste_file.size / 1024 / 1024 * 100) / 100).toFixed(2).toString() + " MiB)");
         paste_preview(paste_file);
+        container_detect_mime.show();
+        container_paste_shorten_url.hide();
+        paste_shorten_url.prop("checked", false);
         paste_load.text("切换到文本模式").removeClass("mdui-color-theme-accent").addClass("mdui-color-blue-accent");
         text_input.parent().hide();
         file_paste.show();
@@ -593,6 +620,7 @@
         let short_url = paste_short_url.val();
         let delete_if_not_available = paste_delete_if_not_available.prop("checked");
         let detect_mime = paste_detect_mime.prop("checked");
+        let shorten_url = paste_shorten_url.prop("checked");
         let data = new FormData();
         let query_params = {};
         if (password.length != 0) {
@@ -622,7 +650,7 @@
           if (delete_if_not_available) {
             query_params.delete_if_not_available = "true";
           } else {
-            query_params.delete_if_not_available = "false";
+            delete query_params.delete_if_not_available;
           }
         }
 
@@ -636,6 +664,8 @@
           let filename = sanitizeFilename(text.substring(0, 12) || "-") + ".txt";
           if (detect_mime) {
             data.append("c", new File([text], filename, { type: "application/vnd.pastebin.detect" }));
+          } else if (shorten_url) {
+            data.append("c", new File([text], text.substring(0, 24), { type: "application/vnd.pastebin.shorten" }));
           } else {
             data.append("c", new File([text], filename, { type: "text/plain; charset=utf-8" }));
           }
@@ -673,7 +703,10 @@
               setTimeout(() => {
                 paste_submit.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
               }, 600);
-              mdui.snackbar("创建失败: " + (response.error || "网络错误"));
+              if (!response.error) {
+                response.error = "network error";
+              }
+              show_result("创建失败",response, false);
             } else {
               if (paste_file) {
                 await upload_progress({ loaded: paste_file.size, total: paste_file.size, lengthComputable: true });
@@ -728,7 +761,10 @@
               setTimeout(() => {
                 paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
               }, 600);
-              mdui.snackbar("更新失败: " + (response.error || "网络错误"));
+              if (!response.error) {
+                response.error = "network error";
+              }
+              show_result("更新失败",response, false);
             } else {
               if (paste_file) {
                 await upload_progress({ loaded: paste_file.size, total: paste_file.size, lengthComputable: true });
@@ -767,7 +803,10 @@
               setTimeout(() => {
                 paste_delete.removeClass("mdui-color-red-800").addClass("mdui-color-red");
               }, 600);
-              mdui.snackbar("删除失败: " + (response.error || "网络错误"));
+              if (!response.error) {
+                response.error = "network error";
+              }
+              show_result("删除失败",response, true);
             } else {
               paste_delete.removeClass("mdui-color-red").addClass("mdui-color-green-600");
               setTimeout(() => {
@@ -1013,13 +1052,14 @@
       function paste_preview_text() {
         $.ajax({
           method: "GET",
-          url: paste_metadata.id //+ "?access_token=" + paste_metadata.access_token,
+          url: paste_metadata.id + (paste_metadata.type == "application/vnd.pastebin.shorten" ? "/raw" : "") //+ "?access_token=" + paste_metadata.access_token,
         })
           .then(res => {
             paste_metadata.content = res;
-            if (paste_metadata.type.startsWith("text/markdown")) {
+            if (paste_metadata.type.startsWith("text/markdown") || paste_metadata.type == "application/vnd.pastebin.shorten") {
               paste_viewer_enable_markdown_render.prop("checked", true);
             }
+
             paste_preview_text_render(true);
             action_unlock();
           })
@@ -1030,7 +1070,7 @@
       }
 
       function paste_preview() {
-        if (paste_metadata.type.startsWith("text/") && paste_metadata.size <= 1024 * 1024) {
+        if ((paste_metadata.type.startsWith("text/") || paste_metadata.type == "application/vnd.pastebin.shorten") && paste_metadata.size <= 1024 * 1024) {
           paste_preview_text();
         } else {
           paste_preview_file();

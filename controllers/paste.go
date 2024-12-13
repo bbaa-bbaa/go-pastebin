@@ -22,6 +22,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -281,7 +282,7 @@ func pasteActionStatus(action string, paste *database.Paste, err error, c echo.C
 			response["status"] = action + ", but short url not available"
 			response["uuid"] = paste.UUID
 		default:
-			response = map[string]any{"code": -3, "error": "internal error"}
+			response = map[string]any{"code": -3, "error": err.Error()}
 		}
 	}
 
@@ -630,6 +631,15 @@ func GetPaste(c echo.Context) error {
 	}
 	response.Header().Set("X-Origin-Filename", paste.Extra.FileName)
 	mime_type, _, _ := mime.ParseMediaType(paste.Extra.MimeType)
+	if mime_type == "application/vnd.pastebin.shorten" && !raw_response {
+		url, err := os.ReadFile(paste.Path())
+		if err != nil {
+			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
+			return nil
+		}
+		c.Redirect(307, string(url))
+		return nil
+	}
 	if download ||
 		!strings.HasPrefix(mime_type, "text/") && !strings.HasPrefix(mime_type, "image/") &&
 			!strings.HasPrefix(mime_type, "audio/") && !strings.HasPrefix(mime_type, "video/") {

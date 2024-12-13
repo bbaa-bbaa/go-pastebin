@@ -42,7 +42,7 @@ import (
 	"github.com/mattn/go-sqlite3"
 )
 
-var ReservedURL = regexp.MustCompile(`^(sw\.js(\.map)?|workbox.*?\.js(\.map)?|manifest\.json|favicon\.ico|robots\.txt|index\.?(x|s)?htm(l)?|legacy|admin\.?(x|s)?htm(l)?)$`)
+var ReservedURL = regexp.MustCompile(`^(sw\.js(\.map)?|workbox.*?\.js(\.map)?|manifest\.json|favicon\.ico|robots\.txt|index\.?(x|s)?(htm)?l?|legacy|admin\.?(x|s)?(htm)?l?)$`)
 
 type Paste_Hash int64
 
@@ -436,6 +436,8 @@ func (p *Paste) FlagDelete() error {
 	return nil
 }
 
+var ValidURLRegexp = regexp.MustCompile(`https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&/=]*)`)
+
 func (p *Paste) save(paste_file *os.File) error {
 	reader := bufio.NewReader(p.Content)
 	hash := xxhash.New()
@@ -446,8 +448,15 @@ func (p *Paste) save(paste_file *os.File) error {
 	if p.Extra.MimeType == "" || p.Extra.MimeType == "application/vnd.pastebin.detect" || strings.HasPrefix(p.Extra.MimeType, "text/") && !strings.Contains(p.Extra.MimeType, "charset=") {
 		mime_detect_complete_flag = false
 		mime_detector, mime_result = p.mimeTypeDetector(p.Extra.MimeType)
+		defer mime_detector.Close()
 	}
+	url_shorten := p.Extra.MimeType == "application/vnd.pastebin.shorten"
+	url_shorten_buf := &bytes.Buffer{}
 	p.Extra.Size = 0
+	defer paste_file.Close()
+	if r, ok := p.Content.(io.ReadCloser); ok {
+		defer r.Close()
+	}
 	log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.MagentaString(`[%s]`, p.Extra.FileName), color.YellowString(" 保存中"))
 	last_report := time.Time{}
 	for {
@@ -455,6 +464,9 @@ func (p *Paste) save(paste_file *os.File) error {
 		if n > 0 {
 			hash.Write(buf[:n])
 			paste_file.Write(buf[:n])
+			if url_shorten {
+				url_shorten_buf.Write(buf[:n])
+			}
 			if !mime_detect_complete_flag {
 				_, err := mime_detector.Write(buf[:n])
 				if err != nil {
@@ -470,19 +482,23 @@ func (p *Paste) save(paste_file *os.File) error {
 				}
 			}
 		}
-		if err == io.EOF {
-			break
-		} else if err != nil {
+		if url_shorten && p.Extra.Size > 4*1024 {
+			return fmt.Errorf("url shorten content too large")
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
 			return err
 		}
 	}
-	if mime_detector != nil {
-		mime_detector.Close()
-		p.Extra.MimeType = <-mime_result
+	if url_shorten {
+		if !ValidURLRegexp.Match(url_shorten_buf.Bytes()) {
+			return fmt.Errorf("invalid url content")
+		}
 	}
-	paste_file.Close()
-	if r, ok := p.Content.(io.ReadCloser); ok {
-		r.Close()
+	if mime_detector != nil {
+		p.Extra.MimeType = <-mime_result
 	}
 	hash_buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(hash_buf, hash.Sum64())
