@@ -131,6 +131,9 @@ func (user *User) RegisterWebAuthnRequest(credential_name string, passkey bool) 
 			return credential.Descriptor()
 		})))
 	}
+	register_options = append(register_options, webauthn.WithExtensions(protocol.AuthenticationExtensions{
+		"credentialProtectionPolicy": "userVerificationOptionalWithCredentialIDList",
+	}))
 	if passkey {
 		register_options = append(register_options, webauthn.WithResidentKeyRequirement(protocol.ResidentKeyRequirementRequired))
 	}
@@ -222,7 +225,7 @@ func (user *User) RemoveWebAuthnCredential(credential_name string) error {
 }
 
 func UserDiscoverableLoginRequest() (assertion *protocol.CredentialAssertion, session *webauthn.SessionData, err error) {
-	assertion, session, err = webAuthn.BeginDiscoverableLogin()
+	assertion, session, err = webAuthn.BeginDiscoverableLogin(webauthn.WithUserVerification(protocol.VerificationRequired))
 	if err != nil {
 		return nil, nil, err
 	}
