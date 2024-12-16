@@ -226,6 +226,7 @@
 
     (function new_paste() {
       const text_input = $("#new-paste-text-input");
+      const new_paste_use_flexible_textarea = $("#new-paste-use-flexible-textarea");
       const file_input = $("#new-paste-file-input");
       const file_paste = $("#new-paste-file");
       const drop_file_overlay = $(".paste-file-drop-overlay");
@@ -348,6 +349,14 @@
           file_input.get(0).click();
         } else {
           switch_to_text_paste();
+        }
+      });
+
+      new_paste_use_flexible_textarea.on("change", function () {
+        if ($(this).is(":checked")) {
+          text_input.removeAttr("rows");
+        } else {
+          text_input.attr("rows", "8");
         }
       });
 
