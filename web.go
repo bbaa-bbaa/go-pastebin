@@ -16,6 +16,7 @@ package pastebin
 
 import (
 	"embed"
+	"html/template"
 	"io"
 	"io/fs"
 	"net/http"
@@ -23,7 +24,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"text/template"
 	"time"
 
 	"git.bbaa.fun/bbaa/go-pastebin/controllers"
@@ -96,18 +96,24 @@ func (t *TemplateRender) Render(w io.Writer, name string, data interface{}, c ec
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
+var templateFuncs = template.FuncMap{
+	"unescape": func(s string) template.HTML {
+		return template.HTML(s)
+	},
+}
+
 func initTemplate() {
 	if database.Config.Mode == "debug" {
 		e.Renderer = &DebugRender{}
 	} else {
 		if database.Config.CustomTemplateDir == "" {
 			e.Renderer = &TemplateRender{
-				templates: template.Must(template.ParseFS(embed_assets, "assets/*.html", "assets/manifest.json")),
+				templates: template.Must(template.New("").Funcs(templateFuncs).ParseFS(embed_assets, "assets/*.html", "assets/manifest.json")),
 			}
 		} else {
 			assets := os.DirFS(database.Config.CustomTemplateDir)
 			e.Renderer = &TemplateRender{
-				templates: template.Must(template.ParseFS(assets, "*.html", "manifest.json")),
+				templates: template.Must(template.New("").Funcs(templateFuncs).ParseFS(assets, "*.html", "manifest.json")),
 			}
 		}
 	}
@@ -119,9 +125,9 @@ func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.
 	var tmpl *template.Template
 	var err error
 	if database.Config.CustomTemplateDir == "" {
-		tmpl, err = template.ParseFiles("assets/" + name)
+		tmpl, err = template.New("").Funcs(templateFuncs).ParseFiles("assets/" + name)
 	} else {
-		tmpl, err = template.ParseFiles(filepath.Join(database.Config.CustomTemplateDir, name))
+		tmpl, err = template.New("").Funcs(templateFuncs).ParseFiles(filepath.Join(database.Config.CustomTemplateDir, name))
 	}
 	if err != nil {
 		return err

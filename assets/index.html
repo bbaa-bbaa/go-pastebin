@@ -227,6 +227,10 @@
         animation: refresh-rotate 0.8s linear infinite;
       }
 
+      textarea#new-paste-text-input {
+        min-height: 180px;
+      }
+
       @keyframes refresh-rotate {
         0% {
           transform: rotate(0deg);
@@ -263,7 +267,7 @@
     <script src="static/js/night.js"></script>
     <div class="mdui-appbar">
       <div class="mdui-toolbar mdui-color-theme">
-        <a href="javascript:;" class="mdui-typo-title">{{.SiteName}}</a>
+        <a href="javascript:;" class="mdui-typo-title">{{unescape .SiteName}}</a>
         <div class="mdui-toolbar-spacer"></div>
         <button type="button" href="javascript:;" class="mdui-btn mdui-btn-icon" id="account-dialog-btn">
           <i class="mdui-icon material-icons">account_circle</i>
@@ -339,13 +343,8 @@
                       </div>
                     </div>
                     <div class="mdui-textfield">
-                      <textarea id="new-paste-text-input" class="mdui-textfield-input" rows="8" placeholder="输入Paste内容，或拖放文件到此处" maxlength="2147483648"></textarea>
+                      <textarea id="new-paste-text-input" class="mdui-textfield-input" placeholder="输入Paste内容，或拖放文件到此处" maxlength="10485760"></textarea>
                     </div>
-                    <label class="mdui-checkbox">
-                      展开文本框
-                      <input id="new-paste-use-flexible-textarea" type="checkbox">
-                      <i class="mdui-checkbox-icon"></i>
-                    </label>
                   </div>
                 </div>
                 <div class="mdui-row" id="new-paste-file" style="display: none">
@@ -476,6 +475,9 @@
             </form>
           </div>
         </div>
+        <button id="new-paste-float-update" class="mdui-fab mdui-color-theme-accent mdui-ripple mdui-fab-fixed mdui-fab-hide">
+          <i class="mdui-icon material-icons">save</i>
+        </button>
       </div>
       {{- if $allow_create_paste }}
       <div id="paste-viewer" style="display: none">{{- if false -}}</div>

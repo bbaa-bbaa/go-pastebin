@@ -226,7 +226,6 @@
 
     (function new_paste() {
       const text_input = $("#new-paste-text-input");
-      const new_paste_use_flexible_textarea = $("#new-paste-use-flexible-textarea");
       const file_input = $("#new-paste-file-input");
       const file_paste = $("#new-paste-file");
       const drop_file_overlay = $(".paste-file-drop-overlay");
@@ -248,6 +247,7 @@
       const new_paste_return = $("#new-paste-return");
       const paste_delete = $("#new-paste-delete");
       const paste_update = $("#new-paste-update");
+      const paste_float_update = $("#new-paste-float-update");
       const paste_submit = $("#new-paste-submit");
       const paste_load = $("#new-paste-load-from-file");
 
@@ -349,14 +349,6 @@
           file_input.get(0).click();
         } else {
           switch_to_text_paste();
-        }
-      });
-
-      new_paste_use_flexible_textarea.on("change", function () {
-        if ($(this).is(":checked")) {
-          text_input.removeAttr("rows");
-        } else {
-          text_input.attr("rows", "8");
         }
       });
 
@@ -715,7 +707,7 @@
               if (!response.error) {
                 response.error = "network error";
               }
-              show_result("创建失败",response, false);
+              show_result("创建失败", response, false);
             } else {
               if (paste_file) {
                 await upload_progress({ loaded: paste_file.size, total: paste_file.size, lengthComputable: true });
@@ -729,6 +721,34 @@
             action_button.removeAttr("disabled");
           }
         });
+      });
+
+      paste_float_update.on("click", function () {
+        paste_update.get(0).click();
+      });
+
+      let showFloatUpdate = _.throttle(function () {
+        if (paste_update.get(0).disabled) {
+          if (!paste_float_update.hasClass("mdui-fab-hide")) {
+            paste_float_update.addClass("mdui-fab-hide");
+          }
+          return;
+        }
+        let update_location = paste_update.offset().top;
+        if (document.documentElement.scrollTop + document.documentElement.clientHeight < update_location) {
+          paste_float_update.removeClass("mdui-fab-hide");
+        } else {
+          paste_float_update.addClass("mdui-fab-hide");
+        }
+      },100);
+
+      $(window).on("scroll", function () {
+        showFloatUpdate();
+        return true
+      });
+
+      text_input.on("input", function () {
+        showFloatUpdate();
       });
 
       paste_update.on("click", async function () {
@@ -773,7 +793,7 @@
               if (!response.error) {
                 response.error = "network error";
               }
-              show_result("更新失败",response, false);
+              show_result("更新失败", response, false);
             } else {
               if (paste_file) {
                 await upload_progress({ loaded: paste_file.size, total: paste_file.size, lengthComputable: true });
@@ -815,7 +835,7 @@
               if (!response.error) {
                 response.error = "network error";
               }
-              show_result("删除失败",response, true);
+              show_result("删除失败", response, true);
             } else {
               paste_delete.removeClass("mdui-color-red").addClass("mdui-color-green-600");
               setTimeout(() => {
