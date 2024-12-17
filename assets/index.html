@@ -231,6 +231,38 @@
         min-height: 180px;
       }
 
+      #new-paste-float-update > i.save {
+        transform: scale(1) translateZ(0);
+      }
+
+      #new-paste-float-update.uploading > i.save {
+        transform: scale(0) translateZ(0);
+      }
+
+      #new-paste-float-update > i.uploading {
+        top: 40px;
+      }
+
+      #new-paste-float-update > i {
+        transition: transform 0.4s ease-out;
+      }
+
+      #new-paste-float-update.uploading > i.uploading {
+        animation: float-paste-uploading 0.8s ease infinite;
+      }
+
+      @keyframes float-paste-uploading {
+        0% {
+          top: 40px;
+        }
+        50% {
+          top: 0;
+        }
+        100% {
+          top: -40px;
+        }
+      }
+
       @keyframes refresh-rotate {
         0% {
           transform: rotate(0deg);
@@ -476,7 +508,8 @@
           </div>
         </div>
         <button id="new-paste-float-update" class="mdui-fab mdui-color-theme-accent mdui-ripple mdui-fab-fixed mdui-fab-hide">
-          <i class="mdui-icon material-icons">save</i>
+          <i class="mdui-icon material-icons save">save</i>
+          <i class="mdui-icon material-icons uploading">file_upload</i>
         </button>
       </div>
       {{- if $allow_create_paste }}

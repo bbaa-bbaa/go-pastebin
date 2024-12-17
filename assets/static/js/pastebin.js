@@ -723,8 +723,82 @@
         });
       });
 
+      function update_paste() {
+        return new Promise(async (resolve, reject) => {
+          let uuid = paste_uuid.val();
+          if (!check_uuid(uuid) || uuid.length == 0) {
+            mdui.snackbar("无效的 UUID");
+            return;
+          }
+          let prepared_data = prepare_data();
+          let data = prepared_data.data;
+          if (data.get("c").size == 0) {
+            data.delete("c");
+          }
+          let query_params = prepared_data.query_params;
+
+          action_button.attr("disabled", "disabled");
+          await hide_result();
+          const query_string = $.param(query_params).trim();
+          $.ajax({
+            method: "PUT",
+            url: uuid + (query_string != "" ? "?" + query_string : ""),
+            data: data,
+            headers: {
+              Accept: "application/json",
+              "X-Paste-Size": (data.get("c") || { size: 0 }).size
+            },
+            contentType: false,
+            processData: false,
+            beforeSend: function (xhr) {
+              if (paste_file) {
+                upload_progress({ loaded: 0, total: paste_file.size, lengthComputable: true });
+                xhr.upload.addEventListener("progress", upload_progress);
+              }
+            },
+            complete: async function (xhr) {
+              let response = JSON.parse(xhr.responseText || "{}");
+              if (xhr.responseText == "" || !response || response.code != 0) {
+                paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
+                setTimeout(() => {
+                  paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
+                }, 600);
+                if (!response.error) {
+                  response.error = "network error";
+                }
+                reject(response);
+              } else {
+                if (paste_file) {
+                  await upload_progress({ loaded: paste_file.size, total: paste_file.size, lengthComputable: true });
+                }
+                paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-600");
+                setTimeout(() => {
+                  paste_update.removeClass("mdui-color-green-600").addClass("mdui-color-blue-accent");
+                }, 600);
+                resolve(response);
+              }
+              action_button.removeAttr("disabled");
+            }
+          });
+        });
+      }
+
       paste_float_update.on("click", function () {
-        paste_update.get(0).click();
+        paste_float_update.addClass("uploading");
+        update_paste().then(response => {
+          paste_float_update.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
+          setTimeout(() => {
+            paste_float_update.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
+          }, 600);
+        }).catch(response => {
+          paste_float_update.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
+          setTimeout(() => {
+            paste_float_update.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
+          }, 600);
+          mdui.snackbar("更新失败：" + response.error || "未知错误");
+        }).finally(() => {
+          paste_float_update.removeClass("uploading");
+        });
       });
 
       let showFloatUpdate = _.throttle(function () {
@@ -740,7 +814,7 @@
         } else {
           paste_float_update.addClass("mdui-fab-hide");
         }
-      },100);
+      }, 100);
 
       $(window).on("scroll", function () {
         showFloatUpdate();
@@ -751,61 +825,11 @@
         showFloatUpdate();
       });
 
-      paste_update.on("click", async function () {
-        let uuid = paste_uuid.val();
-        if (!check_uuid(uuid) || uuid.length == 0) {
-          mdui.snackbar("无效的 UUID");
-          return;
-        }
-        let prepared_data = prepare_data();
-        let data = prepared_data.data;
-        if (data.get("c").size == 0) {
-          data.delete("c");
-        }
-        let query_params = prepared_data.query_params;
-
-        action_button.attr("disabled", "disabled");
-        await hide_result();
-        const query_string = $.param(query_params).trim();
-        $.ajax({
-          method: "PUT",
-          url: uuid + (query_string != "" ? "?" + query_string : ""),
-          data: data,
-          headers: {
-            Accept: "application/json",
-            "X-Paste-Size": (data.get("c") || { size: 0 }).size
-          },
-          contentType: false,
-          processData: false,
-          beforeSend: function (xhr) {
-            if (paste_file) {
-              upload_progress({ loaded: 0, total: paste_file.size, lengthComputable: true });
-              xhr.upload.addEventListener("progress", upload_progress);
-            }
-          },
-          complete: async function (xhr) {
-            let response = JSON.parse(xhr.responseText || "{}");
-            if (xhr.responseText == "" || !response || response.code != 0) {
-              paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-red-accent");
-              setTimeout(() => {
-                paste_update.removeClass("mdui-color-red-accent").addClass("mdui-color-blue-accent");
-              }, 600);
-              if (!response.error) {
-                response.error = "network error";
-              }
-              show_result("更新失败", response, false);
-            } else {
-              if (paste_file) {
-                await upload_progress({ loaded: paste_file.size, total: paste_file.size, lengthComputable: true });
-              }
-              paste_update.removeClass("mdui-color-blue-accent").addClass("mdui-color-green-600");
-              setTimeout(() => {
-                paste_update.removeClass("mdui-color-green-600").addClass("mdui-color-blue-accent");
-              }, 600);
-              show_result("更新结果", response, false);
-            }
-            action_button.removeAttr("disabled");
-          }
+      paste_update.on("click", () => {
+        update_paste().then(response => {
+          show_result("更新结果", response, false);
+        }).catch(response => {
+          show_result("更新失败", response, false);
         });
       });
 
