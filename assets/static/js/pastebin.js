@@ -433,8 +433,16 @@
             if (!response.info) {
               return Promise.reject();
             }
-            if (!response.info.mime_type.startsWith("text/")) {
-              return Promise.reject({ error: "无法导入非文本类型的 Paste" });
+            if (
+              !response.info.mime_type.startsWith("text/") &&
+              ![
+                "application/javascript",
+                "application/json",
+                "application/xml",
+                "application/x-www-form-urlencoded",
+              ].includes(response.info.mime_type)
+            ) {
+              return Promise.reject({ error: "无法导入非支持类型的 Paste" });
             }
             if (response.info.size > 5 * 1024 * 1024) {
               return Promise.reject({ error: "无法导入大于 5 MiB 的 Paste" });
@@ -445,6 +453,7 @@
             text_input.val(text);
             new_paste_preview_markdown_btn.show();
             new_paste_markdown_preview_container.hide();
+            text_input.get(0).dispatchEvent(new Event("input"));
             new_paste_import_btn.removeClass("importing");
             new_paste_import_btn.parent().css("pointer-events", null);
             new_paste_import_btn.addClass("mdui-color-green-600");
@@ -915,13 +924,13 @@
             paste_float_update.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
             setTimeout(() => {
               paste_float_update.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
-            }, 600);
+            }, 1500);
           })
           .catch(response => {
             paste_float_update.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
             setTimeout(() => {
               paste_float_update.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-            }, 600);
+            }, 1500);
             mdui.snackbar("更新失败：" + response.error || "未知错误");
           })
           .finally(() => {
