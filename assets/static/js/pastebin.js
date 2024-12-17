@@ -439,7 +439,7 @@
                 "application/javascript",
                 "application/json",
                 "application/xml",
-                "application/x-www-form-urlencoded",
+                "application/vnd.pastebin.shorten",
               ].includes(response.info.mime_type)
             ) {
               return Promise.reject({ error: "无法导入非支持类型的 Paste" });
