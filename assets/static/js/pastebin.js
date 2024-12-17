@@ -13,7 +13,7 @@
   let paste_force_delete = false;
 
   function formatSize(bytes) {
-    const units = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB'];
+    const units = ["Bytes", "KiB", "MiB", "GiB", "TiB"];
     let unitIndex = 0;
     while (bytes >= 1024 && unitIndex < units.length - 1) {
       bytes /= 1024;
@@ -134,14 +134,14 @@
         if (e.target != this.element || e.propertyName != "height") {
           return;
         }
-        console.log("trans cancel")
+        console.log("trans cancel");
         if (this._callback.reject) this._callback.reject();
       });
       this.$.on("transitionend", e => {
         if (e.target != this.element || e.propertyName != "height") {
           return;
         }
-        console.log("trans end")
+        console.log("trans end");
         if (this._callback.resolve) this._callback.resolve();
       });
       this.$.addClass("pb-collapse-inited");
@@ -149,7 +149,7 @@
 
     Collapse.prototype._pendingPromise = function (resolve, reject) {
       this._pendingCallback = { resolve, reject };
-    }
+    };
 
     Collapse.prototype.close = function () {
       if (this.$.css("height") == "0px" || !this.expanded) {
@@ -178,7 +178,7 @@
         this.$.css("height", this.element.scrollHeight + "px");
       });
       open.then(() => {
-        this.$.css("height", "auto")
+        this.$.css("height", "auto");
       });
       return open;
     };
@@ -225,6 +225,12 @@
     }
 
     (function new_paste() {
+      const new_paste_import_btn = $("#new-paste-import");
+      const new_paste_preview_markdown_btn = $("#new-paste-preview-markdown");
+      const new_paste_edit_text_btn = $("#new-paste-edit-text");
+      const new_paste_markdown_preview_container = $("#new-paste-markdown-preview-container");
+      const new_paste_edit_func = $("#new-paste-edit-func");
+
       const text_input = $("#new-paste-text-input");
       const file_input = $("#new-paste-file-input");
       const file_paste = $("#new-paste-file");
@@ -312,18 +318,42 @@
         check_and_show_shorten_url();
       });
 
+      new_paste_preview_markdown_btn.on("click", function () {
+        let text = text_input.val();
+        if (text.length == 0) {
+          return;
+        }
+        new_paste_preview_markdown_btn.hide();
+        new_paste_edit_text_btn.show();
+        new_paste_import_btn.hide();
+        new_paste_markdown_preview_container.html(DOMPurify.sanitize(marked.parse(text)));
+        new_paste_markdown_preview_container.show();
+        text_input.parent().hide();
+      });
+
+      new_paste_edit_text_btn.on("click", function () {
+        new_paste_edit_text_btn.hide();
+        new_paste_preview_markdown_btn.show();
+        let uuid = paste_uuid.val();
+        if (uuid.length !== 0 && check_uuid(uuid)) {
+          new_paste_import_btn.show();
+        }
+        text_input.parent().show();
+        new_paste_markdown_preview_container.hide();
+      });
 
       function show_file_paste_info() {
         if (!paste_file) {
           return;
         }
-        file_paste_filename.text(paste_file.name + " (" + (Math.ceil(paste_file.size / 1024 / 1024 * 100) / 100).toFixed(2).toString() + " MiB)");
+        file_paste_filename.text(paste_file.name + " (" + (Math.ceil((paste_file.size / 1024 / 1024) * 100) / 100).toFixed(2).toString() + " MiB)");
         paste_preview(paste_file);
         container_detect_mime.show();
         container_paste_shorten_url.hide();
         paste_shorten_url.prop("checked", false);
         paste_load.text("切换到文本模式").removeClass("mdui-color-theme-accent").addClass("mdui-color-blue-accent");
         text_input.parent().hide();
+        new_paste_edit_func.hide();
         file_paste.show();
       }
 
@@ -340,8 +370,98 @@
         file_input.val("");
         paste_load.text("从文件中加载").removeClass("mdui-color-blue-accent").addClass("mdui-color-theme-accent");
         file_paste.hide();
+        new_paste_edit_func.show();
         text_input.parent().show();
       }
+
+      new_paste_import_btn.on("click", async function () {
+        function getHashFromUuid(uuid) {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              method: "GET",
+              url: "api/paste/" + uuid,
+              headers: {
+                Accept: "application/json"
+              },
+              complete: function (xhr) {
+                let response = JSON.parse(xhr.responseText || "{}");
+                if (xhr.status == 200 && response.code === 0) {
+                  resolve(response);
+                } else {
+                  reject(response);
+                }
+              }
+            });
+          });
+        }
+        function getPasteFromHash(hash) {
+          return new Promise((resolve, reject) => {
+            $.ajax({
+              method: "GET",
+              url: hash,
+              complete: function (xhr) {
+                if (xhr.status) {
+                  resolve(xhr.responseText);
+                } else {
+                  reject();
+                }
+              }
+            });
+          });
+        }
+        let uuid = paste_uuid.val();
+        if (uuid.length == 0 || !check_uuid(uuid)) {
+          mdui.snackbar("无效的 UUID");
+          return;
+        }
+        new_paste_import_btn.parent().css("pointer-events", "none");
+        new_paste_import_btn.addClass("importing");
+        new Promise((resolve, reject) => {
+          mdui.confirm(
+            "导入 Paste 会覆盖当前编辑的内容，是否继续？",
+            "确认导入",
+            function () {
+              resolve();
+            },
+            function () {
+              reject({ error: "用户取消" });
+            }
+          );
+        })
+          .then(() => getHashFromUuid(uuid))
+          .then(response => {
+            if (!response.info) {
+              return Promise.reject();
+            }
+            if (!response.info.mime_type.startsWith("text/")) {
+              return Promise.reject({ error: "无法导入非文本类型的 Paste" });
+            }
+            if (response.info.size > 5 * 1024 * 1024) {
+              return Promise.reject({ error: "无法导入大于 5 MiB 的 Paste" });
+            }
+            return getPasteFromHash(response.info.hash);
+          })
+          .then(text => {
+            text_input.val(text);
+            new_paste_preview_markdown_btn.show();
+            new_paste_markdown_preview_container.hide();
+            new_paste_import_btn.removeClass("importing");
+            new_paste_import_btn.parent().css("pointer-events", null);
+            new_paste_import_btn.addClass("mdui-color-green-600");
+            setTimeout(() => {
+              new_paste_import_btn.removeClass("mdui-color-green-600");
+            }, 600);
+          })
+          .catch(response => {
+            mdui.snackbar("导入时发生错误: " + (response.error || "未知错误"));
+            new_paste_import_btn.removeClass("importing");
+            new_paste_import_btn.parent().css("pointer-events", null);
+            new_paste_import_btn.addClass("mdui-color-red-accent");
+            setTimeout(() => {
+              new_paste_import_btn.removeClass("mdui-color-red-accent");
+            }, 600);
+          });
+      });
 
       paste_load.on("click", function () {
         if (!paste_file) {
@@ -411,9 +531,11 @@
         if (uuid_valid && uuid.length != 0) {
           paste_delete.removeAttr("disabled");
           paste_update.removeAttr("disabled");
+          new_paste_import_btn.show();
         } else {
           paste_delete.attr("disabled", "disabled");
           paste_update.attr("disabled", "disabled");
+          new_paste_import_btn.hide();
         }
       });
 
@@ -449,8 +571,8 @@
       });
 
       function check_allow_delete_if_not_available() {
-        let max_access_count = paste_max_access_count.val()
-        if (paste_expire.val() != "0" || max_access_count.length && !isNaN(parseInt(max_access_count))) {
+        let max_access_count = paste_max_access_count.val();
+        if (paste_expire.val() != "0" || (max_access_count.length && !isNaN(parseInt(max_access_count)))) {
           paste_delete_if_not_available.removeAttr("disabled");
         } else {
           paste_delete_if_not_available.attr("disabled", "disabled");
@@ -485,7 +607,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () { });
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () {});
           new_paste_result_link.closest(".mdui-card").find(".paste-link").show();
           new_paste_result_qr_code.show();
         } else {
@@ -535,7 +657,7 @@
         let complete;
 
         function open_progress() {
-          file_paste_progress_text.text("0.00 MiB / " + (Math.ceil(total_size / 1024 / 1024 * 100) / 100).toFixed(2) + " MiB - 0.00%");
+          file_paste_progress_text.text("0.00 MiB / " + (Math.ceil((total_size / 1024 / 1024) * 100) / 100).toFixed(2) + " MiB - 0.00%");
           file_paste_progress_bar.css("width", "0%");
           collapse_file_paste_progress.open();
         }
@@ -545,7 +667,7 @@
         }
 
         function init_progress() {
-          complete_promise = new Promise((resolve) => {
+          complete_promise = new Promise(resolve => {
             complete = function () {
               close_progress();
               init_progress();
@@ -572,15 +694,18 @@
         function update_progress() {
           let loaded = now_loaded();
           file_paste_progress_text.text(
-            (Math.ceil(loaded / 1024 / 1024 * 100) / 100).toFixed(2) + " MiB / " + (Math.ceil(total_size / 1024 / 1024 * 100) / 100).toFixed(2) + " MiB - " + ((Math.min(loaded / total_size, 1)) * 100).toFixed(2) + "%"
+            (Math.ceil((loaded / 1024 / 1024) * 100) / 100).toFixed(2) +
+              " MiB / " +
+              (Math.ceil((total_size / 1024 / 1024) * 100) / 100).toFixed(2) +
+              " MiB - " +
+              (Math.min(loaded / total_size, 1) * 100).toFixed(2) +
+              "%"
           );
-          file_paste_progress_bar.css("width", ((Math.min(loaded / total_size, 1)) * 100).toFixed(2) + "%");
+          file_paste_progress_bar.css("width", (Math.min(loaded / total_size, 1) * 100).toFixed(2) + "%");
           if (Math.round(loaded) < total_size) {
             requestAnimationFrame(update_progress);
           } else {
-            file_paste_progress_text.text(
-              (total_size / 1024 / 1024).toFixed(2) + " MiB / " + (total_size / 1024 / 1024).toFixed(2) + " MiB - 100.00%"
-            )
+            file_paste_progress_text.text((total_size / 1024 / 1024).toFixed(2) + " MiB / " + (total_size / 1024 / 1024).toFixed(2) + " MiB - 100.00%");
             file_paste_progress_bar.css("width", "100%");
             complete();
           }
@@ -610,7 +735,7 @@
       })();
 
       function sanitizeFilename(filename) {
-        return filename.replace(/[\/\\:*?"<>|]/g, '');
+        return filename.replace(/[\/\\:*?"<>|]/g, "");
       }
 
       function prepare_data() {
@@ -785,20 +910,23 @@
 
       paste_float_update.on("click", function () {
         paste_float_update.addClass("uploading");
-        update_paste().then(response => {
-          paste_float_update.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
-          setTimeout(() => {
-            paste_float_update.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
-          }, 600);
-        }).catch(response => {
-          paste_float_update.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
-          setTimeout(() => {
-            paste_float_update.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
-          }, 600);
-          mdui.snackbar("更新失败：" + response.error || "未知错误");
-        }).finally(() => {
-          paste_float_update.removeClass("uploading");
-        });
+        update_paste()
+          .then(response => {
+            paste_float_update.removeClass("mdui-color-theme-accent").addClass("mdui-color-green-600");
+            setTimeout(() => {
+              paste_float_update.removeClass("mdui-color-green-600").addClass("mdui-color-theme-accent");
+            }, 600);
+          })
+          .catch(response => {
+            paste_float_update.removeClass("mdui-color-theme-accent").addClass("mdui-color-red-accent");
+            setTimeout(() => {
+              paste_float_update.removeClass("mdui-color-red-accent").addClass("mdui-color-theme-accent");
+            }, 600);
+            mdui.snackbar("更新失败：" + response.error || "未知错误");
+          })
+          .finally(() => {
+            paste_float_update.removeClass("uploading");
+          });
       });
 
       let showFloatUpdate = _.throttle(function () {
@@ -818,7 +946,7 @@
 
       $(window).on("scroll", function () {
         showFloatUpdate();
-        return true
+        return true;
       });
 
       text_input.on("input", function () {
@@ -826,11 +954,13 @@
       });
 
       paste_update.on("click", () => {
-        update_paste().then(response => {
-          show_result("更新结果", response, false);
-        }).catch(response => {
-          show_result("更新失败", response, false);
-        });
+        update_paste()
+          .then(response => {
+            show_result("更新结果", response, false);
+          })
+          .catch(response => {
+            show_result("更新失败", response, false);
+          });
       });
 
       async function delete_paste(force) {
@@ -942,7 +1072,7 @@
         }
       })();
     })();
-    let paste_viewer_collapses
+    let paste_viewer_collapses;
     (function paste_viewer() {
       const paste_viewer_query = $("#paste-viewer-query");
       const paste_viewer_password = $("#paste-viewer-password");
@@ -960,7 +1090,7 @@
       });
 
       const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
-      const paste_viewer_text_copy = $("#paste-viewer-text-copy")
+      const paste_viewer_text_copy = $("#paste-viewer-text-copy");
       const paste_viewer_action = $(".paste-viewer-action");
       const paste_viewer_query_form = $("#paste-viewer-query-form");
       const paste_viewer_query_input = $("#paste-viewer-query-input");
@@ -1140,7 +1270,7 @@
             let utf8_decoder = new TextDecoder("utf-8");
             return utf8_decoder.decode(new Uint8Array(filename));
           }
-        } catch (e) { }
+        } catch (e) {}
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
@@ -1191,7 +1321,7 @@
               action_unlock();
             }
           }
-        })
+        });
       }
 
       paste_viewer_query_form.on("submit", function () {
@@ -1205,11 +1335,9 @@
       });
 
       paste_viewer_back_to_query.on("click", function () {
-        paste_viewer_collapses.paste_viewer_query
-          .open()
-          .then(() => {
-            paste_viewer_back_to_query.trigger("pastebin.viewer.clean");
-          })
+        paste_viewer_collapses.paste_viewer_query.open().then(() => {
+          paste_viewer_back_to_query.trigger("pastebin.viewer.clean");
+        });
         if (viewer_mode) {
           history.back();
         }
@@ -1435,7 +1563,7 @@
         let pastes_panel = `
           <div class="mdui-panel-item${paste_detail_opened.has(paste.uuid) ? " mdui-panel-item-open" : ""}">
             <div class="mdui-panel-item-header">
-        `
+        `;
         pastes_panel += `<div class="mdui-m-r-1">`;
         let file_type = paste.mime_type.split("/")[0] || "application";
         if (file_type == "image") {
@@ -1597,7 +1725,7 @@
                       start_node = panel;
                     } else if (index == 0) {
                       paste_manage_panel.prepend(panel);
-                      start_node = panel
+                      start_node = panel;
                     } else {
                       paste_manage_panel.append(panel);
                     }
@@ -1665,7 +1793,6 @@
           paste_manger_store_scroll_top = 0;
         }
       });
-
     })();
     (function user_profile() {
       const account_dialog_btn = $("#account-dialog-btn");
@@ -1895,8 +2022,8 @@
           data: passkey
             ? null
             : JSON.stringify({
-              account: account
-            }),
+                account: account
+              }),
           processData: false,
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText || "{}");
