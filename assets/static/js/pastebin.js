@@ -394,11 +394,11 @@
             });
           });
         }
-        function getPasteFromHash(hash) {
+        function getPasteFromHash(info) {
           return new Promise((resolve, reject) => {
             $.ajax({
               method: "GET",
-              url: hash,
+              url: info.hash + (info.mime_type == "application/vnd.pastebin.shorten" ? "/raw" : ""),
               complete: function (xhr) {
                 if (xhr.status) {
                   resolve(xhr.responseText);
@@ -425,6 +425,10 @@
             },
             function () {
               reject({ error: "用户取消" });
+            },
+            {
+              history: false,
+              model: true,
             }
           );
         })
@@ -447,7 +451,7 @@
             if (response.info.size > 5 * 1024 * 1024) {
               return Promise.reject({ error: "无法导入大于 5 MiB 的 Paste" });
             }
-            return getPasteFromHash(response.info.hash);
+            return getPasteFromHash(response.info);
           })
           .then(text => {
             text_input.val(text);
