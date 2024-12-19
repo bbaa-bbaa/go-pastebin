@@ -35,8 +35,8 @@ async function cleanRuntimeCacheInPersist() {
   });
 }
 
-function networkFirst(cache, response) {
-  if (!cache) return response;
+async function networkFirst(cache, response) {
+  if (!cache) return await response;
   return Promise.race([
     response,
     new Promise(function (resolve, reject) {
@@ -50,14 +50,14 @@ function networkFirst(cache, response) {
 // return updated
 async function updatePersistCache() {
   let updated = false;
-  return fetch("api/sw/manifest")
+  return fetch("api/sw/manifest/v1")
     .then(async function (response) {
       return response.json();
     })
     .then(async function (manifest) {
       let cache = await persistCache;
       let pendingRequests = [];
-      for (let path of manifest.precache) {
+      for (let path of Object.keys(manifest.hash)) {
         let cached_response = await cache.match(path);
         if (!cached_response) {
           updated = true;
@@ -84,9 +84,16 @@ async function updatePersistCache() {
     .catch(() => false);
 }
 
+async function cacheIndex() {
+  return fetch("/").then(async function (response) {
+    let cache = await runtimeCache;
+    return cache.put("/", response);
+  });
+}
+
 self.addEventListener("install", function (event) {
   self.skipWaiting();
-  event.waitUntil(cleanOldCacheStorage().then(updatePersistCache).then(cleanRuntimeCacheInPersist));
+  event.waitUntil(cleanOldCacheStorage().then(updatePersistCache).then(cleanRuntimeCacheInPersist).then(cacheIndex));
 });
 
 self.addEventListener("fetch", function (event) {
@@ -118,8 +125,8 @@ self.addEventListener("fetch", function (event) {
                 });
               }
             }
-            return response;
           }
+          return response;
         })
         .catch(function () {
           if (!cached) {

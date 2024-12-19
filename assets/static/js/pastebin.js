@@ -141,7 +141,6 @@
         if (e.target != this.element || e.propertyName != "height") {
           return;
         }
-        console.log("trans end");
         if (this._callback.resolve) this._callback.resolve();
       });
       this.$.addClass("pb-collapse-inited");

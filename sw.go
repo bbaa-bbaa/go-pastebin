@@ -83,20 +83,20 @@ var embedInfo = &embedMetadata{
 
 func setupSw(e *echo.Echo) {
 	embedInfo.calcMetadata(echo.MustSubFS(embed_assets, "assets"))
-	e.GET("/api/sw/manifest", func(c echo.Context) error {
+	e.GET("/api/sw/manifest/v1", func(c echo.Context) error {
 		if database.Config.Mode == "debug" {
 			embedInfo.calcMetadata(echo.MustSubFS(embed_assets, "assets"))
 		}
 		type Manifest struct {
-			Precache []string          `json:"precache"`
-			Hash     map[string]string `json:"hash"`
+			Hash map[string]string `json:"hash"`
 		}
 		manifest := Manifest{
 			Hash: make(map[string]string),
 		}
-		manifest.Precache = embedInfo.precache
 		for _, path := range embedInfo.precache {
-			manifest.Hash[path] = embedInfo.fileHash[path]
+			if hash, ok := embedInfo.fileHash[path]; ok {
+				manifest.Hash[path] = hash
+			}
 		}
 		c.Response().Header().Set("Cache-Control", "no-store")
 		return c.JSON(200, manifest)
