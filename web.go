@@ -20,6 +20,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -248,6 +249,8 @@ func (c *WarpPaste) Param(name string) string {
 	return ""
 }
 
+var variantList = []string{"raw", "download"}
+
 func setupStatic(e *echo.Echo) {
 	var assets fs.FS
 	if database.Config.Mode == "debug" {
@@ -269,11 +272,16 @@ func setupStatic(e *echo.Echo) {
 		id := ""
 		variant := ""
 		param_frag := strings.Split(p, "/")
-		if len(param_frag) >= 1 {
-			id = param_frag[0]
-		}
 		if len(param_frag) == 2 {
 			variant = param_frag[1]
+			if !slices.Contains(variantList, variant) {
+				return c.NoContent(404)
+			}
+		}
+		if len(param_frag) <= 2 {
+			id = param_frag[0]
+		} else {
+			return c.NoContent(404)
 		}
 		return controllers.GetPaste(&WarpPaste{c, id, variant})
 	})
