@@ -260,6 +260,7 @@ func setupStatic(e *echo.Echo) {
 		p := c.Param("*")
 		if hash, ok := embedInfo.fileHash[p]; ok {
 			c.Response().Header().Set("ETag", hash)
+			c.Response().Header().Set("X-Revision", hash)
 		}
 		err := static_hanlder(c)
 		if err == nil {

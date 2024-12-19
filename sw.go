@@ -83,7 +83,7 @@ var embedInfo = &embedMetadata{
 
 func setupSw(e *echo.Echo) {
 	embedInfo.calcMetadata(echo.MustSubFS(embed_assets, "assets"))
-	e.GET("/api/sw/manifest/v1", func(c echo.Context) error {
+	e.GET("/api/sw/v1/manifest", func(c echo.Context) error {
 		if database.Config.Mode == "debug" {
 			embedInfo.calcMetadata(echo.MustSubFS(embed_assets, "assets"))
 		}

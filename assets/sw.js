@@ -50,7 +50,7 @@ async function networkFirst(cache, response) {
 // return updated
 async function updatePersistCache() {
   let updated = false;
-  return fetch("api/sw/manifest/v1")
+  return fetch("api/sw/v1/manifest")
     .then(async function (response) {
       return response.json();
     })
@@ -67,8 +67,8 @@ async function updatePersistCache() {
             })
           );
         } else {
-          let etag = cached_response.headers.get("ETag");
-          if (manifest.hash[path] !== etag) {
+          let revision = cached_response.headers.get("X-Revision") || cached_response.headers.get("ETag");
+          if (manifest.hash[path] !== revision) {
             updated = true;
             pendingRequests.push(
               fetch(path).then(async function (response) {
