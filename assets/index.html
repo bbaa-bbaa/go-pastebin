@@ -292,28 +292,6 @@
         }
       }
     </style>
-
-    <script>
-      if ("serviceWorker" in navigator) {
-        try {
-          navigator.serviceWorker
-            .register("/sw.js", {
-              scope: "/"
-            })
-            .then(registration => {
-              if (registration.installing) {
-                console.log("Service worker installing");
-              } else if (registration.waiting) {
-                console.log("Service worker installed");
-              } else if (registration.active) {
-                console.log("Service worker active");
-              }
-            });
-        } catch (error) {
-          console.error(`Registration failed with ${error}`);
-        }
-      }
-    </script>
   </head>
   <body class="mdui-theme-primary-indigo mdui-theme-accent-pink{{- if eq .ColorScheme `dark`}} mdui-theme-layout-dark{{- end -}}">
     <script src="static/js/night.js"></script>
@@ -1024,6 +1002,7 @@
       })();
     </script>
     <script src="static/mdui/js/mdui.min.js"></script>
+    <script src="sw_loader.js"></script>
     <script src="static/lodash/js/lodash.min.js"></script>
     <script src="static/purify/js/purify.min.js"></script>
     <script src="static/marked/js/marked.min.js"></script>

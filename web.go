@@ -15,14 +15,12 @@
 package pastebin
 
 import (
-	"embed"
+	"bytes"
 	"html/template"
 	"io"
 	"io/fs"
 	"net/http"
-	"os"
-	"path/filepath"
-	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,9 +33,6 @@ import (
 	"golang.org/x/net/http2"
 )
 
-//go:embed assets/*
-var embed_assets embed.FS
-
 var e *echo.Echo
 
 func httpServe() {
@@ -49,16 +44,11 @@ func httpServe() {
 	//e.Use(middleware.Recover())
 	e.Use(controllers.UserMiddleware)
 	//e.Use(staticRender)
-	initTemplate()
-	setupIndex()
-	setupLegacy()
-	setupAdmin()
 
 	e.GET("/api/paste/:uuid", controllers.PasteAccess)
 	e.GET("/api/paste/check_shorturl/:id", controllers.CheckURL)
 	e.GET("/api/paste/pastes", controllers.PasteList)
 	e.GET("/api/paste/total_size", controllers.GetTotalPasteSize)
-
 	e.GET("/api/user", controllers.GetUser)
 	e.POST("/api/user/login", controllers.UserLogin)
 	e.GET("/api/user/logout", controllers.UserLogout)
@@ -78,7 +68,14 @@ func httpServe() {
 	e.PUT("/:uuid", controllers.UpdatePaste)
 	e.DELETE("/:uuid", controllers.DeletePaste)
 	e.HEAD("/:id", controllers.GetPaste)
-	e.GET("/*", Static)
+
+	initTemplate()
+	setupIndex()
+	setupLegacy()
+	setupAdmin()
+	setupSw(e)
+	setupStatic(e)
+
 	s := &http2.Server{
 		MaxConcurrentStreams: 250,
 		MaxReadFrameSize:     1048576,
@@ -93,7 +90,14 @@ type TemplateRender struct {
 }
 
 func (t *TemplateRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	return t.templates.ExecuteTemplate(w, name, data)
+	var buf bytes.Buffer
+	err := t.templates.ExecuteTemplate(&buf, name, data)
+	if err != nil {
+		return err
+	}
+	c.Response().Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	_, err = io.Copy(w, &buf)
+	return err
 }
 
 var templateFuncs = template.FuncMap{
@@ -106,15 +110,8 @@ func initTemplate() {
 	if database.Config.Mode == "debug" {
 		e.Renderer = &DebugRender{}
 	} else {
-		if database.Config.CustomTemplateDir == "" {
-			e.Renderer = &TemplateRender{
-				templates: template.Must(template.New("").Funcs(templateFuncs).ParseFS(embed_assets, "assets/*.html", "assets/manifest.json")),
-			}
-		} else {
-			assets := os.DirFS(database.Config.CustomTemplateDir)
-			e.Renderer = &TemplateRender{
-				templates: template.Must(template.New("").Funcs(templateFuncs).ParseFS(assets, "*.html", "manifest.json")),
-			}
+		e.Renderer = &TemplateRender{
+			templates: template.Must(template.New("").Funcs(templateFuncs).ParseFS(embed_assets, "assets/*.html", "assets/manifest.json")),
 		}
 	}
 }
@@ -124,15 +121,18 @@ type DebugRender struct{}
 func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
 	var tmpl *template.Template
 	var err error
-	if database.Config.CustomTemplateDir == "" {
-		tmpl, err = template.New("").Funcs(templateFuncs).ParseFiles("assets/" + name)
-	} else {
-		tmpl, err = template.New("").Funcs(templateFuncs).ParseFiles(filepath.Join(database.Config.CustomTemplateDir, name))
-	}
+	tmpl, err = template.New("").Funcs(templateFuncs).ParseFiles("assets/" + name)
 	if err != nil {
 		return err
 	}
-	return tmpl.ExecuteTemplate(w, name, data)
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, name, data)
+	if err != nil {
+		return err
+	}
+	c.Response().Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	_, err = io.Copy(w, &buf)
+	return err
 }
 
 func setupAdmin() {
@@ -248,35 +248,32 @@ func (c *WarpPaste) Param(name string) string {
 	return ""
 }
 
-var IgnoreFiles = [...]string{"workbox-config.js"}
-
-func Static(c echo.Context) error {
+func setupStatic(e *echo.Echo) {
 	var assets fs.FS
-	if database.Config.CustomTemplateDir == "" {
-		if database.Config.Mode == "debug" {
-			assets = echo.MustSubFS(e.Filesystem, "assets")
-		} else {
-			assets = echo.MustSubFS(embed_assets, "assets")
-		}
+	if database.Config.Mode == "debug" {
+		assets = echo.MustSubFS(e.Filesystem, "assets")
 	} else {
-		assets = os.DirFS(database.Config.CustomTemplateDir)
+		assets = echo.MustSubFS(embed_assets, "assets")
 	}
-	p := c.Param("*")
-	if !slices.Contains(IgnoreFiles[:], p) {
-		static_hanlder := echo.StaticDirectoryHandler(assets, false)
+	static_hanlder := echo.StaticDirectoryHandler(assets, false)
+	e.GET("/*", func(c echo.Context) error {
+		p := c.Param("*")
+		if hash, ok := embedInfo.fileHash[p]; ok {
+			c.Response().Header().Set("ETag", hash)
+		}
 		err := static_hanlder(c)
 		if err == nil {
 			return nil
 		}
-	}
-	id := ""
-	variant := ""
-	param_frag := strings.Split(p, "/")
-	if len(param_frag) >= 1 {
-		id = param_frag[0]
-	}
-	if len(param_frag) == 2 {
-		variant = param_frag[1]
-	}
-	return controllers.GetPaste(&WarpPaste{c, id, variant})
+		id := ""
+		variant := ""
+		param_frag := strings.Split(p, "/")
+		if len(param_frag) >= 1 {
+			id = param_frag[0]
+		}
+		if len(param_frag) == 2 {
+			variant = param_frag[1]
+		}
+		return controllers.GetPaste(&WarpPaste{c, id, variant})
+	})
 }

@@ -1,2 +1,181 @@
-if(!self.define){let i,e={};const s=(s,c)=>(s=new URL(s+".js",c).href,e[s]||new Promise((e=>{if("document"in self){const i=document.createElement("script");i.src=s,i.onload=e,document.head.appendChild(i)}else i=s,importScripts(s),e()})).then((()=>{let i=e[s];if(!i)throw new Error(`Module ${s} didn’t register its module`);return i})));self.define=(c,t)=>{const o=i||("document"in self?document.currentScript.src:"")||location.href;if(e[o])return;let r={};const a=i=>s(i,o),n={module:{uri:o},exports:r,require:a};e[o]=Promise.all(c.map((i=>n[i]||a(i)))).then((i=>(t(...i),r)))}}define(["./workbox-f34ee6c5"],(function(i){"use strict";self.skipWaiting(),i.clientsClaim(),i.precacheAndRoute([{url:"favicon.ico",revision:"0fdc23a9aa5c53b3dbd163df0ec4f1d9"},{url:"static/css/night.css",revision:"471cf698a57bfc46da322217a1ecb0c9"},{url:"static/highlight/highlight.min.js",revision:"8848f76829f178b2bdc3bf54a583eb90"},{url:"static/highlight/highlightjs-line-numbers.min.js",revision:"394cf3e3ff6d9b01e9d80cb8b2931ba1"},{url:"static/highlight/styles/github-dark.min.css",revision:"4009275e152550dcb97bce1b1b1985a6"},{url:"static/highlight/styles/github.min.css",revision:"340e65ffd5c17713efc9107c06304f7b"},{url:"static/js/admin.js",revision:"509f2ed34ac43ed01e5386ab7e80c8b6"},{url:"static/js/night.js",revision:"06f701acf7521fc4b0e0dfa47e3a893f"},{url:"static/js/pastebin.js",revision:"a8cd1af74c3cd949873693f8db42f03d"},{url:"static/lodash/js/lodash.min.js",revision:"bc0594c54450e8ac689739b6b198067a"},{url:"static/marked/js/marked.min.js",revision:"627f91868a350b51e2661d168ae0f3a9"},{url:"static/mdui/css/mdui.min.css",revision:"3cfa80b0d6fa72c520c62d8423885d5a"},{url:"static/mdui/js/mdui.min.js",revision:"b85802a92ecc85488394f115c1bf9875"},{url:"static/normalize/css/normalize.min.css",revision:"36974225aa51d7b413c9a1cfb22e9c06"},{url:"static/purify/js/purify.min.js",revision:"fd4f07a2e5108be01d13a4f579ae5e55"},{url:"static/qrcode/js/qrcode.min.js",revision:"945c02b16ad350dfe695229fa482e6b0"},{url:"static/mdui/fonts/roboto/Roboto-Bold.woff2",revision:"ab96cca26751239828b8e9c524cca5bb"},{url:"static/mdui/fonts/roboto/Roboto-Medium.woff2",revision:"2741a14e49524efa6059c735010239d0"},{url:"static/mdui/fonts/roboto/Roboto-Regular.woff2",revision:"b2a6341ae7440130ec4b4b186aff8413"},{url:"static/mdui/icons/material-icons/MaterialIcons-Regular.woff2",revision:"570eb83859dc23dd0eec423a49e147fe"},{url:"static/font/Bender/Bender-Bold.woff2",revision:"7856fe55e8e1606fd381423e10589636"},{url:"static/font/Hack/hack-regular.woff2",revision:"d569415005f26953bb9c3c52895355eb"}],{ignoreURLParametersMatching:[/^utm_/,/^fbclid$/]}),i.cleanupOutdatedCaches(),i.registerRoute((function(i){const e=i.url;return e.pathname.startsWith("/static/img/")||e.pathname.startsWith("/static/")&&(e.pathname.endsWith(".js")||e.pathname.endsWith(".css")||e.pathname.endsWith(".woff")||e.pathname.endsWith(".woff2"))}),new i.StaleWhileRevalidate,"GET"),i.registerRoute((function(i){const e=i.url;return"/"===e.pathname||"manifest.json"==e.pathname||"/api/user"===e.pathname||"/admin/"===e.pathname}),new i.NetworkFirst,"GET")}));
-//# sourceMappingURL=sw.js.map
+const CACHE_NAME = "pastebin-cache-v1";
+const RUNTIME_CACHE_NAME = "pastebin-runtime-cache-v1";
+const networkTimeout = 5000;
+let runtimeCache = caches.open(RUNTIME_CACHE_NAME);
+let persistCache = caches.open(CACHE_NAME);
+
+async function requestCached(request, cache) {
+  return cache.match(request).then(function (cached) {
+    if (cached) {
+      return true;
+    }
+    return false;
+  });
+}
+
+async function cleanOldCacheStorage() {
+  return caches.keys().then(async function (cacheNames) {
+    for (let cacheName of cacheNames) {
+      if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE_NAME) {
+        await caches.delete(cacheName);
+      }
+    }
+  });
+}
+
+async function cleanRuntimeCacheInPersist() {
+  return runtimeCache.then(async function (cache) {
+    return cache.keys().then(async function (requests) {
+      for (let request of requests) {
+        if (requestCached(request, await persistCache)) {
+          cache.delete(request);
+        }
+      }
+    });
+  });
+}
+
+function networkFirst(cache, response) {
+  if (!cache) return response;
+  return Promise.race([
+    response,
+    new Promise(function (resolve, reject) {
+      setTimeout(function () {
+        resolve(cache);
+      }, networkTimeout);
+    })
+  ]);
+}
+
+// return updated
+async function updatePersistCache() {
+  let updated = false;
+  return fetch("api/sw/manifest")
+    .then(async function (response) {
+      return response.json();
+    })
+    .then(async function (manifest) {
+      let cache = await persistCache;
+      let pendingRequests = [];
+      for (let path of manifest.precache) {
+        let cached_response = await cache.match(path);
+        if (!cached_response) {
+          updated = true;
+          pendingRequests.push(
+            fetch(path).then(async function (response) {
+              cache.put(path, response);
+            })
+          );
+        } else {
+          let etag = cached_response.headers.get("ETag");
+          if (manifest.hash[path] !== etag) {
+            updated = true;
+            pendingRequests.push(
+              fetch(path).then(async function (response) {
+                cache.put(path, response);
+              })
+            );
+          }
+        }
+      }
+      return Promise.all(pendingRequests);
+    })
+    .then(() => updated)
+    .catch(() => false);
+}
+
+self.addEventListener("install", function (event) {
+  self.skipWaiting();
+  event.waitUntil(cleanOldCacheStorage().then(updatePersistCache).then(cleanRuntimeCacheInPersist));
+});
+
+self.addEventListener("fetch", function (event) {
+  let url = URL.parse(event.request.url);
+  if (url.pathname == "/") {
+    updatePersistCache()
+      .then(function (updated) {
+        if (updated) {
+          return clients.matchAll();
+        }
+        return [];
+      })
+      .then(function (clients) {
+        for (let client of clients) {
+          client.postMessage({ type: "update" });
+        }
+      });
+  }
+  event.respondWith(
+    caches.match(event.request).then(function (cached) {
+      let response = fetch(event.request)
+        .then(async function (response) {
+          if (event.request.method == "GET") {
+            if (url.pathname == "/" || (url.pathname.split("/").length > 2 && parseInt(response.headers.get("Content-Length")) < 5 * 1048576)) {
+              if (!(await requestCached(event.request, await persistCache))) {
+                let clone_respone = response.clone();
+                runtimeCache.then(function (cache) {
+                  cache.put(event.request, clone_respone);
+                });
+              }
+            }
+            return response;
+          }
+        })
+        .catch(function () {
+          if (!cached) {
+            return new Response(
+              `
+            <!DOCTYPE html>
+            <html lang="en">
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Network Error</title>
+              </head>
+              <body>
+                <h1>Network Error</h1>
+                <p>Unable to connect to the server. Please check your network connection.</p>
+                <p>message from service worker.</p>
+              </body>
+            </html>
+          `,
+              {
+                status: 503,
+                statusText: "Service Unavailable",
+                headers: {
+                  "Content-Type": "text/html"
+                }
+              }
+            );
+          }
+          return cached;
+        });
+      return networkFirst(cached, response);
+    })
+  );
+});
+
+self.addEventListener("activate", function (event) {
+  let resource_version_updated = false;
+  event.waitUntil(
+    clients
+      .claim()
+      .then(cleanOldCacheStorage())
+      .then(updatePersistCache)
+      .then(updated => {
+        resource_version_updated = updated;
+      })
+      .then(cleanRuntimeCacheInPersist)
+      .then(() => {
+        if (resource_version_updated) {
+          return clients.matchAll();
+        }
+        return [];
+      })
+      .then(function (clients) {
+        for (let client of clients) {
+          client.postMessage({ type: "update" });
+        }
+      })
+  );
+});
