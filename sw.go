@@ -85,7 +85,7 @@ func setupSw(e *echo.Echo) {
 	embedInfo.calcMetadata(echo.MustSubFS(embed_assets, "assets"))
 	e.GET("/api/sw/v1/manifest", func(c echo.Context) error {
 		if database.Config.Mode == "debug" {
-			embedInfo.calcMetadata(echo.MustSubFS(embed_assets, "assets"))
+			embedInfo.calcMetadata(echo.MustSubFS(e.Filesystem, "assets"))
 		}
 		type Manifest struct {
 			Hash map[string]string `json:"hash"`

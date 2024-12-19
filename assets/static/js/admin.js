@@ -74,9 +74,8 @@
         });
       })
     }
-
+    
   )();
-
     (function paste_manage() {
       updateTotalPasteSize()
       const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
