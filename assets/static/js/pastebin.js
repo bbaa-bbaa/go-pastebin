@@ -1268,16 +1268,6 @@
       }
 
       function parse_filename(xhr) {
-        try {
-          if (TextDecoder) {
-            let filename = xhr
-              .getResponseHeader("X-Origin-Filename")
-              .split("")
-              .map(a => a.charCodeAt(0));
-            let utf8_decoder = new TextDecoder("utf-8");
-            return utf8_decoder.decode(new Uint8Array(filename));
-          }
-        } catch (e) {}
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
         return decodeURIComponent(urlencode_filename);
       }
