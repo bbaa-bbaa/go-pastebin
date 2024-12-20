@@ -99,7 +99,7 @@ async function updatePersistCache() {
           console.log("detected new resource", path);
           updated = true;
           pendingRequests.push(
-            fetch(path).then(async function (response) {
+            fetch(new Request(path, { cache: "no-store" })).then(async function (response) {
               return cache.put(path, response);
             })
           );
@@ -109,7 +109,7 @@ async function updatePersistCache() {
             console.log("detected updated resource", path);
             updated = true;
             pendingRequests.push(
-              fetch(path).then(async function (response) {
+              fetch(new Request(path, { cache: "no-store" })).then(async function (response) {
                 return cache.put(path, response);
               })
             );

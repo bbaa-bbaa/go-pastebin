@@ -427,7 +427,7 @@
             },
             {
               history: false,
-              model: true,
+              modal: true
             }
           );
         })
@@ -438,12 +438,7 @@
             }
             if (
               !response.info.mime_type.startsWith("text/") &&
-              ![
-                "application/javascript",
-                "application/json",
-                "application/xml",
-                "application/vnd.pastebin.shorten",
-              ].includes(response.info.mime_type)
+              !["application/javascript", "application/json", "application/xml", "application/vnd.pastebin.shorten"].includes(response.info.mime_type)
             ) {
               return Promise.reject({ error: "无法导入非支持类型的 Paste" });
             }

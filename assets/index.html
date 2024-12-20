@@ -95,7 +95,7 @@
       }
 
       .paste-link a,
-      #paste-viewer-text-content-wrapper a {
+      #paste-viewer-text-content a {
         text-decoration: none;
         transition:
           background-color 0.3s ease-out,
@@ -103,28 +103,32 @@
       }
 
       .paste-link a:hover,
-      #paste-viewer-text-content-wrapper a:hover {
+      #paste-viewer-text-content a:hover {
         text-decoration: underline;
       }
 
       .paste-link a:hover,
       .paste-link a:visited,
-      #paste-viewer-text-content-wrapper a:hover,
-      #paste-viewer-text-content-wrapper a:visited {
+      #paste-viewer-text-content a:hover,
+      #paste-viewer-text-content a:visited {
         color: #03a9f4;
       }
 
       body.mdui-theme-layout-dark .paste-link a,
-      body.mdui-theme-layout-dark #paste-viewer-text-content-wrapper a {
+      body.mdui-theme-layout-dark #paste-viewer-text-content a {
         color: rgb(238, 0, 0);
       }
 
       body.mdui-theme-layout-dark .paste-link a:hover,
       body.mdui-theme-layout-dark .paste-link a:visited,
-      body.mdui-theme-layout-dark #paste-viewer-text-content-wrapper a:hover,
-      body.mdui-theme-layout-dark #paste-viewer-text-content-wrapper a:visited {
+      body.mdui-theme-layout-dark #paste-viewer-text-content a:hover,
+      body.mdui-theme-layout-dark #paste-viewer-text-content a:visited {
         color: rgb(255, 192, 203);
         transition: color 0.3s ease-out;
+      }
+
+      #paste-viewer-text-content, #new-paste-markdown-preview-container {
+        font-size: 16px;
       }
 
       .pb-collapse {
