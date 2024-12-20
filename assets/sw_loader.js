@@ -2,6 +2,7 @@ if ("serviceWorker" in navigator) {
   try {
     navigator.serviceWorker.addEventListener("message", event => {
       if (event.data.type === "update") {
+        if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ type: "notify-updated", id: event.data.id });
         mdui.snackbar({
           message: "检测到新版本，是否刷新？",
           buttonText: "更新",

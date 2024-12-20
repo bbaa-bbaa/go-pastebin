@@ -6,6 +6,7 @@ const runtimeCacheMaxSize = 1048576;
 
 let runtimeCache = caches.open(RUNTIME_CACHE_NAME);
 let persistCache = caches.open(CACHE_NAME);
+let messageBus = [];
 
 async function requestCached(request, cache) {
   return cache.match(request).then(function (cached) {
@@ -95,19 +96,21 @@ async function updatePersistCache() {
       for (let path of Object.keys(manifest.hash)) {
         let cached_response = await cache.match(path);
         if (!cached_response) {
+          console.log("detected new resource", path);
           updated = true;
           pendingRequests.push(
             fetch(path).then(async function (response) {
-              cache.put(path, response);
+              return cache.put(path, response);
             })
           );
         } else {
           let revision = cached_response.headers.get("X-Revision") || cached_response.headers.get("ETag");
           if (manifest.hash[path] !== revision) {
+            console.log("detected updated resource", path);
             updated = true;
             pendingRequests.push(
               fetch(path).then(async function (response) {
-                cache.put(path, response);
+                return cache.put(path, response);
               })
             );
           }
@@ -131,11 +134,13 @@ async function addLastAccess(response) {
 
 async function addToRuntimeCache(request, response) {
   if (!(await requestCached(request, await persistCache))) {
-    runtimeCache.then(async function (cache) {
-      let url = URL.parse(request.url);
-      if (url.protocol !== "http:" && url.protocol !== "https:") return;
-      return cache.put(request, await addLastAccess(response));
-    }).catch(() => {});
+    runtimeCache
+      .then(async function (cache) {
+        let url = URL.parse(request.url);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return;
+        return cache.put(request, await addLastAccess(response));
+      })
+      .catch(() => {});
   }
 }
 
@@ -145,6 +150,49 @@ async function cacheIndex() {
   });
 }
 
+async function notifyUpdate() {
+  let swClients = await clients.matchAll();
+  let ackedClients = [];
+  let resolve;
+  let intervalId;
+  async function notifyClients() {
+    let ackedCount = 0;
+    for (let client of swClients) {
+      if (!ackedClients.includes(client.id)) {
+        try {
+          client.postMessage({ type: "update", id: client.id });
+          console.log("notify update,", client.id);
+        } catch (e) {
+          ackedCount++;
+        }
+      } else {
+        ackedCount++;
+      }
+    }
+    if (intervalId && resolve && ackedCount == swClients.length) {
+      clearInterval(intervalId);
+      resolve();
+    }
+  }
+  notifyClients();
+  intervalId = setInterval(notifyClients, 1000);
+  return new Promise(function (r) {
+    resolve = r;
+    messageBus.push(function (event) {
+      if (event.data.type === "notify-updated") {
+        ackedClients.push(event.data.id);
+        console.log("notify acked,", event.data.id);
+      }
+    });
+  });
+}
+
+self.addEventListener("message", function (event) {
+  for (let bus of messageBus) {
+    bus(event);
+  }
+});
+
 self.addEventListener("install", function (event) {
   self.skipWaiting();
   event.waitUntil(cleanOldCacheStorage().then(updatePersistCache).then(cleanRuntimeCacheInPersist).then(cleanOutdatedRuntimeCache).then(cacheIndex));
@@ -153,18 +201,12 @@ self.addEventListener("install", function (event) {
 self.addEventListener("fetch", function (event) {
   let url = URL.parse(event.request.url);
   if (url.pathname == "/") {
-    updatePersistCache()
-      .then(function (updated) {
-        if (updated) {
-          return clients.matchAll();
-        }
-        return [];
-      })
-      .then(function (clients) {
-        for (let client of clients) {
-          client.postMessage({ type: "update" });
-        }
-      });
+    updatePersistCache().then(function (updated) {
+      if (updated) {
+        return notifyUpdate();
+      }
+      return;
+    });
   }
   event.respondWith(
     caches.match(event.request).then(function (cached) {
@@ -232,13 +274,7 @@ self.addEventListener("activate", function (event) {
       .then(cacheIndex)
       .then(() => {
         if (resource_version_updated) {
-          return clients.matchAll();
-        }
-        return [];
-      })
-      .then(function (clients) {
-        for (let client of clients) {
-          client.postMessage({ type: "update" });
+          return notifyUpdate();
         }
       })
   );
