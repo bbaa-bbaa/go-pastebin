@@ -15,13 +15,11 @@
 package pastebin
 
 import (
-	"bytes"
 	"html/template"
 	"io"
 	"io/fs"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -44,7 +42,6 @@ func httpServe() {
 	}))
 	e.Use(middleware.Recover())
 	e.Use(controllers.UserMiddleware)
-	e.Use(controllers.JSONWithContentLengthMiddleware)
 	//e.Use(staticRender)
 
 	e.GET("/api/paste/:uuid", controllers.PasteAccess)
@@ -92,14 +89,7 @@ type TemplateRender struct {
 }
 
 func (t *TemplateRender) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	var buf bytes.Buffer
-	err := t.templates.ExecuteTemplate(&buf, name, data)
-	if err != nil {
-		return err
-	}
-	c.Response().Header().Set("Content-Length", strconv.Itoa(buf.Len()))
-	_, err = io.Copy(w, &buf)
-	return err
+	return t.templates.ExecuteTemplate(w, name, data)
 }
 
 var templateFuncs = template.FuncMap{
@@ -127,14 +117,7 @@ func (d *DebugRender) Render(w io.Writer, name string, data interface{}, c echo.
 	if err != nil {
 		return err
 	}
-	var buf bytes.Buffer
-	err = tmpl.ExecuteTemplate(&buf, name, data)
-	if err != nil {
-		return err
-	}
-	c.Response().Header().Set("Content-Length", strconv.Itoa(buf.Len()))
-	_, err = io.Copy(w, &buf)
-	return err
+	return tmpl.ExecuteTemplate(w, name, data)
 }
 
 func setupAdmin() {

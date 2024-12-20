@@ -2,6 +2,7 @@ const CACHE_NAME = "pastebin-cache-v1";
 const RUNTIME_CACHE_NAME = "pastebin-runtime-cache-v1";
 const networkTimeout = 5000;
 const runtimeCacheLifetime = 7 * 86400;
+const runtimeCacheMaxSize = 1048576;
 
 let runtimeCache = caches.open(RUNTIME_CACHE_NAME);
 let persistCache = caches.open(CACHE_NAME);
@@ -29,7 +30,8 @@ async function cleanRuntimeCacheInPersist() {
   return runtimeCache.then(async function (cache) {
     return cache.keys().then(async function (requests) {
       for (let request of requests) {
-        if (requestCached(request, await persistCache)) {
+        if (await requestCached(request, await persistCache)) {
+          console.log("cleanRuntimeCacheInPersist", request.url);
           cache.delete(request);
         }
       }
@@ -53,11 +55,26 @@ async function cleanOutdatedRuntimeCache() {
   });
 }
 
+async function getResponseSize(response) {
+  let size = 0;
+  if (response.headers.has("Content-Length")) {
+    size = parseInt(response.headers.get("Content-Length"));
+  } else {
+    let body = response.body.getReader();
+    while (true) {
+      let { done, value } = await body.read();
+      if (done) break;
+      size += value.length;
+    }
+  }
+  return size;
+}
+
 async function networkFirst(cache, response) {
   if (!cache) return await response;
   return Promise.race([
     response,
-    new Promise(function (resolve, reject) {
+    new Promise(function (resolve) {
       setTimeout(function () {
         resolve(cache);
       }, networkTimeout);
@@ -104,7 +121,7 @@ async function updatePersistCache() {
 
 async function addLastAccess(response) {
   let headers = new Headers(response.headers);
-  headers.set("X-Last-Access", new Date().toISOString());
+  headers.set("X-Last-Access", new Date().toUTCString());
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -115,8 +132,10 @@ async function addLastAccess(response) {
 async function addToRuntimeCache(request, response) {
   if (!(await requestCached(request, await persistCache))) {
     runtimeCache.then(async function (cache) {
-      cache.put(request, await addLastAccess(response));
-    });
+      let url = URL.parse(request.url);
+      if (url.protocol !== "http:" && url.protocol !== "https:") return;
+      return cache.put(request, await addLastAccess(response));
+    }).catch(() => {});
   }
 }
 
@@ -150,11 +169,16 @@ self.addEventListener("fetch", function (event) {
   event.respondWith(
     caches.match(event.request).then(function (cached) {
       let response = fetch(event.request)
-        .then(async function (response) {
+        .then(function (response) {
           if (event.request.method == "GET") {
-            if (parseInt(response.headers.get("Content-Length")) < 1048576) {
-              addToRuntimeCache(event.request, response.clone());
-            }
+            getResponseSize(response.clone()).then(
+              (response =>
+                function (size) {
+                  if (size <= runtimeCacheMaxSize) {
+                    addToRuntimeCache(event.request, response);
+                  }
+                })(response.clone())
+            );
           }
           return response;
         })
