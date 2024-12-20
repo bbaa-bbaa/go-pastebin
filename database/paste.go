@@ -448,7 +448,11 @@ func (p *Paste) save(paste_file *os.File) error {
 	if p.Extra.MimeType == "" || p.Extra.MimeType == "application/vnd.pastebin.detect" || strings.HasPrefix(p.Extra.MimeType, "text/") && !strings.Contains(p.Extra.MimeType, "charset=") {
 		mime_detect_complete_flag = false
 		mime_detector, mime_result = p.mimeTypeDetector(p.Extra.MimeType)
-		defer mime_detector.Close()
+		defer func() {
+			if mime_detector != nil {
+				mime_detector.Close()
+			}
+		}()
 	}
 	url_shorten := p.Extra.MimeType == "application/vnd.pastebin.shorten"
 	url_shorten_buf := &bytes.Buffer{}
@@ -498,6 +502,8 @@ func (p *Paste) save(paste_file *os.File) error {
 		}
 	}
 	if mime_detector != nil {
+		mime_detector.Close()
+		mime_detector = nil
 		p.Extra.MimeType = <-mime_result
 	}
 	hash_buf := make([]byte, 8)
