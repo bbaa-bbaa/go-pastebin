@@ -74,7 +74,6 @@
         });
       })
     }
-    
   )();
     (function paste_manage() {
       updateTotalPasteSize()

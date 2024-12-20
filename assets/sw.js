@@ -1,6 +1,8 @@
 const CACHE_NAME = "pastebin-cache-v1";
 const RUNTIME_CACHE_NAME = "pastebin-runtime-cache-v1";
 const networkTimeout = 5000;
+const runtimeCacheLifetime = 7 * 86400;
+
 let runtimeCache = caches.open(RUNTIME_CACHE_NAME);
 let persistCache = caches.open(CACHE_NAME);
 
@@ -28,6 +30,22 @@ async function cleanRuntimeCacheInPersist() {
     return cache.keys().then(async function (requests) {
       for (let request of requests) {
         if (requestCached(request, await persistCache)) {
+          cache.delete(request);
+        }
+      }
+    });
+  });
+}
+
+async function cleanOutdatedRuntimeCache() {
+  return runtimeCache.then(async function (cache) {
+    return cache.keys().then(async function (requests) {
+      for (let request of requests) {
+        let url = URL.parse(request.url);
+        if (url.pathname == "/") continue;
+        let response = await cache.match(request);
+        let lastAccess = new Date(response.headers.get("X-Last-Access") || 0);
+        if (Date.now() - lastAccess.getTime() > runtimeCacheLifetime * 1000) {
           cache.delete(request);
         }
       }
@@ -84,16 +102,33 @@ async function updatePersistCache() {
     .catch(() => false);
 }
 
+async function addLastAccess(response) {
+  let headers = new Headers(response.headers);
+  headers.set("X-Last-Access", new Date().toISOString());
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: headers
+  });
+}
+
+async function addToRuntimeCache(request, response) {
+  if (!(await requestCached(request, await persistCache))) {
+    runtimeCache.then(async function (cache) {
+      cache.put(request, await addLastAccess(response));
+    });
+  }
+}
+
 async function cacheIndex() {
   return fetch("/").then(async function (response) {
-    let cache = await runtimeCache;
-    return cache.put("/", response);
+    addToRuntimeCache(new Request("/"), response);
   });
 }
 
 self.addEventListener("install", function (event) {
   self.skipWaiting();
-  event.waitUntil(cleanOldCacheStorage().then(updatePersistCache).then(cleanRuntimeCacheInPersist).then(cacheIndex));
+  event.waitUntil(cleanOldCacheStorage().then(updatePersistCache).then(cleanRuntimeCacheInPersist).then(cleanOutdatedRuntimeCache).then(cacheIndex));
 });
 
 self.addEventListener("fetch", function (event) {
@@ -117,13 +152,8 @@ self.addEventListener("fetch", function (event) {
       let response = fetch(event.request)
         .then(async function (response) {
           if (event.request.method == "GET") {
-            if (url.pathname == "/" || (url.pathname.split("/").length > 2 && parseInt(response.headers.get("Content-Length")) < 5 * 1048576)) {
-              if (!(await requestCached(event.request, await persistCache))) {
-                let clone_respone = response.clone();
-                runtimeCache.then(function (cache) {
-                  cache.put(event.request, clone_respone);
-                });
-              }
+            if (parseInt(response.headers.get("Content-Length")) < 1048576) {
+              addToRuntimeCache(event.request, response.clone());
             }
           }
           return response;
@@ -155,6 +185,7 @@ self.addEventListener("fetch", function (event) {
               }
             );
           }
+          addToRuntimeCache(event.request, cached.clone());
           return cached;
         });
       return networkFirst(cached, response);
@@ -173,6 +204,8 @@ self.addEventListener("activate", function (event) {
         resource_version_updated = updated;
       })
       .then(cleanRuntimeCacheInPersist)
+      .then(cleanOutdatedRuntimeCache)
+      .then(cacheIndex)
       .then(() => {
         if (resource_version_updated) {
           return clients.matchAll();

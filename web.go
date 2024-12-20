@@ -42,8 +42,9 @@ func httpServe() {
 		Format: "[" + color.CyanString("Echo") + "] ${time_rfc3339} ${status} ${method} ${path} (${remote_ip}) ${latency_human}\n",
 		Output: e.Logger.Output(),
 	}))
-	//e.Use(middleware.Recover())
+	e.Use(middleware.Recover())
 	e.Use(controllers.UserMiddleware)
+	e.Use(controllers.JSONWithContentLengthMiddleware)
 	//e.Use(staticRender)
 
 	e.GET("/api/paste/:uuid", controllers.PasteAccess)
