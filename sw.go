@@ -78,6 +78,7 @@ var embedInfo = &embedMetadata{
 		"static/normalize/css/normalize.min.css",
 		"static/purify/js/purify.min.js",
 		"static/qrcode/js/qrcode.min.js",
+		"sw.js",
 	},
 }
 
