@@ -168,7 +168,7 @@ async function addToRuntimeCache(request, response) {
         if (url.protocol !== "http:" && url.protocol !== "https:") return;
         return cache.put(request, await addLastAccess(response));
       })
-      .catch(() => { });
+      .catch(() => {});
   }
 }
 
@@ -247,12 +247,12 @@ messageBus.push(function (event) {
   if (event.data.type == "check-update") {
     console.log("check update");
     updatePersistCache().then(async function (updated) {
+      await cleanRuntimeCacheInPersist();
       if (updated) {
         return notifyUpdate();
       } else {
         if (event.source) event.source.postMessage({ type: "up-to-date" });
       }
-      return;
     });
   }
 });
