@@ -10,7 +10,6 @@ async function runtimeCache() {
 async function persistCache() {
   return caches.open(CACHE_NAME);
 }
-let messageBus = [];
 
 async function requestCached(request, cache) {
   return cache.match(request).then(function (cached) {
@@ -185,7 +184,7 @@ async function reliableMessage(data) {
       clearInterval(intervalId);
       let index = messageBus.indexOf(messageAckedChannel);
       if (index >= 0) {
-        messageBus = messageBus.splice(index, 1);
+        messageBus.splice(index, 1);
       }
       resolve();
     }
