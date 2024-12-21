@@ -3,6 +3,7 @@ const RUNTIME_CACHE_NAME = "pastebin-runtime-cache-v1";
 const networkTimeout = 5000;
 const runtimeCacheLifetime = 7 * 86400;
 const runtimeCacheMaxSize = 1048576;
+let messageBus = [];
 
 async function runtimeCache() {
   return caches.open(RUNTIME_CACHE_NAME);
