@@ -810,7 +810,7 @@
         let prepared_data = prepare_data();
         let data = prepared_data.data;
         let query_params = prepared_data.query_params;
-        action_button.attr("disabled", "disabled");
+        action_button.addClass("action-disabled");
         await hide_result();
         const query_string = $.param(query_params).trim();
         $.ajax({
@@ -850,7 +850,7 @@
               }, 600);
               show_result("创建结果", response, false);
             }
-            action_button.removeAttr("disabled");
+            action_button.removeClass("action-disabled");
           }
         });
       });
@@ -860,7 +860,7 @@
           let uuid = paste_uuid.val();
           if (!check_uuid(uuid) || uuid.length == 0) {
             mdui.snackbar("无效的 UUID");
-            return;
+            return reject({ error: "无效的 UUID" });
           }
           let prepared_data = prepare_data();
           let data = prepared_data.data;
@@ -869,7 +869,7 @@
           }
           let query_params = prepared_data.query_params;
 
-          action_button.attr("disabled", "disabled");
+          action_button.addClass("action-disabled");
           await hide_result();
           const query_string = $.param(query_params).trim();
           $.ajax({
@@ -909,7 +909,7 @@
                 }, 600);
                 resolve(response);
               }
-              action_button.removeAttr("disabled");
+              action_button.removeClass("action-disabled");
             }
           });
         });
@@ -976,7 +976,7 @@
           mdui.snackbar("无效的 UUID");
           return;
         }
-        action_button.attr("disabled", "disabled");
+        action_button.addClass("action-disabled");
         await hide_result();
         $.ajax({
           method: "DELETE",
@@ -1004,7 +1004,7 @@
               }, 600);
               show_result("删除结果" + (force ? "：强制删除" : ""), response, true);
             }
-            action_button.removeAttr("disabled");
+            action_button.removeClass("action-disabled");
           }
         });
       }

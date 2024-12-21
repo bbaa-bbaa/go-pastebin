@@ -4,8 +4,12 @@ const networkTimeout = 5000;
 const runtimeCacheLifetime = 7 * 86400;
 const runtimeCacheMaxSize = 1048576;
 
-let runtimeCache = caches.open(RUNTIME_CACHE_NAME);
-let persistCache = caches.open(CACHE_NAME);
+async function runtimeCache() {
+  return caches.open(RUNTIME_CACHE_NAME);
+}
+async function persistCache() {
+  return caches.open(CACHE_NAME);
+}
 let messageBus = [];
 
 async function requestCached(request, cache) {
@@ -28,10 +32,10 @@ async function cleanOldCacheStorage() {
 }
 
 async function cleanRuntimeCacheInPersist() {
-  return runtimeCache.then(async function (cache) {
+  return runtimeCache().then(async function (cache) {
     return cache.keys().then(async function (requests) {
       for (let request of requests) {
-        if (await requestCached(request, await persistCache)) {
+        if (await requestCached(request, await persistCache())) {
           console.log("cleanRuntimeCacheInPersist", request.url);
           cache.delete(request);
         }
@@ -41,7 +45,7 @@ async function cleanRuntimeCacheInPersist() {
 }
 
 async function cleanOutdatedRuntimeCache() {
-  return runtimeCache.then(async function (cache) {
+  return runtimeCache().then(async function (cache) {
     return cache.keys().then(async function (requests) {
       for (let request of requests) {
         let url = URL.parse(request.url);
@@ -72,7 +76,7 @@ async function getResponseSize(response) {
 }
 
 async function networkFirst(cache, response) {
-  if (!cache) return await response;
+  if (!cache) return response;
   return Promise.race([
     response,
     new Promise(function (resolve) {
@@ -91,7 +95,7 @@ async function updatePersistCache() {
       return response.json();
     })
     .then(async function (manifest) {
-      let cache = await persistCache;
+      let cache = await persistCache();
       let pendingRequests = [];
       for (let path of Object.keys(manifest.hash)) {
         let cached_response = await cache.match(path);
@@ -119,7 +123,10 @@ async function updatePersistCache() {
       return Promise.all(pendingRequests);
     })
     .then(() => updated)
-    .catch(() => false);
+    .catch(e => {
+      console.log(e);
+      return false;
+    });
 }
 
 async function addLastAccess(response) {
@@ -133,8 +140,8 @@ async function addLastAccess(response) {
 }
 
 async function addToRuntimeCache(request, response) {
-  if (!(await requestCached(request, await persistCache))) {
-    runtimeCache
+  if (!(await requestCached(request, await persistCache()))) {
+    runtimeCache()
       .then(async function (cache) {
         let url = URL.parse(request.url);
         if (url.protocol !== "http:" && url.protocol !== "https:") return;
@@ -150,41 +157,63 @@ async function cacheIndex() {
   });
 }
 
-async function notifyUpdate() {
-  let swClients = await clients.matchAll();
-  let ackedClients = [];
-  let resolve;
-  let intervalId;
-  async function notifyClients() {
-    let ackedCount = 0;
-    for (let client of swClients) {
-      if (!ackedClients.includes(client.id)) {
-        try {
-          client.postMessage({ type: "update", id: client.id });
-          console.log("notify update,", client.id);
-        } catch (e) {
-          ackedCount++;
+// reliable message channel
+// all clients should ack the message
+// if a client is not acked, the message will be sent again
+let reliableMessageId = 0;
+async function reliableMessage(data) {
+  return new Promise(async function (resolve) {
+    let msgid = reliableMessageId++;
+    let ackedSeq = [];
+    let clientList = (await clients.matchAll()).map(c => c.id);
+    let messageAckedChannel = function (event) {
+      if (event.data.megseq !== "") {
+        if (event.data.msgid == msgid) {
+          ackedSeq.push(event.data.msgseq);
+          console.log(`msgseq: "${event.data.msgseq}" acked`);
         }
-      } else {
-        ackedCount++;
       }
-    }
-    if (intervalId && resolve && ackedCount == swClients.length) {
+    };
+
+    messageBus.push(messageAckedChannel);
+
+    let intervalId = setInterval(() => {
+      postMessage();
+    }, 1000);
+
+    function complete() {
       clearInterval(intervalId);
+      let index = messageBus.indexOf(messageAckedChannel);
+      if (index >= 0) {
+        messageBus = messageBus.splice(index, 1);
+      }
       resolve();
     }
-  }
-  notifyClients();
-  intervalId = setInterval(notifyClients, 1000);
-  return new Promise(function (r) {
-    resolve = r;
-    messageBus.push(function (event) {
-      if (event.data.type === "notify-updated") {
-        ackedClients.push(event.data.id);
-        console.log("notify acked,", event.data.id);
+
+    async function postMessage() {
+      let ackedCount = 0;
+      for (let clientId of clientList) {
+        let client = await clients.get(clientId);
+        if (!client) {
+          ackedCount++;
+          continue;
+        }
+        if (!ackedSeq.includes(`${msgid}/${client.id}`)) {
+          client.postMessage(Object.assign(data, { msgseq: `${msgid}/${client.id}`, msgid: msgid }));
+          console.log(`send msg type: "${data.type}" seq:"${msgid}/${client.id}"`);
+        } else {
+          ackedCount++;
+        }
       }
-    });
+      if (ackedCount >= clientList.length) {
+        complete();
+      }
+    }
   });
+}
+
+async function notifyUpdate() {
+  return reliableMessage({ type: "update" });
 }
 
 self.addEventListener("message", function (event) {
@@ -193,35 +222,41 @@ self.addEventListener("message", function (event) {
   }
 });
 
-self.addEventListener("install", function (event) {
-  self.skipWaiting();
-  event.waitUntil(cleanOldCacheStorage().then(updatePersistCache).then(cleanRuntimeCacheInPersist).then(cleanOutdatedRuntimeCache).then(cacheIndex));
-});
-
-self.addEventListener("fetch", function (event) {
-  let url = URL.parse(event.request.url);
-  if (url.pathname == "/") {
-    updatePersistCache().then(function (updated) {
+messageBus.push(function (event) {
+  if (event.data.type == "check-update") {
+    console.log("check update");
+    updatePersistCache().then(async function (updated) {
       if (updated) {
         return notifyUpdate();
+      } else {
+        if (event.source) event.source.postMessage({ type: "up-to-date" });
       }
       return;
     });
+  }
+});
+
+self.addEventListener("install", function (event) {
+  self.skipWaiting();
+  event.waitUntil(cleanOldCacheStorage());
+});
+
+self.addEventListener("fetch", function (event) {
+  if (event.request.method !== "GET") {
+    return; // bypass non-GET request
   }
   event.respondWith(
     caches.match(event.request).then(function (cached) {
       let response = fetch(event.request)
         .then(function (response) {
-          if (event.request.method == "GET") {
-            getResponseSize(response.clone()).then(
-              (response =>
-                function (size) {
-                  if (size <= runtimeCacheMaxSize) {
-                    addToRuntimeCache(event.request, response);
-                  }
-                })(response.clone())
-            );
-          }
+          getResponseSize(response.clone()).then(
+            (response =>
+              function (size) {
+                if (size <= runtimeCacheMaxSize) {
+                  addToRuntimeCache(event.request, response);
+                }
+              })(response.clone())
+          );
           return response;
         })
         .catch(function () {
