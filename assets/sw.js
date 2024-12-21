@@ -267,36 +267,32 @@ self.addEventListener("fetch", function (event) {
     return; // bypass non-GET request
   }
   event.respondWith(
-    persistCache()
-      .then(persist_cache => {
-        return persist_cache.match(event.request).then(response => {
-          if (response) {
-            return response;
-          }
-          return Promise.reject();
-        });
-      }).catch(()=>{
-        return runtimeCache().then(runtime_cache => {
-          return runtime_cache.match(event.request);
-        });
-      })
-      .then(function (cached) {
-        let response = fetch(event.request)
-          .then(function (response) {
-            getResponseSize(response.clone()).then(
-              (response =>
-                function (size) {
-                  if (size <= runtimeCacheMaxSize) {
-                    addToRuntimeCache(event.request, response);
-                  }
-                })(response.clone())
-            );
-            return response;
+    persistCache().then(persist_cache => {
+      return persist_cache.match(event.request).then(response => {
+        if (response) {
+          return response;
+        }
+        return runtimeCache()
+          .then(runtime_cache => {
+            return runtime_cache.match(event.request);
           })
-          .catch(function () {
-            if (!cached) {
-              return new Response(
-                `<!DOCTYPE html>
+          .then(function (cached) {
+            let response = fetch(event.request)
+              .then(function (response) {
+                getResponseSize(response.clone()).then(
+                  (response =>
+                    function (size) {
+                      if (size <= runtimeCacheMaxSize) {
+                        addToRuntimeCache(event.request, response);
+                      }
+                    })(response.clone())
+                );
+                return response;
+              })
+              .catch(function () {
+                if (!cached) {
+                  return new Response(
+                    `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
@@ -309,20 +305,22 @@ self.addEventListener("fetch", function (event) {
     <p>message from service worker.</p>
   </body>
 </html>`,
-                {
-                  status: 503,
-                  statusText: "Service Unavailable",
-                  headers: {
-                    "Content-Type": "text/html"
-                  }
+                    {
+                      status: 503,
+                      statusText: "Service Unavailable",
+                      headers: {
+                        "Content-Type": "text/html"
+                      }
+                    }
+                  );
                 }
-              );
-            }
-            addToRuntimeCache(event.request, cached.clone());
-            return cached;
+                addToRuntimeCache(event.request, cached.clone());
+                return cached;
+              });
+            return networkFirst(cached, response);
           });
-        return networkFirst(cached, response);
-      })
+      });
+    })
   );
 });
 
