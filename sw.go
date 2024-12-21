@@ -28,22 +28,26 @@ import (
 var embed_assets embed.FS
 
 type embedMetadata struct {
-	fileHash map[string]string
-	precache []string
+	fileHash        map[string]string
+	precache        []string
+	manifestVersion string
 }
 
 func (e *embedMetadata) calcMetadata(embedFs fs.FS) {
 	fileHash := make(map[string]string)
+	manifestHash := xxhash.New()
 	fs.WalkDir(embedFs, ".", func(path string, d fs.DirEntry, _ error) error {
 		if d.IsDir() {
 			return nil
 		}
+		manifestHash.WriteString(path)
 		file, _ := embedFs.Open(path)
 		hash := xxhash.New()
 		buf := make([]byte, 4096)
 		for {
 			n, err := file.Read(buf)
 			hash.Write(buf[:n])
+			manifestHash.Write(buf[:n])
 			if err != nil {
 				break
 			}
@@ -52,6 +56,7 @@ func (e *embedMetadata) calcMetadata(embedFs fs.FS) {
 		return nil
 	})
 	e.fileHash = fileHash
+	e.manifestVersion = fmt.Sprintf("%x", manifestHash.Sum64())
 }
 
 var embedInfo = &embedMetadata{
@@ -90,17 +95,21 @@ func setupSw(e *echo.Echo) {
 			embedInfo.calcMetadata(echo.MustSubFS(e.Filesystem, "assets"))
 		}
 		type Manifest struct {
-			Hash map[string]string `json:"hash"`
+			Hash    map[string]string `json:"hash"`
+			Version string            `json:"version"`
 		}
 		manifest := Manifest{
-			Hash: make(map[string]string),
+			Hash:    make(map[string]string),
+			Version: embedInfo.manifestVersion,
 		}
 		for _, path := range embedInfo.precache {
 			if hash, ok := embedInfo.fileHash[path]; ok {
 				manifest.Hash[path] = hash
 			}
 		}
+		manifest.Hash["api/sw/v1/manifest"] = manifest.Version
 		c.Response().Header().Set("Cache-Control", "no-store")
+		c.Response().Header().Set("X-Revision", manifest.Version)
 		return c.JSON(200, manifest)
 	})
 }

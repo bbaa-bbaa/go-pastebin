@@ -31,6 +31,25 @@ async function cleanOldCacheStorage() {
   });
 }
 
+async function cleanUnusePersistCache(manifest) {
+  return persistCache().then(async function (cache) {
+    let cachedPath = Object.keys(manifest.hash);
+    return cache.keys().then(async function (requests) {
+      for (let request of requests) {
+        let url = URL.parse(request.url);
+        let path = url.pathname;
+        if (path.length >= 1 && path[0] === "/") {
+          path = path.slice(1);
+        }
+        if (!cachedPath.includes(path)) {
+          console.log("cleanUnusePersistCache", request.url);
+          cache.delete(request);
+        }
+      }
+    });
+  });
+}
+
 async function cleanRuntimeCacheInPersist() {
   return runtimeCache().then(async function (cache) {
     return cache.keys().then(async function (requests) {
@@ -90,7 +109,7 @@ async function networkFirst(cache, response) {
 // return updated
 async function updatePersistCache() {
   let updated = false;
-  return fetch("api/sw/v1/manifest")
+  return fetch(new Request("api/sw/v1/manifest", { cache: "no-store" }))
     .then(async function (response) {
       return response.json();
     })
@@ -120,7 +139,9 @@ async function updatePersistCache() {
           }
         }
       }
-      return Promise.all(pendingRequests);
+      return Promise.all(pendingRequests).then(() => {
+        cleanUnusePersistCache(manifest);
+      });
     })
     .then(() => updated)
     .catch(e => {
@@ -147,7 +168,7 @@ async function addToRuntimeCache(request, response) {
         if (url.protocol !== "http:" && url.protocol !== "https:") return;
         return cache.put(request, await addLastAccess(response));
       })
-      .catch(() => {});
+      .catch(() => { });
   }
 }
 
@@ -246,51 +267,60 @@ self.addEventListener("fetch", function (event) {
     return; // bypass non-GET request
   }
   event.respondWith(
-    caches.match(event.request).then(function (cached) {
-      let response = fetch(event.request)
-        .then(function (response) {
-          getResponseSize(response.clone()).then(
-            (response =>
-              function (size) {
-                if (size <= runtimeCacheMaxSize) {
-                  addToRuntimeCache(event.request, response);
-                }
-              })(response.clone())
-          );
-          return response;
-        })
-        .catch(function () {
-          if (!cached) {
-            return new Response(
-              `
-            <!DOCTYPE html>
-            <html lang="en">
-              <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Network Error</title>
-              </head>
-              <body>
-                <h1>Network Error</h1>
-                <p>Unable to connect to the server. Please check your network connection.</p>
-                <p>message from service worker.</p>
-              </body>
-            </html>
-          `,
-              {
-                status: 503,
-                statusText: "Service Unavailable",
-                headers: {
-                  "Content-Type": "text/html"
-                }
-              }
-            );
+    persistCache()
+      .then(persist_cache => {
+        return persist_cache.match(event.request).then(response => {
+          if (response) {
+            return response;
           }
-          addToRuntimeCache(event.request, cached.clone());
-          return cached;
+          return runtimeCache().then(runtime_cache => {
+            return runtime_cache.match(event.request);
+          });
         });
-      return networkFirst(cached, response);
-    })
+      })
+      .then(function (cached) {
+        let response = fetch(event.request)
+          .then(function (response) {
+            getResponseSize(response.clone()).then(
+              (response =>
+                function (size) {
+                  if (size <= runtimeCacheMaxSize) {
+                    addToRuntimeCache(event.request, response);
+                  }
+                })(response.clone())
+            );
+            return response;
+          })
+          .catch(function () {
+            if (!cached) {
+              return new Response(
+                `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Error</title>
+  </head>
+  <body>
+    <h1>Network Error</h1>
+    <p>Unable to connect to the server. Please check your network connection.</p>
+    <p>message from service worker.</p>
+  </body>
+</html>`,
+                {
+                  status: 503,
+                  statusText: "Service Unavailable",
+                  headers: {
+                    "Content-Type": "text/html"
+                  }
+                }
+              );
+            }
+            addToRuntimeCache(event.request, cached.clone());
+            return cached;
+          });
+        return networkFirst(cached, response);
+      })
   );
 });
 
