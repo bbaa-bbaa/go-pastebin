@@ -273,9 +273,11 @@ self.addEventListener("fetch", function (event) {
           if (response) {
             return response;
           }
-          return runtimeCache().then(runtime_cache => {
-            return runtime_cache.match(event.request);
-          });
+          return Promise.reject();
+        });
+      }).catch(()=>{
+        return runtimeCache().then(runtime_cache => {
+          return runtime_cache.match(event.request);
         });
       })
       .then(function (cached) {
