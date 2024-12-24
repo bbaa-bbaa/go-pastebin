@@ -46,48 +46,13 @@ func UserLogin(c echo.Context) error {
 		Account  string `json:"account" form:"account"`
 		Password string `json:"password" form:"password"`
 	}
-	legacy := strings.Contains(c.Request().Header.Get("Referer"), "/legacy")
-	legacyErr := func() {
-		if legacy {
-			c.HTML(200, `
-				<!DOCTYPE html>
-					<html lang="zh">
-					<head>
-						<meta charset="UTF-8">
-						<meta name="viewport" content="width=device-width, initial-scale=1.0">
-						<link rel="stylesheet" href="/static/normalize/css/normalize.min.css">
-						<style>
-							p {
-								margin: 0;
-							}
-							a {
-								text-decoration: none;
-							}
-						</style>
-					</head>
-					<body>
-							<p>请输入正确的用户名与密码</p>
-							<a href="/legacy">返回</a>
-					</body>
-				</html>`,
-			)
-		}
-	}
 	var user ReqUserLogin
 	if err := c.Bind(&user); err != nil {
-		if legacy {
-			legacyErr()
-			return nil
-		}
 		c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
 		return nil
 	}
 	u, err := database.UserLogin(user.Account, user.Password)
 	if err != nil {
-		if legacy {
-			legacyErr()
-			return nil
-		}
 		c.JSON(200, map[string]any{"code": -1, "error": "username or password wrong"})
 		return nil
 	}
@@ -100,10 +65,6 @@ func UserLogin(c echo.Context) error {
 		MaxAge:   Config.UserCookieMaxAge,
 		Path:     "/",
 	})
-	if legacy {
-		c.Redirect(http.StatusFound, "/legacy")
-		return nil
-	}
 	c.JSON(200, map[string]any{"code": 0, "info": userInfo(u), "token": token})
 	return nil
 }
@@ -207,9 +168,6 @@ func UserLogout(c echo.Context) error {
 		MaxAge: -1,
 		Path:   "/",
 	})
-	if strings.Contains(c.Request().Header.Get("Referer"), "/legacy") {
-		return c.Redirect(http.StatusFound, "/legacy")
-	}
 	return c.Redirect(http.StatusFound, "/")
 }
 

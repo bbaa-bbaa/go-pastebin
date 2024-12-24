@@ -207,6 +207,7 @@ retry_if_exist_paste_expired:
 	if err != nil {
 		if sqliteErr, ok := err.(sqlite3.Error); ok {
 			if sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+				log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.MagentaString(`[%s]`, p.Extra.FileName), color.YellowString(" Hash: "), color.CyanString(p.HexHash()), color.YellowString(" 已存在"))
 				paste, err := QueryPasteByHash(p.Hash)
 				if err != nil {
 					if errors.Is(err, ErrNotFound) && !retry_flag {
@@ -224,7 +225,7 @@ retry_if_exist_paste_expired:
 		}
 		return nil, err
 	}
-	log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.MagentaString(`[%s]`, p.Extra.FileName), color.YellowString(" 创建成功 "), color.YellowString("Hash: "), color.CyanString(p.HexHash()), color.YellowString(" Size: "), color.CyanString(fmt.Sprint(p.Extra.Size)))
+	log.Info(color.YellowString("Paste "), color.CyanString(p.UUID), color.MagentaString(`[%s]`, p.Extra.FileName), color.GreenString(`(%s)`, p.Extra.MimeType), color.YellowString(" 创建成功 "), color.YellowString("Hash: "), color.CyanString(p.HexHash()), color.YellowString(" Size: "), color.CyanString(fmt.Sprint(p.Extra.Size)))
 	if p.Short_url == "" {
 		p.GenerateShortURL()
 	}

@@ -239,14 +239,11 @@ func pasteActionStatus(action string, paste *database.Paste, err error, c echo.C
 	const (
 		JSON ResponseType = iota
 		TEXT
-		HTML
 	)
 	response_type := TEXT
 
 	if strings.Contains(c.Request().Header.Get("Accept"), "application/json") {
 		response_type = JSON
-	} else if strings.Contains(c.Request().Header.Get("Referer"), "legacy") {
-		response_type = HTML
 	} else {
 		response_type = TEXT
 	}
@@ -300,35 +297,6 @@ func pasteActionStatus(action string, paste *database.Paste, err error, c echo.C
 		},
 		), "\n"))
 		return
-	case HTML:
-		html_body := `
-		<!DOCTYPE html>
-		<html>
-		<head>
-			<meta charset="UTF-8">
-			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<link rel="stylesheet" href="static/normalize/css/normalize.min.css">
-			<style>
-				body {
-					font-family: Consolas, monospace;
-				}
-				p {
-					margin: 0;
-				}
-			</style>
-		</head>
-		<body>`
-		for _, key := range key_order {
-			if value, ok := response[key]; ok {
-				if key == "url" {
-					html_body += fmt.Sprintf("<p>%s: <a href=\"%s\">%s</a></p>", key, value, value)
-				} else {
-					html_body += fmt.Sprintf("<p>%s: %v</p>", key, value)
-				}
-			}
-		}
-		html_body += "</body></html>"
-		c.HTML(200, html_body)
 	}
 
 }
@@ -448,25 +416,23 @@ func DeletePaste(c echo.Context) error {
 	}
 	if err != nil {
 		if errors.Is(err, database.ErrPasteHold) {
-			err = paste.FlagDelete()
-			if err == nil {
-				if response_is_json {
-					c.JSON(200, map[string]any{
-						"code":       0,
-						"status":     "on hold",
-						"hold_until": paste.HoldBefore.Format(time.RFC3339Nano),
-						"message":    "paste has been marked for deletion and will not accept new requests"})
-				} else {
-					c.String(200,
-						strings.Join([]string{
-							"status: on hold\n",
-							"hold_until: ", paste.HoldBefore.Format(time.RFC3339Nano), "\n",
-							"message: paste has been marked for deletion and will not accept new requests",
-						}, ""),
-					)
-				}
-				return nil
+			paste.FlagDelete()
+			if response_is_json {
+				c.JSON(200, map[string]any{
+					"code":       0,
+					"status":     "on hold",
+					"hold_until": paste.HoldBefore.Format(time.RFC3339Nano),
+					"message":    "paste has been marked for deletion and will not accept new requests"})
+			} else {
+				c.String(200,
+					strings.Join([]string{
+						"status: on hold\n",
+						"hold_until: ", paste.HoldBefore.Format(time.RFC3339Nano), "\n",
+						"message: paste has been marked for deletion and will not accept new requests",
+					}, ""),
+				)
 			}
+			return nil
 		}
 		if response_is_json {
 			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})

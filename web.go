@@ -28,7 +28,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/samber/lo"
 	"golang.org/x/net/http2"
 )
 
@@ -72,8 +71,8 @@ func httpServe() {
 	setupIndex()
 	setupLegacy()
 	setupAdmin()
-	setupSw(e)
-	setupStatic(e)
+	setupSw()
+	setupStatic()
 
 	s := &http2.Server{
 		MaxConcurrentStreams: 250,
@@ -150,31 +149,8 @@ func setupAdmin() {
 }
 
 func setupLegacy() {
-	e.GET("/legacy", func(c echo.Context) error {
-		user, is_login := c.Get("user").(*database.User)
-		recent_pastes := []*database.Paste{}
-		if is_login {
-			recent_pastes, _, _ = database.QueryAllPasteByUser(user.UID, 0, 10)
-		}
-		c.Response().Header().Set("Cache-Control", "no-store")
-		c.Response().Header().Set("Pragma", "no-cache")
-		err := c.Render(200, "legacy.html", map[string]any{
-			"SiteName":       database.Config.SiteName,
-			"SiteTitle":      database.Config.SiteTitle,
-			"AllowAnonymous": database.Config.AllowAnonymous,
-			"IsLogin":        is_login,
-			"User":           user,
-			"RecentPastes": lo.Map(recent_pastes, func(p *database.Paste, _ int) *controllers.PasteInfo {
-				pi := controllers.ToPasteInfo(p)
-				pi.URL = p.URL(c)
-				return pi
-			}),
-		})
-		if err != nil {
-			log.Error(err)
-		}
-		return err
-	})
+	e.GET("/legacy", controllers.LegacyIndex)
+	e.POST("/legacy", controllers.LegacyMethod)
 }
 
 func setupIndex() {
@@ -235,7 +211,7 @@ func (c *WarpPaste) Param(name string) string {
 
 var variantList = []string{"raw", "download"}
 
-func setupStatic(e *echo.Echo) {
+func setupStatic() {
 	var assets fs.FS
 	if database.Config.Mode == "debug" {
 		assets = echo.MustSubFS(e.Filesystem, "assets")

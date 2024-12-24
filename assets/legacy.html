@@ -12,6 +12,7 @@
         margin: 20px;
         padding: 0;
       }
+
       .container {
         max-width: 80%;
         margin: auto;
@@ -19,10 +20,12 @@
       .form-group {
         margin-bottom: 15px;
       }
+
       label {
         display: block;
         margin-bottom: 5px;
       }
+
       input[type="text"],
       textarea,
       input[type="file"] {
@@ -30,8 +33,8 @@
         padding: 8px;
         box-sizing: border-box;
       }
-      button,
-      a.logout {
+
+      button {
         padding: 10px 15px;
         background-color: #007bff;
         color: white;
@@ -39,9 +42,23 @@
         cursor: pointer;
         text-decoration: none;
       }
-      button:hover,
-      a.logout:hover {
+
+      button:hover {
         background-color: #0056b3;
+      }
+
+      .delete-btn {
+        background-color: transparent!important;
+        padding: 0;
+        color: #dc3545;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .delete-btn:hover {
+        color: #a71d2a;
+        text-decoration: underline;
       }
 
       .recent-pastes ul {
@@ -55,59 +72,125 @@
         border-bottom: 1px solid #ddd;
       }
 
-      .recent-pastes .url {
+      .url {
         color: #007bff;
         text-decoration: none;
       }
 
-      .recent-pastes .url:hover {
+      .url:hover {
         text-decoration: underline;
+      }
+
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 10px;
+        border: 1px solid #f5c6cb;
+        margin: 10px 0;
+      }
+
+      .error p {
+        margin: 0;
+      }
+
+      .info {
+        background-color: #d9edf7;
+        color: #31708f;
+        padding: 10px;
+        border: 1px solid #bce8f1;
+        margin: 10px 0;
+      }
+
+      .info p {
+        margin: 0;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      {{- if .IsLogin }}
-      <div>
-        <a href="api/user/logout" class="logout" style="float: right">登出</a>
+      {{- if ne .Error nil }}
+      <div class="error">
+        <p>{{ .Error }}</p>
+      </div>
+      {{- end}} {{- if .IsLogin }}
+      <div class="user-info">
         <h1 style="display: inline">欢迎, {{ .User.Username }}</h1>
+        <form method="post" action="/legacy" enctype="application/x-www-form-urlencoded" style="float: right">
+          <input type="hidden" name="method" value="logout" />
+          <button type="submit">登出</button>
+        </form>
       </div>
       {{- else }}
-      <h1>用户登录</h1>
-      <form method="post" action="/api/user/login">
-        <div class="form-group">
-          <label for="username">用户名</label>
-          <input type="text" id="username" name="account" required />
+      <div class="user-login">
+        <h1>用户登录</h1>
+        {{- if ne .LoginError nil }}
+        <div class="error">
+          <p>{{ .LoginError }}</p>
         </div>
-        <div class="form-group">
-          <label for="password">密码</label>
-          <input type="text" id="password" name="password" required />
-        </div>
-        <button type="submit">登录</button>
-      </form>
+        {{- end}}
+        <form method="post" action="/legacy">
+          <input type="hidden" name="method" value="login" />
+          <div class="form-group">
+            <label for="username">用户名</label>
+            <input type="text" id="username" name="account" required />
+          </div>
+          <div class="form-group">
+            <label for="password">密码</label>
+            <input type="text" id="password" name="password" required />
+          </div>
+          <button type="submit">登录</button>
+        </form>
+      </div>
       {{- end }} {{ if and (not .IsLogin) (not .AllowAnonymous) }}
       <p>该 Pastebin 不允许匿名用户上传，请先登录</p>
       {{- else }}
-      <h2>文本上传</h2>
-      <form method="post" action="/">
-        <div class="form-group">
-          <label for="text">输入文本</label>
-          <textarea id="text" name="c" rows="12" required></textarea>
+      <div class="paste-upload">
+        {{- if ne .PasteInfo nil }}
+        <div class="info">
+          {{ unescape .PasteInfo }}
         </div>
-        <button type="submit">上传文本</button>
-      </form>
-
-      <h2>文件上传</h2>
-      <form method="post" action="/" enctype="multipart/form-data">
-        <div class="form-group">
-          <label for="file">选择文件</label>
-          <input type="file" id="file" name="c" required />
+        {{- end }}
+        {{- if ne .PasteError nil }}
+        <div class="error">
+          <p>{{ .PasteError }}</p>
         </div>
-        <button type="submit">上传文件</button>
-      </form>
+        {{- end}}
+        <div class="text-upload">
+          <h2>文本上传</h2>
+          <form method="post" action="/legacy" enctype="application/x-www-form-urlencoded">
+            <input type="hidden" name="method" value="text-upload" />
+            <div class="form-group">
+              <label for="text">输入文本</label>
+              <textarea id="text" name="c" rows="12" required></textarea>
+            </div>
+            <button type="submit">上传文本</button>
+          </form>
+        </div>
+        <div class="file-upload">
+          <h2>文件上传</h2>
+          <form method="post" action="/legacy" enctype="multipart/form-data">
+            <input type="hidden" name="method" value="file-upload" />
+            <div class="form-group">
+              <label for="file">选择文件</label>
+              <input type="file" id="file" name="c" required />
+            </div>
+            <button type="submit">上传文件</button>
+          </form>
+        </div>
+      </div>
       {{- end }} {{- if .IsLogin }}
-      <h2>最近上传的 Pastes</h2>
       <div class="recent-pastes">
+        <h2>最近上传的 Pastes</h2>
+        {{- if ne .DeleteError nil }}
+        <div class="error">
+          <p>{{ .DeleteError }}</p>
+        </div>
+        {{- end }}
+        {{- if ne .DeleteInfo nil }}
+        <div class="info">
+          <p>{{ .DeleteInfo }}</p>
+        </div>
+        {{- end }}
         <ul>
           {{- range .RecentPastes }}
           <li>
@@ -118,6 +201,12 @@
             <span class="filename">{{ .FileName }}</span>
             |
             <a class="url" href="{{.URL}}">{{.URL}}</a>
+            |
+            <form method="post" action="/legacy" style="display: inline" enctype="application/x-www-form-urlencoded">
+              <input type="hidden" name="method" value="delete" />
+              <input type="hidden" name="uuid" value="{{.UUID}}" />
+              <button type="submit" class="delete-btn">删除</button>
+            </form>
           </li>
           {{- end }}
         </ul>
