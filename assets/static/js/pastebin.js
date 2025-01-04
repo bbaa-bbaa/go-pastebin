@@ -794,11 +794,11 @@
             data.append("c", paste_file);
           }
         } else {
-          let filename = sanitizeFilename(text || "-").substring(0, 12) + ".txt";
+          let filename = sanitizeFilename(text || "-").substring(0, 36) + ".txt";
           if (detect_mime) {
             data.append("c", new File([text], filename, { type: "application/vnd.pastebin.detect" }));
           } else if (shorten_url) {
-            data.append("c", new File([text], text.substring(0, 24), { type: "application/vnd.pastebin.shorten" }));
+            data.append("c", new File([text], filename, { type: "application/vnd.pastebin.shorten" }));
           } else {
             data.append("c", new File([text], filename, { type: "text/plain; charset=utf-8" }));
           }
