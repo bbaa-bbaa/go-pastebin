@@ -220,7 +220,7 @@
     };
 
     function testVaildURL(url) {
-      return /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/i.test(url);
+      return /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/im.test(url);
     }
 
     (function new_paste() {
@@ -794,13 +794,13 @@
             data.append("c", paste_file);
           }
         } else {
-          let filename = sanitizeFilename(text || "-").substring(0, 36) + ".txt";
+          let filename = sanitizeFilename(text || "-").substring(0, 36);
           if (detect_mime) {
             data.append("c", new File([text], filename, { type: "application/vnd.pastebin.detect" }));
           } else if (shorten_url) {
             data.append("c", new File([text], filename, { type: "application/vnd.pastebin.shorten" }));
           } else {
-            data.append("c", new File([text], filename, { type: "text/plain; charset=utf-8" }));
+            data.append("c", new File([text], filename + ".txt", { type: "text/plain; charset=utf-8" }));
           }
         }
         return { data, query_params };
