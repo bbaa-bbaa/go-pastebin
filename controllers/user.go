@@ -515,3 +515,28 @@ func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(c)
 	}
 }
+
+func SearchPasteByTitle(c echo.Context) error {
+	user, ok := c.Get("user").(*database.User)
+	if !ok {
+		c.JSON(http.StatusForbidden, map[string]any{"code": -1, "error": "not login"})
+		return nil
+	}
+	title := c.QueryParam("title")
+	if title == "" {
+		c.JSON(http.StatusBadRequest, map[string]any{"code": -1, "error": "missing title"})
+		return nil
+	}
+
+	pastes, err := database.SearchPasteByTitleAndUID(title, user.UID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]any{"code": -1, "error": err.Error()})
+		return nil
+	}
+
+	results := lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
+		return ToPasteInfo(p)
+	})
+	c.JSON(http.StatusOK, map[string]any{"code": 0, "results": results})
+	return nil
+}

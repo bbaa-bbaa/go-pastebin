@@ -800,3 +800,27 @@ func pasteCleaner() {
 		log.Info(color.YellowString("清理过期 Paste:"), color.CyanString(uuid))
 	}
 }
+
+func SearchPasteByTitleAndUID(title string, uid int64) ([]*Paste, error) {
+	rows, err := db.Queryx(`
+        SELECT p.*, COALESCE(s.name, "") AS short_url
+        FROM pastes p
+        LEFT JOIN short_url s ON s.target = p.uuid
+        WHERE p.uid = ? AND json_extract(p.extra, '$.filename') LIKE ?
+        ORDER BY p.created_at DESC
+    `, uid, "%"+title+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*Paste
+	for rows.Next() {
+		var p Paste
+		if err := rows.StructScan(&p); err != nil {
+			return nil, err
+		}
+		results = append(results, &p)
+	}
+	return results, nil
+}
