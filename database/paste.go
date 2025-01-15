@@ -808,6 +808,7 @@ func SearchPasteByTitleAndUID(title string, uid int64) ([]*Paste, error) {
         LEFT JOIN short_url s ON s.target = p.uuid
         WHERE p.uid = ? AND json_extract(p.extra, '$.filename') LIKE ?
         ORDER BY p.created_at DESC
+		LIMIT 100
     `, uid, "%"+title+"%")
 	if err != nil {
 		return nil, err
