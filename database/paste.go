@@ -748,27 +748,50 @@ func QueryAllPaste(page int64, page_size int64) (pastes []*Paste, total int, err
 	return
 }
 
-func QueryAllPasteByUser(uid int64, page int64, page_size int64) (pastes []*Paste, total int, err error) {
-	err = db.Get(&total, `SELECT COUNT(*) FROM pastes WHERE uid = ?`, uid)
-	if err != nil {
-		log.Error(err)
-		return nil, 0, err
-	}
-	index := max(page-1, 0) * page_size
-	rows, err := db.Queryx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target WHERE uid = ? ORDER BY p.uuid DESC LIMIT ? OFFSET ?`, uid, page_size, index)
-	if err != nil {
-		log.Error(err)
-		return nil, 0, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		paste := &Paste{}
-		err := rows.StructScan(paste)
+func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) (pastes []*Paste, total int, err error) {
+	offset := (page - 1) * page_size
+	if search == "" {
+		// 原本的查询逻辑
+		rows, err := db.Queryx(`SELECT COUNT(*) OVER() AS total, * FROM pastes
+			WHERE uid = ?
+			ORDER BY created_at DESC
+			LIMIT ? OFFSET ?`, uid, page_size, offset)
 		if err != nil {
 			log.Error(err)
-			continue
+			return nil, 0, err
 		}
-		pastes = append(pastes, paste)
+		defer rows.Close()
+		for rows.Next() {
+			paste := &Paste{}
+			err := rows.StructScan(paste)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			pastes = append(pastes, paste)
+		}
+	} else {
+		// 增加搜索逻辑
+		rows, err := db.Queryx(`SELECT COUNT(*) OVER() AS total, * FROM pastes
+			WHERE uid = ?
+			AND (extra->>'filename' LIKE ?)
+			ORDER BY created_at DESC
+			LIMIT ? OFFSET ?`,
+			uid, "%"+search+"%", page_size, offset)
+		if err != nil {
+			log.Error(err)
+			return nil, 0, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			paste := &Paste{}
+			err := rows.StructScan(paste)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			pastes = append(pastes, paste)
+		}
 	}
 	return
 }
@@ -799,29 +822,4 @@ func pasteCleaner() {
 		}
 		log.Info(color.YellowString("清理过期 Paste:"), color.CyanString(uuid))
 	}
-}
-
-func SearchPasteByTitleAndUID(title string, uid int64) ([]*Paste, error) {
-	rows, err := db.Queryx(`
-        SELECT p.*, COALESCE(s.name, "") AS short_url
-        FROM pastes p
-        LEFT JOIN short_url s ON s.target = p.uuid
-        WHERE p.uid = ? AND json_extract(p.extra, '$.filename') LIKE ?
-        ORDER BY p.created_at DESC
-		LIMIT 100
-    `, uid, "%"+title+"%")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var results []*Paste
-	for rows.Next() {
-		var p Paste
-		if err := rows.StructScan(&p); err != nil {
-			return nil, err
-		}
-		results = append(results, &p)
-	}
-	return results, nil
 }

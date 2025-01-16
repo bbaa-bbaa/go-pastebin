@@ -54,7 +54,6 @@ func httpServe() {
 	e.POST("/api/user/edit", controllers.EditUserProfile)
 	e.GET("/api/user/pastes", controllers.UserPasteList)
 	e.GET("/api/user/size", controllers.GetUserPasteSize)
-	e.GET("/api/user/search", controllers.SearchPasteByTitle)
 	e.POST("/api/user/webauthn/register/request", controllers.UserWebAuthnRegisterRequest)
 	e.POST("/api/user/webauthn/register", controllers.UserWebAuthnRegister)
 	e.POST("/api/user/webauthn/login/request", controllers.UserWebAuthnLoginRequest)

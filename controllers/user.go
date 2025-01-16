@@ -193,8 +193,20 @@ func UserPasteList(c echo.Context) error {
 			page = parsed_page
 		}
 	}
-	page_size = max(min(1000, page_size), 1)
-	pastes, total, err := database.QueryAllPasteByUser(user.UID, page, page_size)
+	search := c.QueryParam("search") // 新增search参数
+
+	var (
+		pastes []*database.Paste
+		total  int
+		err    error
+	)
+	if search == "" {
+		// 原有逻辑
+		pastes, total, err = database.QueryAllPasteByUser(user.UID, page, page_size, "")
+	} else {
+		// 若search不为空，执行搜索
+		pastes, total, err = database.QueryAllPasteByUser(user.UID, page, page_size, search)
+	}
 	if err != nil {
 		c.JSON(200, map[string]any{"code": -1, "error": "query failed"})
 		return nil
@@ -514,29 +526,4 @@ func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		c.Set("user", user)
 		return next(c)
 	}
-}
-
-func SearchPasteByTitle(c echo.Context) error {
-	user, ok := c.Get("user").(*database.User)
-	if !ok {
-		c.JSON(http.StatusForbidden, map[string]any{"code": -1, "error": "not login"})
-		return nil
-	}
-	title := c.QueryParam("title")
-	if title == "" {
-		c.JSON(http.StatusBadRequest, map[string]any{"code": -1, "error": "missing title"})
-		return nil
-	}
-
-	pastes, err := database.SearchPasteByTitleAndUID(title, user.UID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, map[string]any{"code": -1, "error": err.Error()})
-		return nil
-	}
-
-	results := lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
-		return ToPasteInfo(p)
-	})
-	c.JSON(http.StatusOK, map[string]any{"code": 0, "results": results})
-	return nil
 }
