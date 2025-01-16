@@ -193,7 +193,7 @@ func UserPasteList(c echo.Context) error {
 			page = parsed_page
 		}
 	}
-	search := c.QueryParam("search") // 新增search参数
+	search := c.QueryParam("search")
 
 	var (
 		pastes []*database.Paste

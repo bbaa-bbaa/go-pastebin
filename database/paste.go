@@ -751,8 +751,12 @@ func QueryAllPaste(page int64, page_size int64) (pastes []*Paste, total int, err
 func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) (pastes []*Paste, total int, err error) {
 	offset := (page - 1) * page_size
 	if search == "" {
-		// 原本的查询逻辑
-		rows, err := db.Queryx(`SELECT COUNT(*) OVER() AS total, * FROM pastes
+		err = db.Get(&total, `SELECT COUNT(*) FROM pastes WHERE uid = ?`, uid)
+		if err != nil {
+			log.Error(err)
+			return nil, 0, err
+		}
+		rows, err := db.Queryx(`SELECT  * FROM pastes
 			WHERE uid = ?
 			ORDER BY created_at DESC
 			LIMIT ? OFFSET ?`, uid, page_size, offset)
@@ -771,8 +775,14 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) 
 			pastes = append(pastes, paste)
 		}
 	} else {
-		// 增加搜索逻辑
-		rows, err := db.Queryx(`SELECT COUNT(*) OVER() AS total, * FROM pastes
+		err = db.Get(&total, `SELECT COUNT(*) FROM pastes
+            WHERE uid = ?
+            AND (extra->>'filename' LIKE ?)`, uid, "%"+search+"%")
+		if err != nil {
+			log.Error(err)
+			return nil, 0, err
+		}
+		rows, err := db.Queryx(`SELECT  * FROM pastes
 			WHERE uid = ?
 			AND (extra->>'filename' LIKE ?)
 			ORDER BY created_at DESC

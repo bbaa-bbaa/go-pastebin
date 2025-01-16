@@ -1434,7 +1434,7 @@
 
       const paste_manage_mdui_panel = new mdui.Panel("#paste-manage-pastes .mdui-panel");
       const paste_manage_panel = $("#paste-manage-pastes .mdui-panel");
-
+      const paste_search_input=$("#paste-search-input");
       let page = 1;
       let max_page = 1;
       let paste_total = 0;
@@ -1684,7 +1684,8 @@
           },
           data: {
             page: page,
-            page_size: page_size
+            page_size: page_size,
+            search: paste_search_input.val()
           },
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText || "{}");
@@ -1749,10 +1750,17 @@
         });
       }
 
-      paste_manage_refresh.on("click", function () {
-        updateUserPasteSize();
-        list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
-      });
+      let refreshPasteTimer;
+      function debounceRefreshPaste() {
+        clearTimeout(refreshPasteTimer);
+        refreshPasteTimer = setTimeout(() => {
+          updateUserPasteSize();
+          list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
+        }, 500);
+      }
+      
+      paste_manage_refresh.on("click", debounceRefreshPaste);
+      paste_search_input.on("input", debounceRefreshPaste);
 
       paste_manage_prev.on("click", function () {
         if (page > 1) {
@@ -2286,70 +2294,5 @@
         });
       });
     })();
-
-    const pasteSearchInput = $("#paste-search-input");
-    const pasteSearchResults = $("#paste-search-results");
-
-    let firstSearchDone = false;
-    let debounceTimer = null;
-    
-    pasteSearchInput.on("input", function () {
-      const query = pasteSearchInput.val().trim();
-      clearTimeout(debounceTimer);
-    
-      if (query === "") {
-        pasteSearchResults.empty();
-        return;
-      }
-    
-      if (!firstSearchDone) {
-        firstSearchDone = true;
-        doSearch(query);
-      } else {
-        debounceTimer = setTimeout(() => {
-          doSearch(query);
-        }, 500);
-      }
-    });
-    
-    function doSearch(query) {
-      $.ajax({
-        method: "GET",
-        url: "/api/user/search",
-        data: { title: query },
-        success: function (response) {
-          response = JSON.parse(response || "{}");
-          if (response.code === 0) {
-            displaySearchResults(response.results);
-          } else {
-            mdui.snackbar({ message: "搜索失败: " + response.message, position: "top" });
-          }
-        },
-        error: function () {
-          mdui.snackbar({ message: "搜索请求失败", position: "top" });
-        }
-      });
-    }
-
-    function displaySearchResults(pastes) {
-      pasteSearchResults.empty();
-      if (pastes.length === 0) {
-        pasteSearchResults.append('<div class="mdui-list-item">没有找到相关结果</div>');
-        return;
-      }
-      pastes.forEach(paste => {
-        const pasteItem = `
-          <a href="/#${paste.short_url}" class="mdui-list-item">
-            <div class="mdui-list-item-content">
-              <div class="mdui-list-item-title">${paste.filename}</div>
-              <div class="mdui-list-item-text">创建于: ${new Date(paste.created_at).toLocaleString()}</div>
-              <div class="mdui-list-item-text">大小: ${paste.size}</div>
-            </div>
-          </a>
-        `;
-        pasteSearchResults.append(pasteItem);
-      });
-    }
-
   });
 })();
