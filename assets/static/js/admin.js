@@ -74,7 +74,7 @@
         });
       })
     }
-  )();
+    )();
     (function paste_manage() {
       updateTotalPasteSize()
       const paste_viewer_back_to_query = $(".paste-viewer-back-to-query");
@@ -91,6 +91,7 @@
 
       const paste_manage_mdui_panel = new mdui.Panel("#paste-manage-pastes .mdui-panel");
       const paste_manage_panel = $("#paste-manage-pastes .mdui-panel");
+      const paste_manage_search_input = $("#paste-manage-search-input");
 
       let page = 1;
       let max_page = 1;
@@ -100,16 +101,19 @@
       let paste_manager_map = new Map();
       let paste_detail_opened = new Set(); // uuid
       const paste_detail_opened_limit = 20 * page_size;
+
       function pager_check() {
-        if (page == 1) {
-          paste_manage_prev.attr("disabled", "disabled");
-        } else {
-          paste_manage_prev.removeAttr("disabled");
-        }
         if (page >= max_page) {
+          page = max_page;
           paste_manage_next.attr("disabled", "disabled");
         } else {
           paste_manage_next.removeAttr("disabled");
+        }
+        if (page <= 1) {
+          if (max_page) page = 1;
+          paste_manage_prev.attr("disabled", "disabled");
+        } else {
+          paste_manage_prev.removeAttr("disabled");
         }
         paste_manage_pager_hint.text(`第 ${page} 页 / 共 ${max_page} 页`);
       }
@@ -364,7 +368,8 @@
           },
           data: {
             page: page,
-            page_size: page_size
+            page_size: page_size,
+            search: paste_manage_search_input.val()
           },
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText || "");
@@ -373,7 +378,8 @@
               max_page = Math.ceil(paste_total / page_size);
               if (page > max_page) {
                 page = max_page;
-                return list_paste(scrollOffset);
+                if (max_page) return list_paste(scrollOffset);
+                return;
               }
               if (response.pastes.length != 0) {
                 let paste_map = new Map();
@@ -433,9 +439,23 @@
         });
       }
 
-      paste_manage_refresh.on("click", function () {
-        updateTotalPasteSize()
+      function refresh() {
+        updateTotalPasteSize();
         list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
+      }
+
+      let debounceRefresh = _.debounce(() => {
+        page = 1;
+        refresh();
+      }, 500);
+
+      paste_manage_refresh.on("click", refresh);
+      paste_manage_search_input.on("input", debounceRefresh);
+      paste_manage_search_input.on("keyup", function (e) {
+        if (e.key === "Enter") {
+          page = 1;
+          refresh();
+        }
       });
 
       paste_manage_prev.on("click", function () {

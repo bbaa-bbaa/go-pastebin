@@ -709,7 +709,8 @@ func PasteList(c echo.Context) error {
 		}
 	}
 	page_size = max(min(1000, page_size), 1)
-	pastes, total, err := database.QueryAllPaste(page, page_size)
+	search := c.QueryParam("search")
+	pastes, total, err := database.QueryAllPaste(page, page_size, search)
 	if err != nil {
 		c.JSON(200, map[string]any{"code": -1, "error": "query failed"})
 		return nil

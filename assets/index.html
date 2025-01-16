@@ -722,7 +722,7 @@
       </div>
       <div id="paste-manage" style="display: none">
         <div class="mdui-card mdui-m-t-2">
-          <div class="mdui-card-primary">
+          <div class="mdui-card-primary mdui-p-b-0">
             <div class="mdui-card-primary-title">
               Paste-Manage
               <button class="mdui-btn mdui-btn-icon mdui-ripple mdui-color-theme-accent" id="paste-manage-refresh">
@@ -730,13 +730,14 @@
               </button>
               <div id="total-paste-size" class="mdui-card-primary-subtitle"></div>
             </div>
-            <div class="mdui-textfield mdui-textfield-floating-label">
-              <label class="mdui-textfield-label">输入Paste标题以搜索...</label>
-              <input class="mdui-textfield-input" type="text" id="paste-search-input" />
-            </div>
           </div>
-          <div class="mdui-card-content">
+          <div class="mdui-card-content mdui-p-t-0">
             <div class="mdui-container-fluid">
+              <div class="mdui-textfield mdui-textfield-floating-label mdui-p-t-0 mdui-m-b-2">
+                <i class="mdui-icon material-icons">search</i>
+                <label class="mdui-textfield-label">搜索 Paste</label>
+                <input class="mdui-textfield-input" type="text" id="paste-manage-search-input" />
+              </div>
               <div class="mdui-row" id="paste-manage-null" style="display: none">
                 <div class="mdui-col-xs-12">无 Paste</div>
               </div>

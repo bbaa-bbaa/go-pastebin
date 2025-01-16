@@ -723,84 +723,113 @@ func ResetHoldCount() error {
 	return err
 }
 
-func QueryAllPaste(page int64, page_size int64) (pastes []*Paste, total int, err error) {
-	err = db.Get(&total, `SELECT COUNT(*) FROM pastes`)
-	if err != nil {
-		log.Error(err)
-		return nil, 0, err
+func QueryAllPaste(page int64, page_size int64, search string) (pastes []*Paste, total int, err error) {
+	type Result struct {
+		Paste
+		Total int `db:"total"`
 	}
-	index := max(page-1, 0) * page_size
-	rows, err := db.Queryx(`SELECT p.*, COALESCE(s.name,"") AS short_url FROM pastes p LEFT JOIN short_url s ON p.uuid = s.target ORDER BY p.uuid DESC LIMIT ? OFFSET ?`, page_size, index)
+	if search == "" {
+		search = "%"
+	} else {
+		search = "%" + search + "%"
+	}
+	offset := max((page-1)*page_size, 0)
+	rows, err := db.Queryx(`
+		SELECT 
+		COUNT(*) OVER() AS total,
+		COALESCE(s.name, "") AS short_url, 
+		p.*
+		FROM pastes p
+		LEFT JOIN short_url s
+		ON p.uuid = s.target
+		WHERE COALESCE(json_extract(extra, '$.filename'), "") LIKE ?
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?`,
+		search, page_size, offset,
+	)
 	if err != nil {
 		log.Error(err)
 		return nil, 0, err
 	}
 	defer rows.Close()
+	var result *Result
 	for rows.Next() {
-		paste := &Paste{}
-		err := rows.StructScan(paste)
+		result = &Result{}
+		err := rows.StructScan(result)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		pastes = append(pastes, paste)
+		pastes = append(pastes, &result.Paste)
+	}
+	if result != nil {
+		total = result.Total
+	} else {
+		err = db.Get(&total, `
+			SELECT COUNT(*) FROM pastes
+			WHERE COALESCE(json_extract(extra, '$.filename'), "") LIKE ?`,
+			search,
+		)
+		if err != nil {
+			log.Error(err)
+			return nil, 0, err
+		}
 	}
 	return
 }
 
 func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) (pastes []*Paste, total int, err error) {
-	offset := (page - 1) * page_size
+	type Result struct {
+		Paste
+		Total int `db:"total"`
+	}
 	if search == "" {
-		err = db.Get(&total, `SELECT COUNT(*) FROM pastes WHERE uid = ?`, uid)
-		if err != nil {
-			log.Error(err)
-			return nil, 0, err
-		}
-		rows, err := db.Queryx(`SELECT  * FROM pastes
-			WHERE uid = ?
-			ORDER BY created_at DESC
-			LIMIT ? OFFSET ?`, uid, page_size, offset)
-		if err != nil {
-			log.Error(err)
-			return nil, 0, err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			paste := &Paste{}
-			err := rows.StructScan(paste)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			pastes = append(pastes, paste)
-		}
+		search = "%"
 	} else {
-		err = db.Get(&total, `SELECT COUNT(*) FROM pastes
-            WHERE uid = ?
-            AND (extra->>'filename' LIKE ?)`, uid, "%"+search+"%")
+		search = "%" + search + "%"
+	}
+	offset := max((page-1)*page_size, 0)
+	rows, err := db.Queryx(`
+		SELECT 
+		COUNT(*) OVER() AS total,
+		COALESCE(s.name, "") AS short_url, 
+		p.*
+		FROM pastes p
+		LEFT JOIN short_url s
+		ON p.uuid = s.target
+		WHERE uid = ?
+		AND COALESCE(json_extract(extra, '$.filename'), "") LIKE ?
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?`,
+		uid, search, page_size, offset,
+	)
+	if err != nil {
+		log.Error(err)
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var result *Result
+	for rows.Next() {
+		result = &Result{}
+		err := rows.StructScan(result)
 		if err != nil {
 			log.Error(err)
-			return nil, 0, err
+			continue
 		}
-		rows, err := db.Queryx(`SELECT  * FROM pastes
+		pastes = append(pastes, &result.Paste)
+	}
+	if result != nil {
+		total = result.Total
+	} else {
+		err = db.Get(&total, `
+			SELECT COUNT(*) FROM pastes
 			WHERE uid = ?
-			AND (extra->>'filename' LIKE ?)
-			ORDER BY created_at DESC
-			LIMIT ? OFFSET ?`,
-			uid, "%"+search+"%", page_size, offset)
+			AND COALESCE(json_extract(extra, '$.filename'), "") LIKE ?`,
+			uid, search,
+		)
 		if err != nil {
 			log.Error(err)
 			return nil, 0, err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			paste := &Paste{}
-			err := rows.StructScan(paste)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			pastes = append(pastes, paste)
 		}
 	}
 	return

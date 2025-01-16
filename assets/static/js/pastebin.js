@@ -614,7 +614,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () {});
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () { });
           new_paste_result_link.closest(".mdui-card").find(".paste-link").show();
           new_paste_result_qr_code.show();
         } else {
@@ -702,11 +702,11 @@
           let loaded = now_loaded();
           file_paste_progress_text.text(
             (Math.ceil((loaded / 1024 / 1024) * 100) / 100).toFixed(2) +
-              " MiB / " +
-              (Math.ceil((total_size / 1024 / 1024) * 100) / 100).toFixed(2) +
-              " MiB - " +
-              (Math.min(loaded / total_size, 1) * 100).toFixed(2) +
-              "%"
+            " MiB / " +
+            (Math.ceil((total_size / 1024 / 1024) * 100) / 100).toFixed(2) +
+            " MiB - " +
+            (Math.min(loaded / total_size, 1) * 100).toFixed(2) +
+            "%"
           );
           file_paste_progress_bar.css("width", (Math.min(loaded / total_size, 1) * 100).toFixed(2) + "%");
           if (Math.round(loaded) < total_size) {
@@ -1434,7 +1434,7 @@
 
       const paste_manage_mdui_panel = new mdui.Panel("#paste-manage-pastes .mdui-panel");
       const paste_manage_panel = $("#paste-manage-pastes .mdui-panel");
-      const paste_search_input = $("#paste-search-input");
+      const paste_manage_search_input = $("#paste-manage-search-input");
       let page = 1;
       let max_page = 1;
       let paste_total = 0;
@@ -1445,15 +1445,17 @@
       const paste_detail_opened_limit = 20 * page_size;
 
       function pager_check() {
-        if (page == 1) {
-          paste_manage_prev.attr("disabled", "disabled");
-        } else {
-          paste_manage_prev.removeAttr("disabled");
-        }
         if (page >= max_page) {
+          page = max_page;
           paste_manage_next.attr("disabled", "disabled");
         } else {
           paste_manage_next.removeAttr("disabled");
+        }
+        if (page <= 1) {
+          if (max_page) page = 1;
+          paste_manage_prev.attr("disabled", "disabled");
+        } else {
+          paste_manage_prev.removeAttr("disabled");
         }
         paste_manage_pager_hint.text(`第 ${page} 页 / 共 ${max_page} 页`);
       }
@@ -1685,7 +1687,7 @@
           data: {
             page: page,
             page_size: page_size,
-            search: paste_search_input.val()
+            search: paste_manage_search_input.val()
           },
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText || "{}");
@@ -1694,7 +1696,10 @@
               max_page = Math.ceil(paste_total / page_size);
               if (page > max_page) {
                 page = max_page;
-                return list_paste(scrollOffset);
+                if (max_page) {
+                  return list_paste(scrollOffset);
+                }
+                return;
               }
               if (response.pastes.length != 0) {
                 let paste_map = new Map();
@@ -1756,11 +1761,18 @@
       }
 
       let debounceRefresh = _.debounce(() => {
+        page = 1;
         refresh();
       }, 500);
 
       paste_manage_refresh.on("click", refresh);
-      paste_search_input.on("input", debounceRefresh);
+      paste_manage_search_input.on("input", debounceRefresh);
+      paste_manage_search_input.on("keyup", function (e) {
+        if (e.key === "Enter") {
+          page = 1;
+          refresh();
+        }
+      });
 
       paste_manage_prev.on("click", function () {
         if (page > 1) {
@@ -2027,8 +2039,8 @@
           data: passkey
             ? null
             : JSON.stringify({
-                account: account
-              }),
+              account: account
+            }),
           processData: false,
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText || "{}");
