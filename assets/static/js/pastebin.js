@@ -1434,7 +1434,7 @@
 
       const paste_manage_mdui_panel = new mdui.Panel("#paste-manage-pastes .mdui-panel");
       const paste_manage_panel = $("#paste-manage-pastes .mdui-panel");
-      const paste_search_input=$("#paste-search-input");
+      const paste_search_input = $("#paste-search-input");
       let page = 1;
       let max_page = 1;
       let paste_total = 0;
@@ -1750,17 +1750,17 @@
         });
       }
 
-      let refreshPasteTimer;
-      function debounceRefreshPaste() {
-        clearTimeout(refreshPasteTimer);
-        refreshPasteTimer = setTimeout(() => {
-          updateUserPasteSize();
-          list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
-        }, 500);
+      function refresh() {
+        updateUserPasteSize();
+        list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop);
       }
-      
-      paste_manage_refresh.on("click", debounceRefreshPaste);
-      paste_search_input.on("input", debounceRefreshPaste);
+
+      let debounceRefresh = _.debounce(() => {
+        refresh();
+      }, 500);
+
+      paste_manage_refresh.on("click", refresh);
+      paste_search_input.on("input", debounceRefresh);
 
       paste_manage_prev.on("click", function () {
         if (page > 1) {
