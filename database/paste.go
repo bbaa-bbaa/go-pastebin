@@ -723,7 +723,11 @@ func ResetHoldCount() error {
 	return err
 }
 
-func QueryAllPaste(page int64, page_size int64, search string) (pastes []*Paste, total int, err error) {
+func QueryAllPaste(page int64, page_size int64, search string) (pastes []*Paste, total int, duration time.Duration, err error) {
+	start := time.Now()
+	defer func() {
+		duration = time.Since(start)
+	}()
 	type Result struct {
 		Paste
 		Total int `db:"total"`
@@ -749,7 +753,7 @@ func QueryAllPaste(page int64, page_size int64, search string) (pastes []*Paste,
 	)
 	if err != nil {
 		log.Error(err)
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	defer rows.Close()
 	var result *Result
@@ -772,13 +776,17 @@ func QueryAllPaste(page int64, page_size int64, search string) (pastes []*Paste,
 		)
 		if err != nil {
 			log.Error(err)
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 	}
 	return
 }
 
-func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) (pastes []*Paste, total int, err error) {
+func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) (pastes []*Paste, total int, duration time.Duration, err error) {
+	start := time.Now()
+	defer func() {
+		duration = time.Since(start)
+	}()
 	type Result struct {
 		Paste
 		Total int `db:"total"`
@@ -805,7 +813,7 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) 
 	)
 	if err != nil {
 		log.Error(err)
-		return nil, 0, err
+		return
 	}
 	defer rows.Close()
 	var result *Result
@@ -829,7 +837,7 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) 
 		)
 		if err != nil {
 			log.Error(err)
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 	}
 	return

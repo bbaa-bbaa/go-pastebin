@@ -710,7 +710,7 @@ func PasteList(c echo.Context) error {
 	}
 	page_size = max(min(1000, page_size), 1)
 	search := c.QueryParam("search")
-	pastes, total, err := database.QueryAllPaste(page, page_size, search)
+	pastes, total, duration, err := database.QueryAllPaste(page, page_size, search)
 	if err != nil {
 		c.JSON(200, map[string]any{"code": -1, "error": "query failed"})
 		return nil
@@ -726,10 +726,15 @@ func PasteList(c echo.Context) error {
 		}
 		users[user.UID] = userInfo(user)
 	}
-	c.JSON(200, map[string]any{"code": 0, "total": total, "users": users, "pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
-		pi := ToPasteInfo(p)
-		pi.URL = p.URL(c)
-		return pi
-	})})
+	c.JSON(200, map[string]any{
+		"code":     0,
+		"total":    total,
+		"users":    users,
+		"duration": duration.String(),
+		"pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
+			pi := ToPasteInfo(p)
+			pi.URL = p.URL(c)
+			return pi
+		})})
 	return nil
 }

@@ -1435,6 +1435,7 @@
       const paste_manage_mdui_panel = new mdui.Panel("#paste-manage-pastes .mdui-panel");
       const paste_manage_panel = $("#paste-manage-pastes .mdui-panel");
       const paste_manage_search_input = $("#paste-manage-search-input");
+      const paste_manage_search_stat = $("#paste-manage-search-stat");
       let page = 1;
       let max_page = 1;
       let paste_total = 0;
@@ -1734,13 +1735,16 @@
                     register_action_button(panel, paste.uuid, paste.hash);
                   }
                 }
-                mdui.mutation(); // re-render
                 paste_manage_null.hide();
                 paste_manage_pastes.show();
               } else {
                 paste_manage_pastes.hide();
                 paste_manage_null.show();
               }
+              if(response.duration) {
+                paste_manage_search_stat.text(`查询用时: ${response.duration}`);
+              }
+              mdui.mutation();
             }
             paste_manage_progress.hide();
             pager_check();

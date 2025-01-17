@@ -200,22 +200,20 @@ func UserPasteList(c echo.Context) error {
 		total  int
 		err    error
 	)
-	if search == "" {
-		// 原有逻辑
-		pastes, total, err = database.QueryAllPasteByUser(user.UID, page, page_size, "")
-	} else {
-		// 若search不为空，执行搜索
-		pastes, total, err = database.QueryAllPasteByUser(user.UID, page, page_size, search)
-	}
+	pastes, total, duration, err := database.QueryAllPasteByUser(user.UID, page, page_size, search)
 	if err != nil {
 		c.JSON(200, map[string]any{"code": -1, "error": "query failed"})
 		return nil
 	}
-	c.JSON(200, map[string]any{"code": 0, "total": total, "pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
-		pi := ToPasteInfo(p)
-		pi.URL = p.URL(c)
-		return pi
-	})})
+	c.JSON(200, map[string]any{
+		"code":     0,
+		"total":    total,
+		"duration": duration.String(),
+		"pastes": lo.Map(pastes, func(p *database.Paste, _ int) *PasteInfo {
+			pi := ToPasteInfo(p)
+			pi.URL = p.URL(c)
+			return pi
+		})})
 	return nil
 }
 
