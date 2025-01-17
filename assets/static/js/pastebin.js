@@ -1699,7 +1699,6 @@
                 if (max_page) {
                   return list_paste(scrollOffset);
                 }
-                return;
               }
               if (response.pastes.length != 0) {
                 let paste_map = new Map();
@@ -1736,7 +1735,6 @@
                   }
                 }
                 mdui.mutation(); // re-render
-
                 paste_manage_null.hide();
                 paste_manage_pastes.show();
               } else {

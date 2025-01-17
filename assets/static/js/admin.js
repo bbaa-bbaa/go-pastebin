@@ -379,7 +379,6 @@
               if (page > max_page) {
                 page = max_page;
                 if (max_page) return list_paste(scrollOffset);
-                return;
               }
               if (response.pastes.length != 0) {
                 let paste_map = new Map();
