@@ -596,6 +596,7 @@ func GetPaste(c echo.Context) error {
 		}
 	}
 	response.Header().Set("X-Origin-Filename", paste.Extra.FileName)
+	response.Header().Set("X-Origin-Filename-Encoded", strings.ReplaceAll(url.QueryEscape(paste.Extra.FileName), "+", "%20"))
 	mime_type, _, _ := mime.ParseMediaType(paste.Extra.MimeType)
 	if mime_type == "application/vnd.pastebin.shorten" && variant != "raw" {
 		url, err := os.ReadFile(paste.Path())

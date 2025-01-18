@@ -456,7 +456,7 @@
             }
             return { text: getPasteFromHash(response.info), info: response.info };
           })
-          .then(({text, info}) => {
+          .then(({ text, info }) => {
             text_input.val(text);
             paste_filename.val(info.filename || "");
             paste_filename.get(0).dispatchEvent(new Event("input"));
@@ -1289,7 +1289,19 @@
 
       function parse_filename(xhr) {
         let urlencode_filename = xhr.getResponseHeader("X-Origin-Filename-Encoded");
-        return decodeURIComponent(urlencode_filename);
+        try {
+          if (urlencode_filename) return decodeURIComponent(urlencode_filename);
+        } catch (e) {
+          
+        }
+        let filename = xhr.getResponseHeader("X-Origin-Filename");
+        try {
+          let decoder = new TextDecoder("utf-8");
+          let filename_bytes = new Uint8Array([...filename].map(c => c.charCodeAt(0)));
+          return decoder.decode(filename_bytes);
+        } catch (e) {
+          return filename;
+        }
       }
 
       function action_lock() {
