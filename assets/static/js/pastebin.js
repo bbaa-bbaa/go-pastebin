@@ -372,6 +372,7 @@
         paste_file = null;
         file_input.val("");
         paste_filename.val("");
+        paste_filename.get(0).dispatchEvent(new Event("input"));
         paste_load.text("从文件中加载").removeClass("mdui-color-blue-accent").addClass("mdui-color-theme-accent");
         file_paste.hide();
         new_paste_edit_func.show();
@@ -458,6 +459,7 @@
           .then(({text, info}) => {
             text_input.val(text);
             paste_filename.val(info.filename || "");
+            paste_filename.get(0).dispatchEvent(new Event("input"));
             new_paste_preview_markdown_btn.show();
             new_paste_markdown_preview_container.hide();
             text_input.get(0).dispatchEvent(new Event("input"));
