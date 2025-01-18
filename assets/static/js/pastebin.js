@@ -441,7 +441,7 @@
           );
         })
           .then(() => getHashFromUuid(uuid))
-          .then(response => {
+          .then(async response => {
             if (!response.info) {
               return Promise.reject();
             }
@@ -454,7 +454,7 @@
             if (response.info.size > 5 * 1024 * 1024) {
               return Promise.reject({ error: "无法导入大于 5 MiB 的 Paste" });
             }
-            return { text: getPasteFromHash(response.info), info: response.info };
+            return { text: await getPasteFromHash(response.info), info: response.info };
           })
           .then(({ text, info }) => {
             text_input.val(text);
