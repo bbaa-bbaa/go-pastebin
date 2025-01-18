@@ -377,7 +377,7 @@
         </div>
 
         <div class="mdui-card">
-          <div class="mdui-card-primary">
+          <div class="mdui-card-primary mdui-p-b-0">
             <div class="mdui-card-primary-title">
               新 Paste
               <div id="new-paste-edit-func">
@@ -393,9 +393,18 @@
               </div>
             </div>
           </div>
-          <div class="mdui-card-content">
+          <div class="mdui-card-content mdui-p-t-0">
             <form onsubmit="return false;">
-              <div class="mdui-container-fluid">
+              <div class="mdui-container-fluid mdui-p-t-1">
+                <div class="mdui-row">
+                  <div class="mdui-col-xs-12">
+                    <div class="mdui-textfield mdui-textfield-floating-label mdui-p-t-0">
+                      <i class="mdui-icon material-icons">insert_drive_file</i>
+                      <label class="mdui-textfield-label">自定义文件名</label>
+                      <input id="new-paste-custom-filename" class="mdui-textfield-input" type="text" />
+                    </div>
+                  </div>
+                </div>
                 <div class="mdui-row" id="new-paste-text-paste">
                   <div class="mdui-col-xs-12" style="height: 100%">
                     <div class="mdui-valign paste-file-drop-overlay mdui-hidden" style="position: absolute; z-index: 1; width: calc(100% - 16px); height: 100%; top: 0; left: 8px">
@@ -447,6 +456,7 @@
                       <label class="mdui-textfield-label">过期时间</label>
                       <select id="new-paste-expire" class="mdui-select" mdui-select style="width: 100%">
                         <option value="0"></option>
+                        <option value="-1">永不过期</option>
                         <option value="3600">1 小时</option>
                         <option value="21600">6 小时</option>
                         <option value="43200">12 小时</option>
@@ -479,8 +489,8 @@
                     <div class="mdui-textfield">
                       <label class="mdui-textfield-label">短链接</label>
                       <input id="new-paste-short-url" class="mdui-textfield-input" type="text" placeholder="pastebin" />
-                      <div class="mdui-textfield-error" id="new-paste-short-url-error">仅可使用[A-Za-z0-9._-]</div>
-                      <div class="mdui-textfield-helper">仅可使用[A-Za-z0-9._-]</div>
+                      <div class="mdui-textfield-error" id="new-paste-short-url-error">不能含有 / 或 =</div>
+                      <div class="mdui-textfield-helper">不能含有 / 或 =</div>
                     </div>
                   </div>
                 </div>
@@ -493,6 +503,13 @@
                     </label>
                   </div>
                   <div class="mdui-col-xs-6">
+                    <label class="mdui-checkbox">
+                      Markdown
+                      <input id="new-paste-mime-markdown" type="checkbox" checked />
+                      <i class="mdui-checkbox-icon"></i>
+                    </label>
+                  </div>
+                  <div class="mdui-col-xs-6" style="display: none">
                     <label class="mdui-checkbox">
                       探测 mime-type
                       <input id="new-paste-detect-mime" type="checkbox" />

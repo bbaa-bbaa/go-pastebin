@@ -234,14 +234,17 @@
       const file_input = $("#new-paste-file-input");
       const file_paste = $("#new-paste-file");
       const drop_file_overlay = $(".paste-file-drop-overlay");
+      const paste_filename = $("#new-paste-custom-filename")
       const paste_password = $("#new-paste-password");
       const paste_expire = $("#new-paste-expire");
       const paste_max_access_count = $("#new-paste-max-access-count");
       const paste_uuid = $("#new-paste-uuid");
       const paste_short_url = $("#new-paste-short-url");
       const paste_detect_mime = $("#new-paste-detect-mime");
+      const paste_mime_markdown = $("#new-paste-mime-markdown");
       const paste_delete_if_not_available = $("#new-paste-delete-if-not-available");
       const paste_shorten_url = $("#new-paste-shorten-url");
+      const container_mime_markdown = paste_mime_markdown.parent().parent("div");
       const container_detect_mime = paste_detect_mime.parent().parent("div");
       const container_paste_shorten_url = paste_shorten_url.parent().parent("div");
 
@@ -305,17 +308,15 @@
       let check_and_show_shorten_url = _.debounce(function () {
         if (testVaildURL(text_input.val())) {
           container_paste_shorten_url.show();
-          container_detect_mime.hide();
+          container_mime_markdown.hide();
         } else {
           container_paste_shorten_url.hide();
-          container_detect_mime.show();
+          container_mime_markdown.show();
           paste_shorten_url.prop("checked", false);
         }
-      }, 300);
+      }, 200);
 
-      text_input.on("input", function () {
-        check_and_show_shorten_url();
-      });
+      text_input.on("input", check_and_show_shorten_url);
 
       new_paste_preview_markdown_btn.on("click", function () {
         let text = text_input.val();
@@ -345,10 +346,13 @@
         if (!paste_file) {
           return;
         }
+        paste_filename.val(paste_file.name);
+        paste_filename.get(0).dispatchEvent(new Event("input"));
         file_paste_filename.text(paste_file.name + " (" + (Math.ceil((paste_file.size / 1024 / 1024) * 100) / 100).toFixed(2).toString() + " MiB)");
         paste_preview(paste_file);
         container_detect_mime.show();
         container_paste_shorten_url.hide();
+        container_mime_markdown.hide();
         paste_shorten_url.prop("checked", false);
         paste_load.text("切换到文本模式").removeClass("mdui-color-theme-accent").addClass("mdui-color-blue-accent");
         text_input.parent().hide();
@@ -367,9 +371,13 @@
       function switch_to_text_paste() {
         paste_file = null;
         file_input.val("");
+        paste_filename.val("");
         paste_load.text("从文件中加载").removeClass("mdui-color-blue-accent").addClass("mdui-color-theme-accent");
         file_paste.hide();
         new_paste_edit_func.show();
+        container_detect_mime.hide();
+        container_mime_markdown.show();
+        check_and_show_shorten_url();
         text_input.parent().show();
       }
 
@@ -547,7 +555,7 @@
       });
 
       function check_short_url(url) {
-        return url.length == 0 || /^[A-Za-z0-9\\._-]+$/im.test(url);
+        return url.length == 0 || !/[\/\\=]+/im.test(url);
       }
 
       const check_short_url_available = _.debounce(function (url) {
@@ -569,7 +577,7 @@
       paste_short_url.on("input", function () {
         let url = paste_short_url.val();
         if (!check_short_url(url)) {
-          short_url_error.text("仅可使用大小写字母(A-Za-z) 数字(0-9) 部分特殊符号[连字符(-) 下划线(_) 点(.)]");
+          short_url_error.text("不能含有 = 或 / 字符");
           paste_short_url.closest(".mdui-textfield").addClass("mdui-textfield-invalid");
         } else {
           paste_short_url.closest(".mdui-textfield").removeClass("mdui-textfield-invalid");
@@ -579,11 +587,11 @@
 
       function check_allow_delete_if_not_available() {
         let max_access_count = paste_max_access_count.val();
-        if (paste_expire.val() != "0" || (max_access_count.length && !isNaN(parseInt(max_access_count)))) {
+        if ((parseInt(paste_expire.val()) > 0) || (max_access_count.length && !isNaN(parseInt(max_access_count)))) {
           paste_delete_if_not_available.removeAttr("disabled");
+          paste_delete_if_not_available.prop("indeterminate", true);
         } else {
           paste_delete_if_not_available.attr("disabled", "disabled");
-          paste_delete_if_not_available.prop("checked", false);
         }
       }
 
@@ -753,15 +761,19 @@
         let short_url = paste_short_url.val();
         let delete_if_not_available = paste_delete_if_not_available.prop("checked");
         let detect_mime = paste_detect_mime.prop("checked");
+        let mime_markdown = paste_mime_markdown.prop("checked");
         let shorten_url = paste_shorten_url.prop("checked");
+        let filename = sanitizeFilename(paste_filename.val());
         let data = new FormData();
         let query_params = {};
         if (password.length != 0) {
           query_params.password = password;
         }
 
-        if (expire != "0") {
+        if (expire != "0" && expire != "-1") {
           query_params.expire_after = new Date().getTime() + parseInt(expire) * 1000;
+        } else if (expire == "-1") {
+          query_params.expire_after = "0001-01-01T00:00:00Z";
         }
 
         if (max_access_count.length != 0) {
@@ -779,28 +791,33 @@
           }
           query_params.short_url = short_url;
         }
-        if (paste_delete_if_not_available.attr("disabled") != "disabled") {
+
+        if (paste_delete_if_not_available.prop("disabled") != "disabled" && paste_delete_if_not_available.prop("indeterminate") !== true) {
           if (delete_if_not_available) {
             query_params.delete_if_not_available = "true";
           } else {
-            delete query_params.delete_if_not_available;
+            query_params.delete_if_not_available = "false";
           }
+        } else {
+          delete query_params.delete_if_not_available;
         }
 
         if (paste_file) {
           if (detect_mime) {
-            data.append("c", new File([paste_file], paste_file.name, { type: "application/vnd.pastebin.detect" }));
+            data.append("c", new File([paste_file], filename || paste_file.name, { type: "application/vnd.pastebin.detect" }));
+          } else if (filename) {
+            data.append("c", new File([paste_file], filename, { type: paste_file.type }));
           } else {
             data.append("c", paste_file);
           }
         } else {
-          let filename = sanitizeFilename(text || "-").substring(0, 36);
-          if (detect_mime) {
-            data.append("c", new File([text], filename, { type: "application/vnd.pastebin.detect" }));
-          } else if (shorten_url) {
-            data.append("c", new File([text], filename, { type: "application/vnd.pastebin.shorten" }));
+          let auto_filename = sanitizeFilename(text || "-").substring(0, 36);
+          if (shorten_url) {
+            data.append("c", new File([text], filename || auto_filename, { type: "application/vnd.pastebin.shorten" }));
+          } else if (mime_markdown) {
+            data.append("c", new File([text], filename || auto_filename + ".md", { type: "text/markdown; charset=utf-8" }));
           } else {
-            data.append("c", new File([text], filename + ".txt", { type: "text/plain; charset=utf-8" }));
+            data.append("c", new File([text], filename || auto_filename + ".txt", { type: "text/plain; charset=utf-8" }));
           }
         }
         return { data, query_params };
@@ -1741,7 +1758,7 @@
                 paste_manage_pastes.hide();
                 paste_manage_null.show();
               }
-              if(response.duration) {
+              if (response.duration) {
                 paste_manage_search_stat.text(`查询用时: ${response.duration}`);
               }
               mdui.mutation();

@@ -528,13 +528,13 @@ func (p *Paste) mimeTypeDetector(fallback string) (w *io.PipeWriter, result chan
 	return w, result
 }
 
-var ShortURLRule = regexp.MustCompile(`^[a-zA-Z0-9_\.-]+$`)
+var ShortURLInvalidChar = regexp.MustCompile(`[/=]`)
 
 func checkShortURL(p *Paste) error {
 	if p.Short_url == "" {
 		return ErrInvalidShortURL
 	}
-	if !ShortURLRule.MatchString(p.Short_url) {
+	if ShortURLInvalidChar.MatchString(p.Short_url) {
 		return ErrInvalidShortURL
 	}
 	if ReservedURL.MatchString(p.Short_url) {
@@ -746,10 +746,13 @@ func QueryAllPaste(page int64, page_size int64, search string) (pastes []*Paste,
 		FROM pastes p
 		LEFT JOIN short_url s
 		ON p.uuid = s.target
-		WHERE COALESCE(json_extract(extra, '$.filename'), "") LIKE ?
+		WHERE 
+		COALESCE(s.name, "") LIKE ? 
+		OR
+		COALESCE(json_extract(extra, '$.filename'), "") LIKE ?
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?`,
-		search, page_size, offset,
+		search, search, page_size, offset,
 	)
 	if err != nil {
 		log.Error(err)
@@ -806,10 +809,14 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) 
 		LEFT JOIN short_url s
 		ON p.uuid = s.target
 		WHERE uid = ?
-		AND COALESCE(json_extract(extra, '$.filename'), "") LIKE ?
+		AND (
+			COALESCE(s.name, "") LIKE ? 
+			OR
+			COALESCE(json_extract(extra, '$.filename'), "") LIKE ?
+		)
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?`,
-		uid, search, page_size, offset,
+		uid, search, search, page_size, offset,
 	)
 	if err != nil {
 		log.Error(err)
