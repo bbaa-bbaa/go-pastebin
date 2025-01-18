@@ -234,7 +234,7 @@
       const file_input = $("#new-paste-file-input");
       const file_paste = $("#new-paste-file");
       const drop_file_overlay = $(".paste-file-drop-overlay");
-      const paste_filename = $("#new-paste-custom-filename")
+      const paste_filename = $("#new-paste-custom-filename");
       const paste_password = $("#new-paste-password");
       const paste_expire = $("#new-paste-expire");
       const paste_max_access_count = $("#new-paste-max-access-count");
@@ -453,10 +453,11 @@
             if (response.info.size > 5 * 1024 * 1024) {
               return Promise.reject({ error: "无法导入大于 5 MiB 的 Paste" });
             }
-            return getPasteFromHash(response.info);
+            return { text: getPasteFromHash(response.info), info: response.info };
           })
-          .then(text => {
+          .then(({text, info}) => {
             text_input.val(text);
+            paste_filename.val(info.filename || "");
             new_paste_preview_markdown_btn.show();
             new_paste_markdown_preview_container.hide();
             text_input.get(0).dispatchEvent(new Event("input"));
@@ -587,7 +588,7 @@
 
       function check_allow_delete_if_not_available() {
         let max_access_count = paste_max_access_count.val();
-        if ((parseInt(paste_expire.val()) > 0) || (max_access_count.length && !isNaN(parseInt(max_access_count)))) {
+        if (parseInt(paste_expire.val()) > 0 || (max_access_count.length && !isNaN(parseInt(max_access_count)))) {
           paste_delete_if_not_available.removeAttr("disabled");
           paste_delete_if_not_available.prop("indeterminate", true);
         } else {
@@ -622,7 +623,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () { });
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () {});
           new_paste_result_link.closest(".mdui-card").find(".paste-link").show();
           new_paste_result_qr_code.show();
         } else {
@@ -710,11 +711,11 @@
           let loaded = now_loaded();
           file_paste_progress_text.text(
             (Math.ceil((loaded / 1024 / 1024) * 100) / 100).toFixed(2) +
-            " MiB / " +
-            (Math.ceil((total_size / 1024 / 1024) * 100) / 100).toFixed(2) +
-            " MiB - " +
-            (Math.min(loaded / total_size, 1) * 100).toFixed(2) +
-            "%"
+              " MiB / " +
+              (Math.ceil((total_size / 1024 / 1024) * 100) / 100).toFixed(2) +
+              " MiB - " +
+              (Math.min(loaded / total_size, 1) * 100).toFixed(2) +
+              "%"
           );
           file_paste_progress_bar.css("width", (Math.min(loaded / total_size, 1) * 100).toFixed(2) + "%");
           if (Math.round(loaded) < total_size) {
@@ -2058,8 +2059,8 @@
           data: passkey
             ? null
             : JSON.stringify({
-              account: account
-            }),
+                account: account
+              }),
           processData: false,
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText || "{}");
