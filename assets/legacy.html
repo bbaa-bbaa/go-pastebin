@@ -1,217 +1,221 @@
 <!doctype html>
 <html lang="zh">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-    <link rel="stylesheet" href="static/normalize/css/normalize.min.css" />
-    <title>{{.SiteTitle}}</title>
-    <style>
-      body {
-        font-family: "Segoe UI", system-ui, Arial, Helvetica, sans-serif;
-        margin: 20px;
-        padding: 0;
-      }
 
-      .container {
-        max-width: 80%;
-        margin: auto;
-      }
-      .form-group {
-        margin-bottom: 15px;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="static/normalize/css/normalize.min.css" />
+  <title>{{.SiteTitle}}</title>
+  <style>
+    body {
+      font-family: "Segoe UI", system-ui, Arial, Helvetica, sans-serif;
+      margin: 20px;
+      padding: 0;
+    }
 
-      label {
-        display: block;
-        margin-bottom: 5px;
-      }
+    .container {
+      max-width: 80%;
+      margin: auto;
+    }
 
-      input[type="text"],
-      textarea,
-      input[type="file"] {
-        width: 100%;
-        padding: 8px;
-        box-sizing: border-box;
-      }
+    .form-group {
+      margin-bottom: 15px;
+    }
 
-      button {
-        padding: 10px 15px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        cursor: pointer;
-        text-decoration: none;
-      }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
 
-      button:hover {
-        background-color: #0056b3;
-      }
+    input[type="text"],
+    textarea,
+    input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
 
-      .delete-btn {
-        background-color: transparent!important;
-        padding: 0;
-        color: #dc3545;
-        border: none;
-        cursor: pointer;
-        text-decoration: none;
-      }
+    button {
+      padding: 10px 15px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    }
 
-      .delete-btn:hover {
-        color: #a71d2a;
-        text-decoration: underline;
-      }
+    button:hover {
+      background-color: #0056b3;
+    }
 
-      .recent-pastes ul {
-        list-style-type: none;
-        padding: 0;
-        margin: 0;
-      }
+    .delete-btn {
+      background-color: transparent !important;
+      padding: 0;
+      color: #dc3545;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    }
 
-      .recent-pastes li {
-        padding: 10px;
-        border-bottom: 1px solid #ddd;
-      }
+    .delete-btn:hover {
+      color: #a71d2a;
+      text-decoration: underline;
+    }
 
-      .url {
-        color: #007bff;
-        text-decoration: none;
-      }
+    .recent-pastes ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
 
-      .url:hover {
-        text-decoration: underline;
-      }
+    .recent-pastes li {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
 
-      .error {
-        background-color: #f8d7da;
-        color: #721c24;
-        padding: 10px;
-        border: 1px solid #f5c6cb;
-        margin: 10px 0;
-      }
+    .url {
+      color: #007bff;
+      text-decoration: none;
+    }
 
-      .error p {
-        margin: 0;
-      }
+    .url:hover {
+      text-decoration: underline;
+    }
 
-      .info {
-        background-color: #d9edf7;
-        color: #31708f;
-        padding: 10px;
-        border: 1px solid #bce8f1;
-        margin: 10px 0;
-      }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      padding: 10px;
+      border: 1px solid #f5c6cb;
+      margin: 10px 0;
+    }
 
-      .info p {
-        margin: 0;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      {{- if ne .Error nil }}
+    .error p {
+      margin: 0;
+    }
+
+    .info {
+      background-color: #d9edf7;
+      color: #31708f;
+      padding: 10px;
+      border: 1px solid #bce8f1;
+      margin: 10px 0;
+    }
+
+    .info p {
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    {{- if ne .Error nil }}
+    <div class="error">
+      <p>{{ .Error }}</p>
+    </div>
+    {{- end}} {{- if .IsLogin }}
+    <div class="user-info">
+      <h1 style="display: inline">欢迎, {{ .User.Username }}</h1>
+      <form method="post" action="/legacy" enctype="application/x-www-form-urlencoded" style="float: right">
+        <input type="hidden" name="method" value="logout" />
+        <button type="submit">登出</button>
+      </form>
+    </div>
+    {{- else }}
+    <div class="user-login">
+      <h1>用户登录</h1>
+      {{- if ne .LoginError nil }}
       <div class="error">
-        <p>{{ .Error }}</p>
+        <p>{{ .LoginError }}</p>
       </div>
-      {{- end}} {{- if .IsLogin }}
-      <div class="user-info">
-        <h1 style="display: inline">欢迎, {{ .User.Username }}</h1>
-        <form method="post" action="/legacy" enctype="application/x-www-form-urlencoded" style="float: right">
-          <input type="hidden" name="method" value="logout" />
-          <button type="submit">登出</button>
-        </form>
-      </div>
-      {{- else }}
-      <div class="user-login">
-        <h1>用户登录</h1>
-        {{- if ne .LoginError nil }}
-        <div class="error">
-          <p>{{ .LoginError }}</p>
+      {{- end}}
+      <form method="post" action="/legacy">
+        <input type="hidden" name="method" value="login" />
+        <div class="form-group">
+          <label for="username">用户名</label>
+          <input type="text" id="username" name="account" required />
         </div>
-        {{- end}}
-        <form method="post" action="/legacy">
-          <input type="hidden" name="method" value="login" />
-          <div class="form-group">
-            <label for="username">用户名</label>
-            <input type="text" id="username" name="account" required />
-          </div>
-          <div class="form-group">
-            <label for="password">密码</label>
-            <input type="text" id="password" name="password" required />
-          </div>
-          <button type="submit">登录</button>
-        </form>
-      </div>
-      {{- end }} {{ if and (not .IsLogin) (not .AllowAnonymous) }}
-      <p>该 Pastebin 不允许匿名用户上传，请先登录</p>
-      {{- else }}
-      <div class="paste-upload">
-        {{- if ne .PasteInfo nil }}
-        <div class="info">
-          {{ unescape .PasteInfo }}
+        <div class="form-group">
+          <label for="password">密码</label>
+          <input type="text" id="password" name="password" required />
         </div>
-        {{- end }}
-        {{- if ne .PasteError nil }}
-        <div class="error">
-          <p>{{ .PasteError }}</p>
-        </div>
-        {{- end}}
-        <div class="text-upload">
-          <h2>文本上传</h2>
-          <form method="post" action="/legacy" enctype="application/x-www-form-urlencoded">
-            <input type="hidden" name="method" value="text-upload" />
-            <div class="form-group">
-              <label for="text">输入文本</label>
-              <textarea id="text" name="c" rows="12" required></textarea>
-            </div>
-            <button type="submit">上传文本</button>
-          </form>
-        </div>
-        <div class="file-upload">
-          <h2>文件上传</h2>
-          <form method="post" action="/legacy" enctype="multipart/form-data">
-            <input type="hidden" name="method" value="file-upload" />
-            <div class="form-group">
-              <label for="file">选择文件</label>
-              <input type="file" id="file" name="c" required />
-            </div>
-            <button type="submit">上传文件</button>
-          </form>
-        </div>
-      </div>
-      {{- end }} {{- if .IsLogin }}
-      <div class="recent-pastes">
-        <h2>最近上传的 Pastes</h2>
-        {{- if ne .DeleteError nil }}
-        <div class="error">
-          <p>{{ .DeleteError }}</p>
-        </div>
-        {{- end }}
-        {{- if ne .DeleteInfo nil }}
-        <div class="info">
-          <p>{{ .DeleteInfo }}</p>
-        </div>
-        {{- end }}
-        <ul>
-          {{- range .RecentPastes }}
-          <li>
-            <span class="datetime">{{ .CreatedAt }}</span>
-            |
-            <span class="hash">{{ .Hash }}</span>
-            |
-            <span class="filename">{{ .FileName }}</span>
-            |
-            <a class="url" href="{{.URL}}">{{.URL}}</a>
-            |
-            <form method="post" action="/legacy" style="display: inline" enctype="application/x-www-form-urlencoded">
-              <input type="hidden" name="method" value="delete" />
-              <input type="hidden" name="uuid" value="{{.UUID}}" />
-              <button type="submit" class="delete-btn">删除</button>
-            </form>
-          </li>
-          {{- end }}
-        </ul>
+        <button type="submit">登录</button>
+      </form>
+    </div>
+    {{- end }} {{ if and (not .IsLogin) (not .AllowAnonymous) }}
+    <p>该 Pastebin 不允许匿名用户上传，请先登录</p>
+    {{- else }}
+    <div class="paste-upload">
+      {{- if ne .PasteInfo nil }}
+      <div class="info">
+        {{ unescape .PasteInfo }}
       </div>
       {{- end }}
+      {{- if ne .PasteError nil }}
+      <div class="error">
+        <p>{{ .PasteError }}</p>
+      </div>
+      {{- end}}
+      <div class="text-upload">
+        <h2>文本上传</h2>
+        <form method="post" action="/legacy" enctype="application/x-www-form-urlencoded">
+          <input type="hidden" name="method" value="text-upload" />
+          <div class="form-group">
+            <label for="text">输入文本</label>
+            <textarea id="text" name="c" rows="12" required></textarea>
+          </div>
+          <button type="submit">上传文本</button>
+        </form>
+      </div>
+      <div class="file-upload">
+        <h2>文件上传</h2>
+        <form method="post" action="/legacy" enctype="multipart/form-data">
+          <input type="hidden" name="method" value="file-upload" />
+          <div class="form-group">
+            <label for="file">选择文件</label>
+            <input type="file" id="file" name="c" required />
+          </div>
+          <button type="submit">上传文件</button>
+        </form>
+      </div>
     </div>
-  </body>
+    {{- end }} {{- if .IsLogin }}
+    <div class="recent-pastes">
+      <h2>最近上传的 Pastes</h2>
+      {{- if ne .DeleteError nil }}
+      <div class="error">
+        <p>{{ .DeleteError }}</p>
+      </div>
+      {{- end }}
+      {{- if ne .DeleteInfo nil }}
+      <div class="info">
+        <p>{{ .DeleteInfo }}</p>
+      </div>
+      {{- end }}
+      <ul>
+        {{- range .RecentPastes }}
+        <li>
+          <span class="datetime">{{ .CreatedAt }}</span>
+          |
+          <span class="hash">{{ .Hash }}</span>
+          |
+          <span class="filename">{{ .FileName }}</span>
+          |
+          <a class="url" href="{{.URL}}">{{.URL}}</a>
+          |
+          <form method="post" action="/legacy" style="display: inline" enctype="application/x-www-form-urlencoded">
+            <input type="hidden" name="method" value="delete" />
+            <input type="hidden" name="uuid" value="{{.UUID}}" />
+            <button type="submit" class="delete-btn">删除</button>
+          </form>
+        </li>
+        {{- end }}
+      </ul>
+    </div>
+    {{- end }}
+  </div>
+</body>
+
 </html>

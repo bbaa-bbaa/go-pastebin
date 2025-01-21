@@ -1,199 +1,203 @@
 <!doctype html>
 <html lang="zh-cn">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" />
-    <meta name="renderer" content="webkit" />
-    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-    <link rel="stylesheet" href="/static/mdui/css/mdui.min.css" />
-    <link rel="stylesheet" href="/static/css/night.css" />
-    <title>{{.SiteTitle}} 管理面板</title>
-    <style>
-      @font-face {
-        font-family: "Hack";
-        src:
-          url("../static/font/Hack/hack-regular.woff2") format("woff2"),
-          url("../font/Hack/hack-regular.woff") format("woff");
-        font-weight: 400;
-        font-style: normal;
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" />
+  <meta name="renderer" content="webkit" />
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="/static/mdui/css/mdui.min.css" />
+  <link rel="stylesheet" href="/static/css/night.css" />
+  <title>{{.SiteTitle}} 管理面板</title>
+  <style>
+    @font-face {
+      font-family: "Hack";
+      src:
+        url("../static/font/Hack/hack-regular.woff2") format("woff2"),
+        url("../font/Hack/hack-regular.woff") format("woff");
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "Bender";
+      src:
+        url("../static/font/Bender/Bender-Bold.woff2") format("woff2"),
+        url("../static/font/Bender/Bender-Bold.otf") format("otf");
+      font-weight: bold;
+    }
+
+    .raw-result {
+      font-family: Consolas, Hack, monospace;
+    }
+
+    .raw-result p {
+      margin: 1px 0;
+    }
+
+    p.paste-link {
+      display: inline;
+      font-family: "Bender";
+      font-size: 1.5em;
+      text-decoration: none;
+      position: relative;
+      top: 3px;
+    }
+
+    .paste-link a {
+      text-decoration: none;
+      transition:
+        background-color 0.3s ease-out,
+        color 0.3s ease-out;
+    }
+
+    .paste-link a:hover {
+      text-decoration: underline;
+    }
+
+    .paste-link a:hover,
+    .paste-link a:visited {
+      color: #03a9f4;
+    }
+
+    body.mdui-theme-layout-dark .paste-link a {
+      color: rgb(238, 0, 0);
+    }
+
+    body.mdui-theme-layout-dark .paste-link a:hover,
+    body.mdui-theme-layout-dark .paste-link a:visited {
+      color: rgb(255, 192, 203);
+      transition: color 0.3s ease-out;
+    }
+
+    .refreshing {
+      animation: refresh-rotate 0.8s linear infinite;
+    }
+
+    @keyframes refresh-rotate {
+      0% {
+        transform: rotate(0deg);
       }
 
-      @font-face {
-        font-family: "Bender";
-        src:
-          url("../static/font/Bender/Bender-Bold.woff2") format("woff2"),
-          url("../static/font/Bender/Bender-Bold.otf") format("otf");
-        font-weight: bold;
+      100% {
+        transform: rotate(360deg);
       }
+    }
+  </style>
+</head>
 
-      .raw-result {
-        font-family: Consolas, Hack, monospace;
-      }
-
-      .raw-result p {
-        margin: 1px 0;
-      }
-
-      p.paste-link {
-        display: inline;
-        font-family: "Bender";
-        font-size: 1.5em;
-        text-decoration: none;
-        position: relative;
-        top: 3px;
-      }
-
-      .paste-link a {
-        text-decoration: none;
-        transition:
-          background-color 0.3s ease-out,
-          color 0.3s ease-out;
-      }
-
-      .paste-link a:hover {
-        text-decoration: underline;
-      }
-
-      .paste-link a:hover,
-      .paste-link a:visited {
-        color: #03a9f4;
-      }
-
-      body.mdui-theme-layout-dark .paste-link a {
-        color: rgb(238, 0, 0);
-      }
-
-      body.mdui-theme-layout-dark .paste-link a:hover,
-      body.mdui-theme-layout-dark .paste-link a:visited {
-        color: rgb(255, 192, 203);
-        transition: color 0.3s ease-out;
-      }
-
-      .refreshing {
-        animation: refresh-rotate 0.8s linear infinite;
-      }
-
-      @keyframes refresh-rotate {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-    </style>
-  </head>
-
-  <body class="mdui-theme-primary-indigo mdui-theme-accent-pink{{- if eq .ColorScheme `dark`}} mdui-theme-layout-dark{{- end -}}">
-    <script src="/static/js/night.js"></script>
-    <div class="mdui-appbar mdui-color-theme">
-      <div class="mdui-toolbar">
-        <a href="javascript:;" class="mdui-typo-title">{{.SiteName}} 管理面板</a>
-        <div class="mdui-toolbar-spacer"></div>
-        <a href="/" class="mdui-btn mdui-btn-icon" id="account-dialog-btn" mdui-tooltip="{content: '返回主页'}">
-          <i class="mdui-icon material-icons">exit_to_app</i>
-        </a>
-        <button class="mdui-btn mdui-btn-icon" id="switch-nightmode-btn">
-          {{- if eq .ColorScheme "dark"}}
-          <i class="mdui-icon material-icons">brightness_high</i>
-          <i class="mdui-icon material-icons" style="display: none">brightness_2</i>
-          {{- else}}
-          <i class="mdui-icon material-icons" style="display: none">brightness_high</i>
-          <i class="mdui-icon material-icons">brightness_2</i>
-          {{- end}}
-        </button>
-      </div>
+<body class="mdui-theme-primary-indigo mdui-theme-accent-pink{{- if eq .ColorScheme `dark`}} mdui-theme-layout-dark{{- end -}}">
+  <script src="/static/js/night.js"></script>
+  <div class="mdui-appbar mdui-color-theme">
+    <div class="mdui-toolbar">
+      <a href="javascript:;" class="mdui-typo-title">{{.SiteName}} 管理面板</a>
+      <div class="mdui-toolbar-spacer"></div>
+      <a href="/" class="mdui-btn mdui-btn-icon" id="account-dialog-btn" mdui-tooltip="{content: '返回主页'}">
+        <i class="mdui-icon material-icons">exit_to_app</i>
+      </a>
+      <button class="mdui-btn mdui-btn-icon" id="switch-nightmode-btn">
+        {{- if eq .ColorScheme "dark"}}
+        <i class="mdui-icon material-icons">brightness_high</i>
+        <i class="mdui-icon material-icons" style="display: none">brightness_2</i>
+        {{- else}}
+        <i class="mdui-icon material-icons" style="display: none">brightness_high</i>
+        <i class="mdui-icon material-icons">brightness_2</i>
+        {{- end}}
+      </button>
     </div>
-    <div class="mdui-container mdui-m-t-1">
-      <div class="mdui-card mdui-m-y-2">
-        <div class="mdui-card-primary">
-          <div class="mdui-card-primary-title">新 User</div>
-        </div>
-        <div class="mdui-card-content">
-          <form id="useradd" onsubmit="return false;">
-            <div class="mdui-container-fluid">
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <input id="admin-username-text" class="mdui-textfield-input" type="text" placeholder="User Name" />
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <input id="admin-email-text" class="mdui-textfield-input" type="text" placeholder="Email" />
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <input id="admin-password-text" class="mdui-textfield-input" autocomplete="password" type="text" placeholder="Password" />
-                  </div>
-                </div>
-              </div>
-              <div class="mdui-row">
-                <div class="mdui-col-xs-12">
-                  <div class="mdui-textfield">
-                    <input id="admin-group-text" class="mdui-textfield-input" type="text" placeholder="User Group" />
-                  </div>
-                </div>
-              </div>
-              <button type="submit" class="mdui-btn mdui-color-theme-accent mdui-ripple mdui-btn-block">确认添加</button>
-            </div>
-          </form>
-        </div>
+  </div>
+  <div class="mdui-container mdui-m-t-1">
+    <div class="mdui-card mdui-m-y-2">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title">新 User</div>
       </div>
-      <div class="mdui-card mdui-m-y-2">
-        <div class="mdui-card-primary mdui-p-b-0">
-          <div class="mdui-card-primary-title">
-            Paste-Manage
-            <button class="mdui-btn mdui-btn-icon mdui-ripple mdui-color-theme-accent" id="paste-manage-refresh">
-              <i class="mdui-icon material-icons">refresh</i>
-            </button>
-            <div id="total-paste-size" class="mdui-card-primary-subtitle"></div>
-          </div>
-        </div>
-        <div class="mdui-card-content mdui-p-t-0">
+      <div class="mdui-card-content">
+        <form id="useradd" onsubmit="return false;">
           <div class="mdui-container-fluid">
-            <div class="mdui-textfield mdui-textfield-floating-label mdui-p-t-0 mdui-m-b-2">
-              <i class="mdui-icon material-icons">search</i>
-              <label class="mdui-textfield-label">搜索 Paste</label>
-              <input class="mdui-textfield-input" type="text" id="paste-manage-search-input" />
-              <div class="mdui-textfield-helper" id="paste-manage-search-stat"></div>
-            </div>
-            <div class="mdui-row" id="paste-manage-null" style="display: none">
-              <div class="mdui-col-xs-12">无 Paste</div>
-            </div>
-            <div class="mdui-row" id="paste-manage-pastes" style="display: none">
+            <div class="mdui-row">
               <div class="mdui-col-xs-12">
-                <div class="mdui-panel"></div>
-              </div>
-            </div>
-            <div class="mdui-row mdui-m-t-1">
-              <div class="mdui-col-xs-12">
-                <div class="mdui-float-right"><span id="paste-manage-pager-hint"></span></div>
-              </div>
-              <div class="mdui-col-xs-12">
-                <div class="mdui-float-right">
-                  <button type="button" id="paste-manage-prev" class="mdui-btn mdui-ripple mdui-color-light-blue-accent mdui-text-color-white paste-manage-pager mdui-m-x-1">
-                    上一页
-                  </button>
-                  <button type="button" id="paste-manage-next" class="mdui-btn mdui-ripple mdui-color-theme-accent paste-manage-pager">下一页</button>
+                <div class="mdui-textfield">
+                  <input id="admin-username-text" class="mdui-textfield-input" type="text" placeholder="User Name" />
                 </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <input id="admin-email-text" class="mdui-textfield-input" type="text" placeholder="Email" />
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <input id="admin-password-text" class="mdui-textfield-input" autocomplete="password" type="text" placeholder="Password" />
+                </div>
+              </div>
+            </div>
+            <div class="mdui-row">
+              <div class="mdui-col-xs-12">
+                <div class="mdui-textfield">
+                  <input id="admin-group-text" class="mdui-textfield-input" type="text" placeholder="User Group" />
+                </div>
+              </div>
+            </div>
+            <button type="submit" class="mdui-btn mdui-color-theme-accent mdui-ripple mdui-btn-block">确认添加</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="mdui-card mdui-m-y-2">
+      <div class="mdui-card-primary mdui-p-b-0">
+        <div class="mdui-card-primary-title">
+          Paste-Manage
+          <button class="mdui-btn mdui-btn-icon mdui-ripple mdui-color-theme-accent" id="paste-manage-refresh">
+            <i class="mdui-icon material-icons">refresh</i>
+          </button>
+          <div id="total-paste-size" class="mdui-card-primary-subtitle"></div>
+        </div>
+      </div>
+      <div class="mdui-card-content mdui-p-t-0">
+        <div class="mdui-container-fluid">
+          <div class="mdui-textfield mdui-textfield-floating-label mdui-p-t-0 mdui-m-b-2">
+            <i class="mdui-icon material-icons">search</i>
+            <label class="mdui-textfield-label">搜索 Paste</label>
+            <input class="mdui-textfield-input" type="text" id="paste-manage-search-input" />
+            <div class="mdui-textfield-helper" id="paste-manage-search-stat"></div>
+          </div>
+          <div class="mdui-row" id="paste-manage-null" style="display: none">
+            <div class="mdui-col-xs-12">无 Paste</div>
+          </div>
+          <div class="mdui-row" id="paste-manage-pastes" style="display: none">
+            <div class="mdui-col-xs-12">
+              <div class="mdui-panel"></div>
+            </div>
+          </div>
+          <div class="mdui-row mdui-m-t-1">
+            <div class="mdui-col-xs-12">
+              <div class="mdui-float-right"><span id="paste-manage-pager-hint"></span></div>
+            </div>
+            <div class="mdui-col-xs-12">
+              <div class="mdui-float-right">
+                <button type="button" id="paste-manage-prev"
+                  class="mdui-btn mdui-ripple mdui-color-light-blue-accent mdui-text-color-white paste-manage-pager mdui-m-x-1">
+                  上一页
+                </button>
+                <button type="button" id="paste-manage-next" class="mdui-btn mdui-ripple mdui-color-theme-accent paste-manage-pager">下一页</button>
               </div>
             </div>
           </div>
         </div>
-        <div class="mdui-progress paste-manage-progress" style="display: block">
-          <div class="mdui-progress-indeterminate"></div>
-        </div>
+      </div>
+      <div class="mdui-progress paste-manage-progress" style="display: block">
+        <div class="mdui-progress-indeterminate"></div>
       </div>
     </div>
-  </body>
-  <script src="/static/mdui/js/mdui.min.js"></script>
-  <script src="/static/lodash/js/lodash.min.js"></script>
-  <script src="/sw_loader.js"></script>
-  <script src="/static/js/admin.js"></script>
+  </div>
+</body>
+<script src="/static/mdui/js/mdui.min.js"></script>
+<script src="/static/lodash/js/lodash.min.js"></script>
+<script src="/sw_loader.js"></script>
+<script src="/static/js/admin.js"></script>
+
 </html>
