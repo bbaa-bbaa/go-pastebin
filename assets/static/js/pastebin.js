@@ -549,6 +549,7 @@
         if (uuid_valid && uuid.length != 0) {
           paste_delete.removeAttr("disabled");
           paste_update.removeAttr("disabled");
+          paste_delete_if_not_available.prop("indeterminate", true);
           new_paste_import_btn.show();
         } else {
           paste_delete.attr("disabled", "disabled");
