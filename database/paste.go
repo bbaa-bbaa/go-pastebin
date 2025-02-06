@@ -103,6 +103,10 @@ func (p *Paste) HexHash() string {
 	return p.Hash.hex()
 }
 
+func (p *Paste) IsRedirect() bool {
+	return p.Extra.MimeType == "application/vnd.pastebin.shorten"
+}
+
 type Paste_Extra struct {
 	MimeType      string `json:"mime_type"`
 	FileName      string `json:"filename"`

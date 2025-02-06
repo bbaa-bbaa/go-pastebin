@@ -134,6 +134,10 @@ func (user *User) RegisterWebAuthnRequest(credential_name string, passkey bool) 
 	register_options = append(register_options, webauthn.WithExtensions(protocol.AuthenticationExtensions{
 		"credentialProtectionPolicy": "userVerificationOptionalWithCredentialIDList",
 	}))
+	register_options = append(register_options, webauthn.WithAuthenticatorSelection(protocol.AuthenticatorSelection{
+		AuthenticatorAttachment: protocol.CrossPlatform,
+		UserVerification:        protocol.VerificationPreferred,
+	}))
 	if passkey {
 		register_options = append(register_options, webauthn.WithResidentKeyRequirement(protocol.ResidentKeyRequirementRequired))
 	}

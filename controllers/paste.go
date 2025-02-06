@@ -526,7 +526,7 @@ func GetPaste(c echo.Context) error {
 			return nil
 		}
 
-		if !raw_response && (paste.MaxAccessCount != 0 || paste.Password != "") {
+		if !raw_response && ((!paste.IsRedirect() && paste.MaxAccessCount != 0) || paste.Password != "") {
 			redirect_url := "/"
 			if c.Request().URL.RawQuery != "" {
 				redirect_url += "?" + c.Request().URL.RawQuery
@@ -598,7 +598,7 @@ func GetPaste(c echo.Context) error {
 	response.Header().Set("X-Origin-Filename", paste.Extra.FileName)
 	response.Header().Set("X-Origin-Filename-Encoded", strings.ReplaceAll(url.QueryEscape(paste.Extra.FileName), "+", "%20"))
 	mime_type, _, _ := mime.ParseMediaType(paste.Extra.MimeType)
-	if mime_type == "application/vnd.pastebin.shorten" && variant != "raw" {
+	if paste.IsRedirect() && variant != "raw" {
 		url, err := os.ReadFile(paste.Path())
 		if err != nil {
 			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
