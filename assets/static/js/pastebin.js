@@ -1129,6 +1129,7 @@
       const paste_viewer_confirm_password = $("#paste-viewer-confirm-password");
 
       const paste_viewer_text_content = $("#paste-viewer-text-content");
+      const paste_viewer_text_content_raw = $("#paste-viewer-text-content-raw");
       const paste_viewer_enable_markdown_render = $("#paste-viewer-enable-markdown-render");
 
       const paste_viewer_download_btn = $(".paste-viewer-download-btn");
@@ -1239,6 +1240,7 @@
           paste_viewer_text_content.css("white-space", "pre-wrap");
           paste_viewer_text_content.text(paste_metadata.content);
         }
+        paste_viewer_text_content_raw.text(paste_metadata.content);
         paste_viewer_collapses.paste_viewer_text.open();
       }
 
@@ -1374,15 +1376,7 @@
       });
 
       paste_viewer_text_copy.on("click", function () {
-        let text = $("#paste-viewer-text-content");
-        function selectAndHint() {
-          let selection = window.getSelection();
-          let range = document.createRange();
-          range.selectNodeContents(text.get(0));
-          selection.removeAllRanges();
-          selection.addRange(range);
-          mdui.snackbar("请按 Ctrl+C 复制");
-        }
+        let text = paste_viewer_text_content_raw;
         if (navigator.clipboard) {
           navigator.clipboard
             .writeText(text.text())
@@ -1390,10 +1384,10 @@
               mdui.snackbar("已复制到剪贴板");
             })
             .catch(err => {
-              selectAndHint();
+              mdui.snackbar("复制失败，请手动复制");
             });
         } else {
-          selectAndHint();
+          mdui.snackbar("复制失败，请手动复制");
         }
       });
 
