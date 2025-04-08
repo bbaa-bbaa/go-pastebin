@@ -1187,10 +1187,12 @@
         };
       }
       let paste_viewer_file_preview_element;
-
+      let paste_viewer_file_preview_speed_control_element;
+      const paste_viewer_video_speed = $("#paste-viewer-video-speed");
       function paste_preview_file() {
         paste_viewer_file_filename.text(paste_metadata.filename + " (" + (paste_metadata.size / 1024 / 1024).toFixed(2).toString() + " MiB)");
         paste_viewer_file_icon.hide();
+        paste_viewer_video_speed.hide();
         paste_viewer_file_preview.show();
         if (paste_viewer_file_preview_element) {
           paste_viewer_file_preview_element.remove();
@@ -1212,6 +1214,12 @@
             .on("loadedmetadata", show)
             .attr("src", paste_metadata.url)
             .appendTo(paste_viewer_file_preview);
+          paste_viewer_video_speed.show();
+          paste_viewer_video_speed.on("change", function () {
+            if (paste_viewer_file_preview_element) {
+              paste_viewer_file_preview_element.prop("playbackRate", parseFloat(paste_viewer_video_speed.val()));
+            }
+          });
         } else {
           paste_viewer_file_preview.hide();
           paste_viewer_file_icon.show();
