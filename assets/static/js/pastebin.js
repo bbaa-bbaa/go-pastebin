@@ -10,7 +10,6 @@
   }
 
   let user_info = null;
-  let paste_force_delete = false;
 
   function formatSize(bytes) {
     const units = ["Bytes", "KiB", "MiB", "GiB", "TiB"];
@@ -1031,10 +1030,7 @@
       }
 
       paste_delete.on("click", function (e) {
-        let force_delete = e.shiftKey || paste_force_delete;
-        if (paste_force_delete) {
-          paste_force_delete = false;
-        }
+        let force_delete = e.shiftKey;
         delete_paste(force_delete);
       });
 
@@ -1578,11 +1574,26 @@
         });
 
         paste_manage_delete_btn.on("click", function (e) {
-          new_paste_uuid.val(uuid);
-          new_paste_uuid.get(0).dispatchEvent(new Event("input"));
-          paste_app_tab.show(0);
-          paste_force_delete = true;
-          new_paste_delete.click();
+          paste_manage_progress.show();
+          paste_manage_delete_btn.attr("disabled", "disabled");
+          $.ajax({
+            method: "DELETE",
+            url: "../" + uuid + "?force=true",
+            headers: {
+              Accept: "application/json"
+            },
+            complete: function (xhr) {
+              let response = JSON.parse(xhr.responseText || "");
+              if (xhr.status == 200 && response.code === 0) {
+                mdui.snackbar("删除成功");
+              } else {
+                mdui.snackbar("删除失败: " + response.error);
+              }
+              paste_manage_delete_btn.removeAttr("disabled");
+              paste_manage_progress.hide();
+              list_paste(document.documentElement.scrollHeight - document.documentElement.scrollTop)
+            }
+          });
         });
 
         paste_manage_edit_btn.on("click", function (e) {
