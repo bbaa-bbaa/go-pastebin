@@ -239,12 +239,10 @@
       const paste_max_access_count = $("#new-paste-max-access-count");
       const paste_uuid = $("#new-paste-uuid");
       const paste_short_url = $("#new-paste-short-url");
-      const paste_detect_mime = $("#new-paste-detect-mime");
       const paste_mime_markdown = $("#new-paste-mime-markdown");
       const paste_delete_if_not_available = $("#new-paste-delete-if-not-available");
       const paste_shorten_url = $("#new-paste-shorten-url");
       const container_mime_markdown = paste_mime_markdown.parent().parent("div");
-      const container_detect_mime = paste_detect_mime.parent().parent("div");
       const container_paste_shorten_url = paste_shorten_url.parent().parent("div");
 
       const new_paste_return_container = $("#new-paste-return-container");
@@ -763,9 +761,9 @@
         let max_access_count = paste_max_access_count.val();
         let short_url = paste_short_url.val();
         let delete_if_not_available = paste_delete_if_not_available.prop("checked");
-        let detect_mime = paste_detect_mime.prop("checked");
         let mime_markdown = paste_mime_markdown.prop("checked");
         let shorten_url = paste_shorten_url.prop("checked");
+        let detect_mime = !mime_markdown && !shorten_url && (!paste_file || paste_file && !paste_file.type);
         let filename = sanitizeFilename(paste_filename.val());
         let data = new FormData();
         let query_params = {};
