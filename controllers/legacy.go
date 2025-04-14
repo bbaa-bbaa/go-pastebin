@@ -38,7 +38,7 @@ func LegacyRender(c echo.Context, extra_params map[string]any) error {
 	user, is_login := c.Get("user").(*database.User)
 	recent_pastes := []*database.Paste{}
 	if is_login {
-		recent_pastes, _, _, _ = database.QueryAllPasteByUser(user.UID, 0, 10, "")
+		recent_pastes, _, _, _ = database.QueryAllPasteByUser(user.UID, 0, 25, "")
 	}
 	params := map[string]any{
 		"SiteName":       database.Config.SiteName,

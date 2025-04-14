@@ -625,7 +625,7 @@
           if (isDesktop()) {
             new_paste_result_link.attr("target", "_blank");
           }
-          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () {});
+          QRCode.toCanvas(new_paste_result_qr_code.get(0), response.url, { margin: 0, scale: 6, color: { light: "#00000000", dark: "#000000ff" } }, function () { });
           new_paste_result_link.closest(".mdui-card").find(".paste-link").show();
           new_paste_result_qr_code.show();
         } else {
@@ -713,11 +713,11 @@
           let loaded = now_loaded();
           file_paste_progress_text.text(
             (Math.ceil((loaded / 1024 / 1024) * 100) / 100).toFixed(2) +
-              " MiB / " +
-              (Math.ceil((total_size / 1024 / 1024) * 100) / 100).toFixed(2) +
-              " MiB - " +
-              (Math.min(loaded / total_size, 1) * 100).toFixed(2) +
-              "%"
+            " MiB / " +
+            (Math.ceil((total_size / 1024 / 1024) * 100) / 100).toFixed(2) +
+            " MiB - " +
+            (Math.min(loaded / total_size, 1) * 100).toFixed(2) +
+            "%"
           );
           file_paste_progress_bar.css("width", (Math.min(loaded / total_size, 1) * 100).toFixed(2) + "%");
           if (Math.round(loaded) < total_size) {
@@ -763,7 +763,6 @@
         let max_access_count = paste_max_access_count.val();
         let short_url = paste_short_url.val();
         let delete_if_not_available = paste_delete_if_not_available.prop("checked");
-        let detect_mime = paste_detect_mime.prop("checked");
         let mime_markdown = paste_mime_markdown.prop("checked");
         let shorten_url = paste_shorten_url.prop("checked");
         let filename = sanitizeFilename(paste_filename.val());
@@ -806,6 +805,7 @@
         }
 
         if (paste_file) {
+          let detect_mime = paste_detect_mime.prop("checked");
           if (detect_mime) {
             data.append("c", new File([paste_file], filename || paste_file.name, { type: "application/vnd.pastebin.detect" }));
           } else if (filename) {
@@ -820,7 +820,7 @@
           } else if (mime_markdown) {
             data.append("c", new File([text], filename || auto_filename + ".md", { type: "text/markdown; charset=utf-8" }));
           } else {
-            data.append("c", new File([text], filename || auto_filename + ".txt", { type: "text/plain; charset=utf-8" }));
+            data.append("c", new File([text], filename || auto_filename, { type: "application/vnd.pastebin.detect" }));
           }
         }
         return { data, query_params };
@@ -1299,7 +1299,7 @@
         try {
           if (urlencode_filename) return decodeURIComponent(urlencode_filename);
         } catch (e) {
-          
+
         }
         let filename = xhr.getResponseHeader("X-Origin-Filename");
         try {
@@ -2087,8 +2087,8 @@
           data: passkey
             ? null
             : JSON.stringify({
-                account: account
-              }),
+              account: account
+            }),
           processData: false,
           complete: function (xhr) {
             let response = JSON.parse(xhr.responseText || "{}");
