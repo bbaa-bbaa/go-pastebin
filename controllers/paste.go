@@ -196,7 +196,7 @@ func NewPaste(c echo.Context) error {
 		if response_is_json {
 			c.JSON(400, map[string]any{"code": -2, "error": err.Error()})
 		} else {
-			c.String(400, err.Error())
+			c.String(400, err.Error()+"\n")
 		}
 		return err
 	}
@@ -222,7 +222,7 @@ func NewPaste(c echo.Context) error {
 		if response_is_json {
 			c.JSON(403, map[string]any{"code": -1, "error": "anonymous user not allowed, please login"})
 		} else {
-			c.String(403, "anonymous user not allowed, ensure you pass the correct cookie")
+			c.String(403, "anonymous user not allowed, ensure you pass the correct cookie\n")
 		}
 		return nil
 	}
@@ -295,7 +295,7 @@ func pasteActionStatus(action string, paste *database.Paste, err error, c echo.C
 			}
 			return ""
 		},
-		), "\n"))
+		), "\n")+"\n")
 		return
 	}
 
@@ -309,7 +309,7 @@ func UpdatePaste(c echo.Context) error {
 		if response_is_json {
 			c.JSON(400, map[string]any{"code": -2, "error": "bad request: uuid"})
 		} else {
-			c.String(400, "bad request: uuid")
+			c.String(400, "bad request: uuid\n")
 		}
 		return err
 	}
@@ -318,7 +318,7 @@ func UpdatePaste(c echo.Context) error {
 		if response_is_json {
 			c.JSON(400, map[string]any{"code": -2, "error": err.Error()})
 		} else {
-			c.String(400, err.Error())
+			c.String(400, err.Error()+"\n")
 		}
 		return err
 	}
@@ -330,13 +330,13 @@ func UpdatePaste(c echo.Context) error {
 			if response_is_json {
 				c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
 			} else {
-				c.String(404, "paste not found or not available yet")
+				c.String(404, "paste not found or not available yet\n")
 			}
 		} else {
 			if response_is_json {
 				c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
 			} else {
-				c.String(500, "status: internal error")
+				c.String(500, "status: internal error\n")
 			}
 		}
 		return err
@@ -387,7 +387,7 @@ func DeletePaste(c echo.Context) error {
 		if response_is_json {
 			c.JSON(400, map[string]any{"code": -2, "error": "bad request: uuid"})
 		} else {
-			c.String(400, "bad request: uuid")
+			c.String(400, "bad request: uuid\n")
 		}
 		return err
 	}
@@ -398,13 +398,13 @@ func DeletePaste(c echo.Context) error {
 			if response_is_json {
 				c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
 			} else {
-				c.String(404, "paste not found or not available yet")
+				c.String(404, "paste not found or not available yet\n")
 			}
 		} else {
 			if response_is_json {
 				c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
 			} else {
-				c.String(500, "status: internal error")
+				c.String(500, "status: internal error\n")
 			}
 		}
 		return err
@@ -429,7 +429,7 @@ func DeletePaste(c echo.Context) error {
 						"status: on hold\n",
 						"hold_until: ", paste.HoldBefore.Format(time.RFC3339Nano), "\n",
 						"message: paste has been marked for deletion and will not accept new requests",
-					}, ""),
+					}, "")+"\n",
 				)
 			}
 			return nil
@@ -437,14 +437,14 @@ func DeletePaste(c echo.Context) error {
 		if response_is_json {
 			c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
 		} else {
-			c.String(500, "status: internal error")
+			c.String(500, "status: internal error\n")
 		}
 		return err
 	}
 	if response_is_json {
 		c.JSON(200, map[string]any{"code": 0, "status": "deleted"})
 	} else {
-		c.String(200, "status: deleted")
+		c.String(200, "status: deleted\n")
 	}
 	return nil
 }
@@ -477,7 +477,7 @@ func GetPaste(c echo.Context) error {
 		if !raw_response {
 			c.JSON(400, map[string]any{"code": -2, "error": "bad request"})
 		} else {
-			c.String(400, "bad request")
+			c.String(400, "bad request\n")
 		}
 		return nil
 	}
@@ -487,13 +487,13 @@ func GetPaste(c echo.Context) error {
 			if !raw_response {
 				c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
 			} else {
-				c.String(404, "paste not found or not available yet")
+				c.String(404, "paste not found or not available yet\n")
 			}
 		} else {
 			if !raw_response {
 				c.JSON(500, map[string]any{"code": -3, "error": "internal error"})
 			} else {
-				c.String(500, "status: internal error")
+				c.String(500, "status: internal error\n")
 			}
 		}
 		return err
@@ -521,7 +521,7 @@ func GetPaste(c echo.Context) error {
 			if !raw_response {
 				c.JSON(404, map[string]any{"code": -1, "error": "paste not found or not available yet"})
 			} else {
-				c.String(404, "paste not found or not available yet")
+				c.String(404, "paste not found or not available yet\n")
 			}
 			return nil
 		}
@@ -545,7 +545,7 @@ func GetPaste(c echo.Context) error {
 				if !raw_response {
 					c.JSON(401, map[string]any{"code": -1, "error": "paste need password, you can provide it by ?pwd=paste_password query"})
 				} else {
-					c.String(401, "paste need password, you can provide it by ?pwd=paste_password query")
+					c.String(401, "paste need password, you can provide it by ?pwd=paste_password query\n")
 				}
 				return nil
 			}
@@ -553,7 +553,7 @@ func GetPaste(c echo.Context) error {
 				if !raw_response {
 					c.JSON(401, map[string]any{"code": -1, "error": "password is incorrect"})
 				} else {
-					c.String(401, "password is incorrect")
+					c.String(401, "password is incorrect\n")
 				}
 				return nil
 			}
