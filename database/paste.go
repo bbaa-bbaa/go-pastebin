@@ -272,13 +272,11 @@ func (p *Paste) GenerateShortURL() error {
 	alternatives := []any{}
 	hash := p.Hash.base64WithoutPadding()
 	hash_len := len(hash)
-	for i := hash_len - 1; i >= 1; i-- {
-		sql += "name = ?"
-		if i != 1 {
-			sql += " OR "
-		}
-		alternatives = append(alternatives, hash[i:hash_len])
+	for i := 1; i < hash_len-1; i++ {
+		sql += "name = ? OR "
+		alternatives = append(alternatives, hash[0:i])
 	}
+	sql = sql[:len(sql)-4]
 	var length int
 	err := db.Get(&length, sql, alternatives...)
 	if err != nil {
@@ -286,7 +284,7 @@ func (p *Paste) GenerateShortURL() error {
 		return err
 	}
 	if length+1 < len(hash) {
-		p.Short_url = hash[hash_len-length-1 : hash_len]
+		p.Short_url = hash[0 : length+1]
 	}
 	return nil
 }
