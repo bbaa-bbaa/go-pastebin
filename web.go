@@ -62,6 +62,10 @@ func httpServe() {
 	e.POST("/api/user/webauthn/passkey/login", controllers.UserWebAuthnDiscoverableLogin)
 	e.GET("/api/user/webauthn/list", controllers.UserWebAuthnList)
 	e.POST("/api/user/webauthn/delete", controllers.UserWebAuthnDelete)
+
+	e.Any("/dav", controllers.Webdav)
+	e.Any("/dav/*", controllers.Webdav)
+
 	e.POST("/", controllers.NewPaste)
 	e.PUT("/:uuid", controllers.UpdatePaste)
 	e.DELETE("/:uuid", controllers.DeletePaste)

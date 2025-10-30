@@ -15,7 +15,6 @@
 package database
 
 import (
-	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/rand"
@@ -345,7 +344,7 @@ func (user *User) ChangePassword(oldPassword string, newPassword string) error {
 func (u *User) Token() string {
 	hash := hmac.New(sha256.New, []byte(u.Password))
 	buf := [48]byte{}
-	binary.Write(bytes.NewBuffer(buf[:0]), binary.BigEndian, u.UID)
+	binary.BigEndian.PutUint64(buf[:8], uint64(u.UID))
 	rand.Read(buf[8:16])
 	hash.Write(buf[:16])
 	copy(buf[16:], hash.Sum(nil))
@@ -357,12 +356,8 @@ func GetUserByToken(token string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	var uid int64
-	err = binary.Read(bytes.NewReader(buf[:8]), binary.BigEndian, &uid)
-	if err != nil {
-		return nil, err
-	}
-	user, err := GetUser(uid)
+	uid := binary.BigEndian.Uint64(buf[:8])
+	user, err := GetUser(int64(uid))
 	if err != nil {
 		return nil, err
 	}

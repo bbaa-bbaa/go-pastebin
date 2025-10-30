@@ -42,7 +42,7 @@ import (
 	"github.com/mattn/go-sqlite3"
 )
 
-var ReservedURL = regexp.MustCompile(`^(sw\.js(\.map)?|workbox.*?\.js(\.map)?|manifest\.json|favicon\.ico|robots\.txt|index\.?(x|s)?(htm)?l?|legacy|admin\.?(x|s)?(htm)?l?)$`)
+var ReservedURL = regexp.MustCompile(`^(sw\.js(\.map)?|workbox.*?\.js(\.map)?|manifest\.json|favicon\.ico|robots\.txt|index\.?(x|s)?(htm)?l?|legacy|dav|admin\.?(x|s)?(htm)?l?)$`)
 
 type Paste_Hash int64
 
@@ -273,6 +273,9 @@ func (p *Paste) GenerateShortURL() error {
 	hash := p.Hash.base64WithoutPadding()
 	hash_len := len(hash)
 	for i := 1; i < hash_len-1; i++ {
+		if ReservedURL.MatchString(hash[0:i]) {
+			continue
+		}
 		sql += "name = ? OR "
 		alternatives = append(alternatives, hash[0:i])
 	}
@@ -283,8 +286,12 @@ func (p *Paste) GenerateShortURL() error {
 		log.Error(err)
 		return err
 	}
-	if length+1 < len(hash) {
-		p.Short_url = hash[0 : length+1]
+	for i := length + 1; i < hash_len-1; i++ {
+		url := hash[0:i]
+		if !ReservedURL.MatchString(url) {
+			p.Short_url = url
+			break
+		}
 	}
 	return nil
 }
@@ -341,6 +348,10 @@ func (p *Paste) Update() (paste *Paste, err error) {
 
 func (p *Paste) Path() string {
 	return filepath.Join(GetPastesDir(), p.UUID)
+}
+
+func (p *Paste) Open() (*os.File, error) {
+	return os.Open(p.Path())
 }
 
 func (p *Paste) UpdateMetadata() error {
@@ -448,7 +459,7 @@ func (p *Paste) save(paste_file *os.File) error {
 	var mime_detector *io.PipeWriter
 	var mime_result chan string
 	mime_detect_complete_flag := true
-	if p.Extra.MimeType == "" || p.Extra.MimeType == "application/vnd.pastebin.detect" || strings.HasPrefix(p.Extra.MimeType, "text/") && !strings.Contains(p.Extra.MimeType, "charset=") {
+	if p.Extra.MimeType == "" || p.Extra.MimeType == "application/octet-stream" || p.Extra.MimeType == "application/vnd.pastebin.detect" {
 		mime_detect_complete_flag = false
 		mime_detector, mime_result = p.mimeTypeDetector(p.Extra.MimeType)
 		defer func() {
@@ -609,7 +620,7 @@ func (p *Paste) CreateShortURL() error {
 
 func (p *Paste) Token(ExpireAfter time.Time) string {
 	buf := [40]byte{}
-	binary.Write(bytes.NewBuffer(buf[:0]), binary.BigEndian, ExpireAfter.UnixMilli())
+	binary.BigEndian.PutUint64(buf[:8], uint64(ExpireAfter.UnixMilli()))
 	hash := sha256.New()
 	hash.Write(buf[:8])
 	paste_uuid, _ := uuid.Parse(p.UUID)
@@ -717,6 +728,15 @@ func QueryPasteByShortURLOrHash(name string) (p *Paste, err error) {
 	}
 }
 
+func QueryPasteByHashWithUser(b64hash string, uid int64) (p *Paste, err error) {
+	var hash Paste_Hash
+	if hash, err = DecodeBase64Hash(b64hash); err != nil {
+		return nil, err
+	}
+	row := db.QueryRowx(`SELECT * FROM pastes WHERE hash = ? AND uid = ?`, hash, uid)
+	return parsePaste(row)
+}
+
 func ResetHoldCount() error {
 	_, err := db.Exec(`UPDATE pastes SET hold_count = 0 WHERE hold_count > 0`)
 	if err != nil {
@@ -773,16 +793,6 @@ func QueryAllPaste(page int64, page_size int64, search string) (pastes []*Paste,
 	}
 	if result != nil {
 		total = result.Total
-	} else {
-		err = db.Get(&total, `
-			SELECT COUNT(*) FROM pastes
-			WHERE COALESCE(json_extract(extra, '$.filename'), "") LIKE ?`,
-			search,
-		)
-		if err != nil {
-			log.Error(err)
-			return nil, 0, 0, err
-		}
 	}
 	return
 }
@@ -810,7 +820,7 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) 
 		FROM pastes p
 		LEFT JOIN short_url s
 		ON p.uuid = s.target
-		WHERE uid = ?
+		WHERE p.uid = ?
 		AND (
 			COALESCE(s.name, "") LIKE ? 
 			OR
@@ -837,17 +847,6 @@ func QueryAllPasteByUser(uid int64, page int64, page_size int64, search string) 
 	}
 	if result != nil {
 		total = result.Total
-	} else {
-		err = db.Get(&total, `
-			SELECT COUNT(*) FROM pastes
-			WHERE uid = ?
-			AND COALESCE(json_extract(extra, '$.filename'), "") LIKE ?`,
-			uid, search,
-		)
-		if err != nil {
-			log.Error(err)
-			return nil, 0, 0, err
-		}
 	}
 	return
 }
